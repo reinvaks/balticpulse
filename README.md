@@ -1,74 +1,54 @@
-# Regiooni energeetika põhiülevaade — lõppversioon
+# BalticPulse
 
-Streamlit armatuurlaud Eesti, Baltikumi ja Soome operatiivse energiaturu olukorrapildi jaoks.
+Balti ja Põhjamaade energiaturu operatiivne olukorrapilt Streamlitile. Põhimõte: operatiivses põhivaates kuvatakse ainult piisavalt värsked tegelikud väärtused; vananenud või puuduva allika korral näidatakse `—`, mitte sünteetilist asendusnumbrit.
 
-## Sisuline ülesehitus
-1. **Olukord praegu** — EE/FI spot, EE–FI hinnavahe, Eesti tootmine/tarbimine, aktiivsed UMM-id, suurim üksik mõjutatud MW ning EE–FI / EE–LV füüsilised netovood.
-2. **Täna/homme** — EE/LV/LT/FI päeva-ette keskmised.
-3. **Olulised sündmused** — aktiivsed Nord Pool UMM-id prioriseerituna mõjutatud võimsuse järgi.
-4. **Elektrihinnad** — regionaalne päev-ette profiil Eleringist.
-5. **Eesti süsteem** — Eleringi tegelik kogutootmine ja -tarbimine.
-6. **ENTSO-E** — Eesti tegelik tootmine tootmisliigi kaupa (A75/A16) ning EE↔FI ja EE↔LV füüsilised vood (A11).
-7. **Reservid** — Balti aFRR/mFRR balancing-capacity (€/MW/h) ja aktiveeritud balancing-energy clearing prices (€/MWh) EE/LV/LT.
-8. **Gaasihoidlad** — EL ja Läti GIE AGSI+ päevased täituvuse, laovaru, süstimise ja väljavõtu andmed.
-9. **Tähelepanuplokk** — läbipaistvad heuristikad suurte hinnavahede, UMM mõju, bilansivajaduse, ühenduste kõrge kasutuse, balancing-energy hinnahüpete ja gaasihoidlate kiire muutuse jaoks.
-10. **Andmekvaliteet** — allikate staatus, värskus ja semantilised piirangud.
+## Main file
 
-## Streamlit Cloud
-Main file path:
+`energy.app.py`
 
-```text
-energy.app.py
-```
-
-### Secrets
-Lisa Streamlit Cloud → Settings → Secrets:
+## Streamlit Secrets
 
 ```toml
+ENTSOE_API_KEY = "sinu-ENTSO-E-Transparency-Platform-võti"
 GIE_AGSI_API_KEY = "sinu-GIE-AGSI-võti"
-ENTSOE_API_KEY = "sinu-ENTSOE-Transparency-võti"
 ```
 
-Võtmeid ei salvestata koodi ega GitHubi reposse.
+## Operatiivse vaate värskus
 
-## Valideeritud andmeallikad ja kasutus
-- **Elering Dashboard API** — EE/LV/LT/FI spot-hinnad ning Eesti kogutootmine/-tarbimine.
-- **ENTSO-E Transparency Platform Web API** — A75 actual generation per type (process A16 realised); A11 physical flows EE↔FI ja EE↔LV.
-- **Nord Pool UMM** — kiireloomulised turuteated ja teatepõhine mõjutatud võimsus.
-- **Baltic Transparency Dashboard / Elering via Volton Public Data** — aFRR/mFRR balancing capacity ning balancing-energy clearing prices.
-- **GIE AGSI+** — EL ja Läti gaasihoidlad; autentimine `x-key` päisega.
+- Rakendus värskendab brauserivaadet automaatselt iga **2 minuti** järel.
+- Elering spot: käimasolev 15-min Market Time Unit (day-ahead clearing price).
+- Elering tootmine/tarbimine: põhivaates ainult kuni **30 min** vana vaatlus.
+- ENTSO-E A75/A65 fallback: põhivaates ainult kuni **120 min** vana actual-väärtus.
+- ENTSO-E A11 füüsilised vood: põhivaates ainult kuni **120 min** vana vaatlus.
+- Nord Pool UMM: cache **120 s**; teateid ei summeerita automaatselt netokatkestuseks.
+- EEX NGP TTF/LVA-EST/FIN/LTU: EEX current failid, ametlikult **15-min refresh** D/D+1/D+2 jaoks.
+- Baltic Transparency Dashboard / Volton balancing data: avalik peegel värskendub **tunnis**; MTU ise on 15 min.
+- GIE AGSI+: päevane gas-day andmestik, mitte intraday.
+- EIA Brent: ametlik päevane spot-referents, mitte intraday.
+- EEX EUA: primaaroksjoni clearing price, mitte secondary-market intraday hind.
 
-## Olulised kvaliteedireeglid
-- Puuduvaid turuandmeid ei sünteesita.
-- UMM MW väärtusi ei summeerita automaatselt süsteemi netokatkestuseks.
-- ENTSO-E **physical flow (A11)** ei ole sama asi mis available transfer capacity.
-- Reservi capacity hind (€/MW/h) ei ole balancing-energy hind (€/MWh).
-- Päev-ette börsihind ei ole lõpptarbija hind.
-- AGSI+ on päevane andmestik; seda ei esitata intraday reaalaja mõõdikuna.
-- Eleringi ja ENTSO-E andmeid kasutatakse ristkontrolliks, kuid neid ei sunnita kunstlikult võrdseks.
+## Andmeallikad
 
-## GIE API käitumine
-Rakendus küsib `https://agsi.gie.eu/api` endpointi `x-key` päisega ning kasutab operatiivvaates `reverse=true`, et saada uusimad gaasipäevad. API võtme puudumisel kuvatakse selge konfiguratsiooniteade.
+- **Elering Dashboard API** — EE/LV/LT/FI day-ahead elektrihinnad ning Eesti süsteemi tootmine/tarbimine.
+- **ENTSO-E Transparency Platform** — Eesti tegelik tootmine tootmisliikide kaupa (A75), tegelik koormus (A65), EE–FI/EE–LV füüsilised vood (A11) ja päev-ette NTC (A61).
+- **Nord Pool UMM** — REMIT/UMM turuteated ja mõjutatud võimsus.
+- **Baltic Transparency Dashboard / Volton public mirror** — Balti aFRR/mFRR capacity ja balancing-energy hinnad.
+- **GIE AGSI+** — EL ja Läti gaasihoidlate päevased andmed.
+- **EEX** — current Neutral Gas Price TTF, LVA-EST, FIN ja LTU; TTF 60 päeva final history.
+- **U.S. EIA** — Europe Brent Spot Price FOB.
+- **EEX** — EUA Primary Auction clearing price 2026.
 
-## ENTSO-E API käitumine
-Rakendus kasutab `https://web-api.tp.entsoe.eu/api` endpointi. XML veateated ja HTTP vead tuuakse kasutajale nähtavale. Päringud on cache'itud 5 minutiks, et vältida asjatut koormust ja rate-limit riski.
+## Metoodika
 
+BalticPulse ei sünteesi puuduvaid turuandmeid. Kui Eleringi tootmise/tarbimise väärtus puudub või on liiga vana, võib rakendus kasutada ainult piisavalt värsket ENTSO-E tegelikku tootmist (A75) või tegelikku koormust (A65) fallback'ina.
 
-## V4: ülekandevõimsus ja kaks täiendavat operatiivnäitajat
+Päev-ette spot-hind on käimasoleva MTU turuhind, kuid see ei ole intraday uuesti kliiritav hind. EEX NGP on spot-turu referents ja uueneb 15 minuti järel. EIA Brent ning EEX EUA oksjon on aeglasemad fundamentaalnäitajad ning UI märgib need vastavalt.
 
-- ENTSO-E A61 + `contract_MarketAgreement.Type=A01`: EE–FI ja EE–LV päev-ette suunaline NTC mõlemas suunas.
-- A11 füüsiline voog jääb eraldi; `voog / NTC` on ainult kontekstinäitaja, mitte vaba jääkvõimsus.
-- `EE bilansivajadus` = Eleringi tegelik tarbimine − tegelik kodumaine tootmine.
-- `Taastuvate osakaal tootmises` arvutatakse ENTSO-E A75 viimase ühise tootmisvaatluse PSR-liikidest ja on operatiivne indikatsioon, mitte ametlik statistiline taastuvenergia osakaal.
+UMM-idest kasutatakse operatiivses aktiivsete teadete loendis viimast avaldatud revisjoni message ID kohta. Mõjutatud MW väärtusi ei liideta automaatselt, sest teated võivad kirjeldada kattuvaid sündmusi.
 
+## Deploy
 
-## Tähelepanureeglid
-Need on dashboardi heuristikad, mitte ametlikud häirepiirid:
-- |EE–FI spot spread| ≥ 50 €/MWh (kõrge ≥ 100)
-- suurim üksik aktiivne UMM ≥ 300 MW (kõrge ≥ 600)
-- EE tarbimine − tootmine ≥ 500 MW (kõrge ≥ 800)
-- füüsiline voog / sama suuna päev-ette NTC ≥ 90% (kõrge ≥ 100%)
-- aFRR/mFRR balancing-energy |hind| ≥ 500 €/MWh (kõrge ≥ 1000)
-- EU või LV gaasihoidlate täituvus < 30% või ~7 päeva langus ≥ 5 protsendipunkti
-
-Lävendid on UI-s kasutajale nähtavad ja neid saab vajadusel hiljem konfiguratsioonifaili tõsta.
+1. Laadi failid GitHubi repo juurkausta.
+2. Lisa Streamlit Cloudis secrets.
+3. Main file path: `energy.app.py`.
+4. App URL: `balticpulse.streamlit.app` (kui nimi on saadaval).

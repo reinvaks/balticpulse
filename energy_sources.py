@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
+from io import BytesIO, StringIO
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
@@ -18,6 +19,15 @@ ELERING_BASE = "https://dashboard.elering.ee/api"
 VOLTON_BASE = "https://public-data.volton.energy/v1"
 AGSI_BASE = "https://agsi.gie.eu/api"
 ENTSOE_BASE = "https://web-api.tp.entsoe.eu/api"
+EEX_TTF_HISTORY_URL = "https://gasandregistry.eex.com/Gas/NGP/TTF_NGP_60_Days.csv"
+EEX_NGP_CURRENT_URLS = {
+    "TTF": "https://gasandregistry.eex.com/Gas/NGP/TTF_NGP_15_Mins.csv",
+    "FIN": "https://gasandregistry.eex.com/Gas/NGP/FIN_NGP_15_Mins.csv",
+    "LTU": "https://gasandregistry.eex.com/Gas/NGP/LTU_NGP_15_Mins.csv",
+    "LVA-EST": "https://gasandregistry.eex.com/Gas/NGP/LVA-EST_NGP_15_Mins.csv",
+}
+EEX_EUA_AUCTION_URL = "https://public.eex-group.com/eex/eua-auction-report/emission-spot-primary-market-auction-report-2026-data.xlsx"
+EIA_BRENT_XLS_URL = "https://www.eia.gov/dnav/pet/hist_xls/RBRTEd.xls"
 
 ENTSOE_DOMAINS = {
     "EE": "10Y1001A1001A39I",
@@ -82,6 +92,240 @@ def _get_json(url: str, *, params: dict[str, Any] | None = None, headers: dict[s
                               status_code=last_status, error=last_error)
 
 
+
+def _get_bytes(url: str, *, timeout: tuple[int, int] = (5, 30), retries: int = 3) -> tuple[bytes | None, SourceStatus]:
+    last_error = None
+    last_status = None
+    headers = {"User-Agent": "BalticPulse/1.0", "Accept": "*/*"}
+    for attempt in range(retries):
+        try:
+            r = requests.get(url, headers=headers, timeout=timeout)
+            last_status = r.status_code
+            if r.status_code == 429 or 500 <= r.status_code < 600:
+                if attempt < retries - 1:
+                    time.sleep(2 ** attempt)
+                    continue
+            r.raise_for_status()
+            return r.content, SourceStatus(source=url, ok=True, fetched_at=_now_iso(), url=r.url, status_code=r.status_code)
+        except requests.RequestException as exc:
+            last_error = f"{type(exc).__name__}: {exc}"
+            if attempt < retries - 1:
+                time.sleep(2 ** attempt)
+    return None, SourceStatus(source=url, ok=False, fetched_at=_now_iso(), url=url, status_code=last_status, error=last_error)
+
+
+def _best_datetime_column(df: pd.DataFrame) -> tuple[str | None, pd.Series | None]:
+    best_col = None
+    best = None
+    best_count = 0
+    for col in df.columns:
+        name = str(col).lower()
+        if not any(k in name for k in ("date", "day", "time", "datum")):
+            continue
+        parsed = pd.to_datetime(df[col], errors="coerce", dayfirst=False)
+        count = int(parsed.notna().sum())
+        if count > best_count:
+            best_col, best, best_count = str(col), parsed, count
+    return best_col, best
+
+
+def _best_numeric_column(df: pd.DataFrame, keywords: tuple[str, ...]) -> tuple[str | None, pd.Series | None]:
+    candidates = []
+    for col in df.columns:
+        name = str(col).lower()
+        score = sum(1 for k in keywords if k in name)
+        nums = pd.to_numeric(df[col].astype(str).str.replace(",", ".", regex=False), errors="coerce")
+        count = int(nums.notna().sum())
+        if count:
+            candidates.append((score, count, str(col), nums))
+    if not candidates:
+        return None, None
+    candidates.sort(reverse=True, key=lambda x: (x[0], x[1]))
+    _, _, col, nums = candidates[0]
+    return col, nums
+
+
+def fetch_eex_ngp_current(area: str = "TTF") -> tuple[pd.DataFrame, SourceStatus]:
+    """EEX Neutral Gas Price current D/D+1/D+2 file, refreshed every 15 minutes.
+
+    EEX explicitly documents these files as current NGP values. The parser is deliberately
+    tolerant because EEX occasionally changes presentation column names; it only returns
+    rows where both a delivery date and a plausible EUR/MWh price can be identified.
+    """
+    area = area.upper()
+    url = EEX_NGP_CURRENT_URLS.get(area)
+    if not url:
+        return pd.DataFrame(), SourceStatus(source=f"EEX NGP {area}", ok=False, fetched_at=_now_iso(), error="Unsupported NGP area")
+    raw, status = _get_bytes(url)
+    status.source = f"EEX NGP {area} current (15-min refresh)"
+    if raw is None:
+        return pd.DataFrame(), status
+    try:
+        text = raw.decode("utf-8-sig", errors="replace")
+        try:
+            df = pd.read_csv(StringIO(text), sep=None, engine="python")
+        except Exception:
+            df = pd.read_csv(StringIO(text), sep=";", engine="python")
+        df.columns = [str(c).strip() for c in df.columns]
+
+        # Delivery date: prefer columns that semantically look like gas/delivery day.
+        date_candidates = []
+        for col in df.columns:
+            lc = str(col).lower()
+            parsed = pd.to_datetime(df[col], errors="coerce", dayfirst=False)
+            score = 0
+            if "gas" in lc and ("day" in lc or "date" in lc): score += 4
+            if "deliver" in lc: score += 4
+            if "date" in lc or "day" in lc: score += 2
+            if parsed.notna().any(): date_candidates.append((score, int(parsed.notna().sum()), col, parsed))
+        if not date_candidates:
+            raise ValueError(f"Could not identify delivery date in columns {list(df.columns)}")
+        date_candidates.sort(reverse=True, key=lambda x: (x[0], x[1]))
+        _, _, dcol, dates = date_candidates[0]
+
+        # Price: strongly prefer NGP/price columns and reject obvious volume/date fields.
+        price_candidates = []
+        for col in df.columns:
+            lc = str(col).lower()
+            if col == dcol or any(k in lc for k in ("volume", "time", "date", "day")):
+                continue
+            nums = pd.to_numeric(df[col].astype(str).str.replace(",", ".", regex=False), errors="coerce")
+            valid = nums[(nums > -500) & (nums < 1000)]
+            if valid.empty:
+                continue
+            score = 0
+            if "ngp" in lc: score += 5
+            if "price" in lc: score += 4
+            if "eur" in lc: score += 2
+            if area.lower().replace("-", "") in lc.replace("-", "").replace("_", ""): score += 2
+            price_candidates.append((score, int(valid.notna().sum()), col, nums))
+        if not price_candidates:
+            raise ValueError(f"Could not identify NGP price in columns {list(df.columns)}")
+        price_candidates.sort(reverse=True, key=lambda x: (x[0], x[1]))
+        _, _, pcol, prices = price_candidates[0]
+
+        out = pd.DataFrame({"delivery_date": dates.dt.date, "price_eur_mwh": prices}).dropna()
+        out = out[(out["price_eur_mwh"] > -500) & (out["price_eur_mwh"] < 1000)]
+        out = out.drop_duplicates("delivery_date", keep="last").sort_values("delivery_date")
+        if out.empty:
+            raise ValueError("No current NGP rows parsed")
+        status.note = "Official EEX current NGP file; EEX states it is refreshed every 15 minutes for D/D+1/D+2."
+        return out, status
+    except Exception as exc:
+        status.ok = False
+        status.error = f"Current NGP CSV parse error: {exc}"
+        return pd.DataFrame(), status
+
+
+def fetch_eex_ttf_ngp() -> tuple[pd.DataFrame, SourceStatus]:
+    """EEX Neutral Gas Price TTF — final daily history, public 60-day CSV.
+
+    This is a spot-market TTF reference published by EEX, not a front-month futures price.
+    """
+    raw, status = _get_bytes(EEX_TTF_HISTORY_URL)
+    status.source = "EEX Neutral Gas Price TTF (NGP TTF)"
+    if raw is None:
+        return pd.DataFrame(), status
+    try:
+        text = raw.decode("utf-8-sig", errors="replace")
+        try:
+            df = pd.read_csv(StringIO(text), sep=None, engine="python")
+        except Exception:
+            df = pd.read_csv(StringIO(text), sep=";", engine="python")
+        df.columns = [str(c).strip() for c in df.columns]
+        dcol, dates = _best_datetime_column(df)
+        pcol, prices = _best_numeric_column(df, ("ttf", "ngp", "price", "eur", "value"))
+        if dcol is None or dates is None or pcol is None or prices is None:
+            raise ValueError(f"Could not identify date/price columns: {list(df.columns)}")
+        out = pd.DataFrame({"date": dates, "price_eur_mwh": prices}).dropna().drop_duplicates("date").sort_values("date")
+        if out.empty:
+            raise ValueError("No TTF NGP rows parsed")
+        status.note = "Final daily EEX NGP TTF history (public 60-day file); not TTF front-month futures."
+        return out, status
+    except Exception as exc:
+        status.ok = False
+        status.error = f"TTF CSV parse error: {exc}"
+        return pd.DataFrame(), status
+
+
+def _read_excel_flex(raw: bytes) -> list[pd.DataFrame]:
+    book = pd.ExcelFile(BytesIO(raw))
+    frames = []
+    for sheet in book.sheet_names:
+        try:
+            frames.append(pd.read_excel(book, sheet_name=sheet, header=None))
+        except Exception:
+            continue
+    return frames
+
+
+def fetch_eia_brent() -> tuple[pd.DataFrame, SourceStatus]:
+    """EIA Europe Brent Spot Price FOB daily series (USD/bbl), official downloadable XLS."""
+    raw, status = _get_bytes(EIA_BRENT_XLS_URL)
+    status.source = "U.S. EIA Europe Brent Spot Price FOB"
+    if raw is None:
+        return pd.DataFrame(), status
+    try:
+        frames = _read_excel_flex(raw)
+        best = pd.DataFrame()
+        for raw_df in frames:
+            for header_row in range(min(12, len(raw_df))):
+                header = raw_df.iloc[header_row].astype(str).str.strip()
+                df = raw_df.iloc[header_row + 1:].copy()
+                df.columns = header
+                dcol, dates = _best_datetime_column(df)
+                pcol, prices = _best_numeric_column(df, ("brent", "dollar", "price", "value"))
+                if dates is None or prices is None:
+                    continue
+                out = pd.DataFrame({"date": dates, "price_usd_bbl": prices}).dropna().drop_duplicates("date").sort_values("date")
+                if len(out) > len(best):
+                    best = out
+        if best.empty:
+            raise ValueError("No Brent observations parsed from EIA workbook")
+        status.note = "Official EIA Europe Brent Spot Price FOB daily series; publication can lag market trading days."
+        return best.tail(400), status
+    except Exception as exc:
+        status.ok = False
+        status.error = f"EIA Brent XLS parse error: {exc}"
+        return pd.DataFrame(), status
+
+
+def fetch_eex_eua_auction() -> tuple[pd.DataFrame, SourceStatus]:
+    """EEX EUA primary auction clearing prices for 2026 (EUR/EUA).
+
+    This is an official primary-market auction price, intentionally not labelled as secondary-market EUA spot.
+    """
+    raw, status = _get_bytes(EEX_EUA_AUCTION_URL)
+    status.source = "EEX EUA Primary Auction clearing price"
+    if raw is None:
+        return pd.DataFrame(), status
+    try:
+        frames = _read_excel_flex(raw)
+        best = pd.DataFrame()
+        for raw_df in frames:
+            for header_row in range(min(20, len(raw_df))):
+                header = raw_df.iloc[header_row].astype(str).str.strip()
+                df = raw_df.iloc[header_row + 1:].copy()
+                df.columns = header
+                dcol, dates = _best_datetime_column(df)
+                pcol, prices = _best_numeric_column(df, ("clearing", "auction price", "price", "eur"))
+                if dates is None or prices is None:
+                    continue
+                out = pd.DataFrame({"date": dates, "price_eur_tco2": prices}).dropna()
+                # EUA prices are economically plausible positive two/three-digit values; filter volumes/IDs accidentally selected.
+                out = out[(out["price_eur_tco2"] > 1) & (out["price_eur_tco2"] < 500)].drop_duplicates("date").sort_values("date")
+                if len(out) > len(best):
+                    best = out
+        if best.empty:
+            raise ValueError("No EUA auction clearing-price rows parsed")
+        status.note = "Official EEX primary-auction clearing price; not the secondary-market EUA spot/futures price."
+        return best, status
+    except Exception as exc:
+        status.ok = False
+        status.error = f"EUA auction XLSX parse error: {exc}"
+        return pd.DataFrame(), status
+
+
 def _iso_utc(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
@@ -129,7 +373,7 @@ def fetch_elering_system(start: datetime, end: datetime) -> tuple[pd.DataFrame, 
     only exposes values explicitly returned by Elering; it never synthesizes missing data.
     """
     url = f"{ELERING_BASE}/system/with-plan"
-    payload, status = _get_json(url, params={"start": _iso_utc(start), "end": _iso_utc(end)})
+    payload, status = _get_json(url, params={"start": _iso_utc(start), "end": _iso_utc(end), "fields": "_datetime,production,consumption"})
     status.source = "Elering electricity system"
     if not status.ok or not isinstance(payload, dict):
         return pd.DataFrame(), status
@@ -487,6 +731,30 @@ def fetch_entsoe_generation_by_type(token: str | None, start: datetime, end: dat
     # A75 may contain separate consumption series for storage units. Keep only explicit positive generation rows.
     df["generation_mw"] = pd.to_numeric(df["generation_mw"], errors="coerce")
     return df.dropna(subset=["generation_mw"]), status
+
+
+
+def fetch_entsoe_actual_load(token: str | None, start: datetime, end: datetime,
+                             region: str = "EE") -> tuple[pd.DataFrame, SourceStatus]:
+    """ENTSO-E actual total load (A65, A16 realised) for a bidding zone."""
+    domain = ENTSOE_DOMAINS.get(region.upper())
+    if not domain:
+        return pd.DataFrame(), _entsoe_status(False, ENTSOE_BASE, error=f"Unknown domain {region}")
+    params = {
+        "documentType": "A65", "processType": "A16", "outBiddingZone_Domain": domain,
+        "periodStart": start.astimezone(timezone.utc).strftime("%Y%m%d%H%M"),
+        "periodEnd": end.astimezone(timezone.utc).strftime("%Y%m%d%H%M"),
+    }
+    xml, status = _entsoe_get_xml(token, params)
+    status.source = f"ENTSO-E actual total load {region.upper()} (A65)"
+    if not xml:
+        return pd.DataFrame(), status
+    df = _parse_entsoe_timeseries(xml, value_name="load_mw")
+    if df.empty:
+        status.note = "Request succeeded but no actual-load time series were parsed."
+        return df, status
+    df["load_mw"] = pd.to_numeric(df["load_mw"], errors="coerce")
+    return df.dropna(subset=["load_mw"])[["time_utc", "time_local", "load_mw", "resolution"]], status
 
 
 def fetch_entsoe_physical_flow(token: str | None, start: datetime, end: datetime,

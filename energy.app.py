@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 
 from energy_sources import (
     fetch_elering_prices,
@@ -16,6 +18,11 @@ from energy_sources import (
     fetch_entsoe_generation_by_type,
     fetch_entsoe_estonia_flows,
     fetch_entsoe_estonia_ntc,
+    fetch_entsoe_actual_load,
+    fetch_eex_ngp_current,
+    fetch_eex_ttf_ngp,
+    fetch_eia_brent,
+    fetch_eex_eua_auction,
 )
 from umm_client import fetch_umm_messages
 
@@ -24,6 +31,8 @@ REGIONS = ["EE", "LV", "LT", "FI"]
 BALTICS = ["EE", "LV", "LT"]
 
 st.set_page_config(page_title="BalticPulse | Energy Market Dashboard", page_icon="⚡", layout="wide")
+# Whole-page refresh keeps all source freshness checks coherent.
+st_autorefresh(interval=120_000, key="balticpulse-autorefresh")
 
 
 def secret(name: str) -> str:
@@ -51,13 +60,26 @@ def fmt_age(ts) -> str:
     return f"{mins // 60} h {mins % 60} min"
 
 
+def age_minutes(ts) -> float | None:
+    if ts is None or pd.isna(ts):
+        return None
+    t = pd.Timestamp(ts)
+    if t.tzinfo is None:
+        t = t.tz_localize("UTC")
+    return max(0.0, (pd.Timestamp.now(tz="UTC") - t.tz_convert("UTC")).total_seconds() / 60.0)
+
+def is_fresh(ts, max_minutes: float) -> bool:
+    a = age_minutes(ts)
+    return a is not None and a <= max_minutes
+
+
 @st.cache_data(ttl=60)
 def load_short_prices():
     now = datetime.now(timezone.utc)
     return fetch_elering_prices(now - timedelta(days=1), now + timedelta(days=2))
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=60)
 def load_system():
     now = datetime.now(timezone.utc)
     return fetch_elering_system(now - timedelta(hours=48), now + timedelta(hours=2))
@@ -73,7 +95,7 @@ def load_balancing_energy(region: str):
     return fetch_balancing_energy(region)
 
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=120)
 def load_umm():
     return fetch_umm_messages(limit=500, max_pages=4, retries=3)
 
@@ -101,11 +123,37 @@ def load_entsoe_ntc(key: str):
     return fetch_entsoe_estonia_ntc(key, now - timedelta(hours=6), now + timedelta(days=2))
 
 
+@st.cache_data(ttl=300)
+def load_entsoe_load(key: str):
+    now = datetime.now(timezone.utc)
+    return fetch_entsoe_actual_load(key, now - timedelta(hours=36), now + timedelta(hours=1), "EE")
+
+
+@st.cache_data(ttl=300)
+def load_ngp_current(area: str):
+    return fetch_eex_ngp_current(area)
+
+
+@st.cache_data(ttl=900)
+def load_ttf():
+    return fetch_eex_ttf_ngp()
+
+
+@st.cache_data(ttl=21600)
+def load_brent():
+    return fetch_eia_brent()
+
+
+@st.cache_data(ttl=3600)
+def load_eua():
+    return fetch_eex_eua_auction()
+
+
 # Header
 c1, c2 = st.columns([4, 1])
 with c1:
-    st.title("⚡ Regiooni energeetika põhiülevaade")
-    st.caption("Eesti, Baltikum ja Soome — operatiivne olukorrapilt valideeritud andmeallikatest. Puuduvaid andmeid ei sünteesita.")
+    st.title("⚡ BalticPulse")
+    st.caption("Balti ja Põhjamaade energiaturu reaalaja olukorrapilt — elekter, võrk, reservid, UMM-id, gaas ja põhifundamentaalid.")
 with c2:
     st.write("")
     if st.button("🔄 Värskenda", use_container_width=True):
@@ -115,18 +163,43 @@ with c2:
 now_local = datetime.now(TALLINN)
 today = now_local.date()
 tomorrow = today + timedelta(days=1)
-st.caption(f"Vaate aeg: **{now_local:%d.%m.%Y %H:%M:%S}** Europe/Tallinn")
+st.caption(f"Vaate aeg: **{now_local:%d.%m.%Y %H:%M:%S}** Europe/Tallinn · automaatne värskendus iga 2 min")
 
 with st.spinner("Laadin operatiivandmeid..."):
-    prices, price_status = load_short_prices()
-    system_df, system_status = load_system()
-    reserve_results = {r: load_reserves(r) for r in BALTICS}
-    balancing_energy_results = {r: load_balancing_energy(r) for r in BALTICS}
-    umm_rows, umm_meta = load_umm()
-    storage_df, storage_status = load_storage(secret("GIE_AGSI_API_KEY"))
-    entsoe_generation, entsoe_generation_status = load_entsoe_generation(secret("ENTSOE_API_KEY"))
-    entsoe_flows, entsoe_flow_statuses = load_entsoe_flows(secret("ENTSOE_API_KEY"))
-    entsoe_ntc, entsoe_ntc_statuses = load_entsoe_ntc(secret("ENTSOE_API_KEY"))
+    entsoe_key = secret("ENTSOE_API_KEY")
+    agsi_key = secret("GIE_AGSI_API_KEY")
+    # Independent sources are fetched concurrently so a slow daily/fundamental source does not
+    # hold the operational view hostage. Individual loaders still retain their own cache TTLs.
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        fut_prices = pool.submit(load_short_prices)
+        fut_system = pool.submit(load_system)
+        fut_umm = pool.submit(load_umm)
+        fut_storage = pool.submit(load_storage, agsi_key)
+        fut_gen = pool.submit(load_entsoe_generation, entsoe_key)
+        fut_flows = pool.submit(load_entsoe_flows, entsoe_key)
+        fut_ntc = pool.submit(load_entsoe_ntc, entsoe_key)
+        fut_load = pool.submit(load_entsoe_load, entsoe_key)
+        fut_ttf_hist = pool.submit(load_ttf)
+        fut_brent = pool.submit(load_brent)
+        fut_eua = pool.submit(load_eua)
+        reserve_futs = {r: pool.submit(load_reserves, r) for r in BALTICS}
+        energy_futs = {r: pool.submit(load_balancing_energy, r) for r in BALTICS}
+        ngp_futs = {a: pool.submit(load_ngp_current, a) for a in ["TTF", "LVA-EST", "FIN", "LTU"]}
+
+        prices, price_status = fut_prices.result()
+        system_df, system_status = fut_system.result()
+        umm_rows, umm_meta = fut_umm.result()
+        storage_df, storage_status = fut_storage.result()
+        entsoe_generation, entsoe_generation_status = fut_gen.result()
+        entsoe_flows, entsoe_flow_statuses = fut_flows.result()
+        entsoe_ntc, entsoe_ntc_statuses = fut_ntc.result()
+        entsoe_load, entsoe_load_status = fut_load.result()
+        ttf_df, ttf_status = fut_ttf_hist.result()
+        brent_df, brent_status = fut_brent.result()
+        eua_df, eua_status = fut_eua.result()
+        reserve_results = {r: f.result() for r, f in reserve_futs.items()}
+        balancing_energy_results = {r: f.result() for r, f in energy_futs.items()}
+        ngp_current_results = {a: f.result() for a, f in ngp_futs.items()}
 
 # ---------- NORMALISEERITUD HETKESEIS ----------
 price_daily = pd.DataFrame()
@@ -137,21 +210,51 @@ if not prices.empty:
     price_daily = p.groupby(["local_date", "region"], as_index=False)["price"].agg(mean="mean", min="min", max="max")
     now_ts = pd.Timestamp(now_local)
     for region in REGIONS:
-        rp = p[(p["region"] == region) & (p["time_local"] <= now_ts)].sort_values("time_local")
-        if not rp.empty:
-            # Only call it current when observation is reasonably fresh.
-            age_h = (now_ts - rp.iloc[-1]["time_local"]).total_seconds() / 3600
-            if age_h <= 2:
-                current_prices[region] = float(rp.iloc[-1]["price"])
+        rp = p[p["region"] == region].sort_values("time_local").copy()
+        if rp.empty:
+            continue
+        diffs = rp["time_local"].diff().dropna().dt.total_seconds() / 60
+        step_min = float(diffs[diffs > 0].median()) if not diffs[diffs > 0].empty else 60.0
+        active = rp[(rp["time_local"] <= now_ts) & (now_ts < rp["time_local"] + pd.to_timedelta(step_min, unit="m"))]
+        if not active.empty:
+            current_prices[region] = float(active.iloc[-1]["price"])
 
 last_sys = pd.DataFrame()
 if not system_df.empty:
     val_cols = [c for c in ["production_mw", "consumption_mw"] if c in system_df.columns]
     if val_cols:
         last_sys = system_df.dropna(subset=val_cols, how="all").tail(1)
-prod = last_sys["production_mw"].iloc[0] if not last_sys.empty and "production_mw" in last_sys and pd.notna(last_sys["production_mw"].iloc[0]) else None
-cons = last_sys["consumption_mw"].iloc[0] if not last_sys.empty and "consumption_mw" in last_sys and pd.notna(last_sys["consumption_mw"].iloc[0]) else None
-sys_time = last_sys["time_utc"].iloc[0] if not last_sys.empty and "time_utc" in last_sys else None
+elering_sys_time = last_sys["time_utc"].iloc[0] if not last_sys.empty and "time_utc" in last_sys else None
+# Elering system data is treated as operational only when reasonably fresh.
+_elering_fresh = is_fresh(elering_sys_time, 30)
+prod = last_sys["production_mw"].iloc[0] if _elering_fresh and not last_sys.empty and "production_mw" in last_sys and pd.notna(last_sys["production_mw"].iloc[0]) else None
+cons = last_sys["consumption_mw"].iloc[0] if _elering_fresh and not last_sys.empty and "consumption_mw" in last_sys and pd.notna(last_sys["consumption_mw"].iloc[0]) else None
+prod_source = "Elering" if prod is not None else None
+cons_source = "Elering" if cons is not None else None
+prod_time = elering_sys_time if prod is not None else None
+cons_time = elering_sys_time if cons is not None else None
+
+# Validated ENTSO-E fallbacks reduce blank KPIs without inventing data.
+if prod is None and not entsoe_generation.empty:
+    eg = entsoe_generation.dropna(subset=["generation_mw"]).copy()
+    if not eg.empty:
+        latest_t = eg["time_utc"].max()
+        val = pd.to_numeric(eg[eg["time_utc"] == latest_t]["generation_mw"], errors="coerce").sum(min_count=1)
+        if pd.notna(val) and is_fresh(latest_t, 120):
+            prod = float(val)
+            prod_source = "ENTSO-E A75"
+            prod_time = latest_t
+
+if cons is None and not entsoe_load.empty:
+    el = entsoe_load.dropna(subset=["load_mw"]).sort_values("time_utc")
+    if not el.empty and is_fresh(el.iloc[-1]["time_utc"], 120):
+        cons = float(el.iloc[-1]["load_mw"])
+        cons_source = "ENTSO-E A65"
+        cons_time = el.iloc[-1]["time_utc"]
+
+# Combined system age is the older of the two inputs; derived balance is only valid when observations are aligned.
+_sys_times = [pd.Timestamp(t) for t in [prod_time, cons_time] if t is not None and not pd.isna(t)]
+sys_time = min(_sys_times) if _sys_times else None
 
 umm_df = pd.DataFrame(umm_rows)
 active_umm = pd.DataFrame()
@@ -159,6 +262,11 @@ if not umm_df.empty:
     for c in ["event_start", "event_end", "publication_time"]:
         if c in umm_df.columns:
             umm_df[c] = pd.to_datetime(umm_df[c], utc=True, errors="coerce")
+    # Keep only the latest published revision per message ID for operational status.
+    if "message_id" in umm_df.columns and "publication_time" in umm_df.columns:
+        with_id = umm_df[umm_df["message_id"].astype(str).str.len() > 0].sort_values("publication_time").groupby("message_id", as_index=False).tail(1)
+        without_id = umm_df[umm_df["message_id"].astype(str).str.len() == 0]
+        umm_df = pd.concat([with_id, without_id], ignore_index=True)
     now_utc_ts = pd.Timestamp.now(tz="UTC")
     starts = umm_df.get("event_start", pd.Series(pd.NaT, index=umm_df.index, dtype="datetime64[ns, UTC]"))
     ends = umm_df.get("event_end", pd.Series(pd.NaT, index=umm_df.index, dtype="datetime64[ns, UTC]"))
@@ -176,6 +284,7 @@ if not active_umm.empty and "affected_capacity" in active_umm.columns:
 # Latest ENTSO-E cross-border net flows from Estonia's perspective.
 # Positive = net export from Estonia, negative = net import into Estonia.
 latest_border_flows: dict[str, float | None] = {"EE–FI": None, "EE–LV": None}
+latest_border_flow_time: dict[str, pd.Timestamp | None] = {"EE–FI": None, "EE–LV": None}
 if not entsoe_flows.empty:
     for border in latest_border_flows:
         b = entsoe_flows[entsoe_flows["border"] == border].copy()
@@ -183,8 +292,9 @@ if not entsoe_flows.empty:
             # Sum directional observations only within the same latest timestamp.
             latest_t = b["time_utc"].max()
             bx = b[b["time_utc"] == latest_t]
-            if not bx.empty:
+            if not bx.empty and is_fresh(latest_t, 120):
                 latest_border_flows[border] = float(pd.to_numeric(bx["signed_mw"], errors="coerce").sum())
+                latest_border_flow_time[border] = pd.Timestamp(latest_t)
 
 # Directional day-ahead transfer capacity matching the current local market interval.
 latest_ntc: dict[str, dict[str, float | None]] = {
@@ -204,15 +314,16 @@ if not entsoe_ntc.empty:
 
 # Useful derived indicators from validated source observations.
 net_import_need = None
-if prod is not None and cons is not None:
-    net_import_need = float(cons - prod)  # positive = domestic consumption exceeds domestic production
+if prod is not None and cons is not None and prod_time is not None and cons_time is not None:
+    if abs((pd.Timestamp(prod_time) - pd.Timestamp(cons_time)).total_seconds()) <= 1800:
+        net_import_need = float(cons - prod)  # positive = domestic consumption exceeds domestic production
 
 renewable_share = None
 if not entsoe_generation.empty:
     gt = entsoe_generation.dropna(subset=["generation_mw"]).copy()
     if not gt.empty:
         latest_gt = gt["time_utc"].max()
-        gx = gt[gt["time_utc"] == latest_gt].copy()
+        gx = gt[gt["time_utc"] == latest_gt].copy() if is_fresh(latest_gt, 120) else pd.DataFrame()
         total_gen = pd.to_numeric(gx["generation_mw"], errors="coerce").sum(min_count=1)
         renewable_names = {"Biomass", "Hydro Pumped Storage", "Hydro Run-of-river and poundage",
                            "Hydro Water Reservoir", "Marine", "Other renewable", "Solar",
@@ -221,17 +332,47 @@ if not entsoe_generation.empty:
         if pd.notna(total_gen) and total_gen > 0 and pd.notna(ren_gen):
             renewable_share = float(100 * ren_gen / total_gen)
 
+# Latest official fundamental reference values. Current EEX NGP files are used for
+# near-real-time gas KPIs; the 60-day final TTF file remains for chart history only.
+ngp_current: dict[str, float | None] = {a: None for a in ["TTF", "LVA-EST", "FIN", "LTU"]}
+ngp_delivery: dict[str, object | None] = {a: None for a in ngp_current}
+for area, (df_ngp, _st) in ngp_current_results.items():
+    if not df_ngp.empty:
+        today_rows = df_ngp[df_ngp["delivery_date"] == today].dropna(subset=["price_eur_mwh"])
+        row = today_rows.tail(1) if not today_rows.empty else df_ngp.dropna(subset=["price_eur_mwh"]).sort_values("delivery_date").head(1)
+        if not row.empty:
+            ngp_current[area] = float(row.iloc[0]["price_eur_mwh"])
+            ngp_delivery[area] = row.iloc[0]["delivery_date"]
+ttf_latest = ngp_current["TTF"]
+ttf_date = ngp_delivery["TTF"]
+
+brent_latest = None
+brent_date = None
+if not brent_df.empty:
+    x = brent_df.dropna(subset=["price_usd_bbl"]).sort_values("date")
+    if not x.empty:
+        brent_latest = float(x.iloc[-1]["price_usd_bbl"])
+        brent_date = x.iloc[-1]["date"]
+
+eua_latest = None
+eua_date = None
+if not eua_df.empty:
+    x = eua_df.dropna(subset=["price_eur_tco2"]).sort_values("date")
+    if not x.empty:
+        eua_latest = float(x.iloc[-1]["price_eur_tco2"])
+        eua_date = x.iloc[-1]["date"]
+
 # ---------- 1. EXECUTIVE SNAPSHOT ----------
 st.subheader("Olukord praegu")
 cols = st.columns(7)
-cols[0].metric("EE spot hetkel", f"{current_prices['EE']:.1f} €/MWh" if current_prices["EE"] is not None else "—")
-cols[1].metric("FI spot hetkel", f"{current_prices['FI']:.1f} €/MWh" if current_prices["FI"] is not None else "—")
+cols[0].metric("EE spot — käimasolev MTU", f"{current_prices['EE']:.1f} €/MWh" if current_prices["EE"] is not None else "—")
+cols[1].metric("FI spot — käimasolev MTU", f"{current_prices['FI']:.1f} €/MWh" if current_prices["FI"] is not None else "—")
 spread = None
 if current_prices["EE"] is not None and current_prices["FI"] is not None:
     spread = current_prices["EE"] - current_prices["FI"]
 cols[2].metric("EE–FI hinnavahe", f"{spread:+.1f} €/MWh" if spread is not None else "—")
-cols[3].metric("EE tootmine", f"{prod:.0f} MW" if prod is not None else "—")
-cols[4].metric("EE tarbimine", f"{cons:.0f} MW" if cons is not None else "—")
+cols[3].metric("EE tootmine", f"{prod:.0f} MW" if prod is not None else "—", delta=(f"{fmt_age(prod_time)} vana" if prod_time is not None else None), delta_color="off", help=f"Allikas: {prod_source or 'andmed puuduvad'}")
+cols[4].metric("EE tarbimine", f"{cons:.0f} MW" if cons is not None else "—", delta=(f"{fmt_age(cons_time)} vana" if cons_time is not None else None), delta_color="off", help=f"Allikas: {cons_source or 'andmed puuduvad'}")
 cols[5].metric("Aktiivsed UMM-id", f"{len(active_umm)}")
 cols[6].metric("Suurim UMM mõju", f"{largest_umm:.0f} MW" if largest_umm is not None else "—", help="Suurim üksik aktiivses UMM-is raporteeritud mõjutatud võimsus. UMM-ide MW väärtusi ei liideta, sest teated võivad kattuda või olla sama sündmuse versioonid.")
 
@@ -240,8 +381,8 @@ def flow_label(v):
     if v is None:
         return "—"
     return f"{abs(v):.0f} MW " + ("eksport" if v > 0 else "import" if v < 0 else "tasakaalus")
-flow1.metric("EE–FI füüsiline netovoog", flow_label(latest_border_flows["EE–FI"]), help="ENTSO-E A11. Positiivne märk tähendab Eesti netoeksporti; negatiivne Eesti netoimporti.")
-flow2.metric("EE–LV füüsiline netovoog", flow_label(latest_border_flows["EE–LV"]), help="ENTSO-E A11. Positiivne märk tähendab Eesti netoeksporti; negatiivne Eesti netoimporti.")
+flow1.metric("EE–FI füüsiline netovoog", flow_label(latest_border_flows["EE–FI"]), delta=(f"{fmt_age(latest_border_flow_time['EE–FI'])} vana" if latest_border_flow_time["EE–FI"] is not None else None), delta_color="off", help="ENTSO-E A11. Positiivne märk tähendab Eesti netoeksporti; negatiivne Eesti netoimporti.")
+flow2.metric("EE–LV füüsiline netovoog", flow_label(latest_border_flows["EE–LV"]), delta=(f"{fmt_age(latest_border_flow_time['EE–LV'])} vana" if latest_border_flow_time["EE–LV"] is not None else None), delta_color="off", help="ENTSO-E A11. Positiivne märk tähendab Eesti netoeksporti; negatiivne Eesti netoimporti.")
 flow3.metric("EE bilansivajadus", f"{net_import_need:+.0f} MW" if net_import_need is not None else "—", help="Eleringi tegelik tarbimine miinus tegelik kodumaine tootmine. + tähendab, et tarbimine ületab kodumaist tootmist; see ei võrdu automaatselt piiriüleste netovoogude summaga kadude, salvestuse ja ajastuse tõttu.")
 flow4.metric("Taastuvate osakaal tootmises", f"{renewable_share:.1f}%" if renewable_share is not None else "—", help="Arvutatud ENTSO-E A75 viimase ühise tootmisvaatluse tootmisliikidest. Pumped storage on ENTSO-E PSR klassifikatsioonis hüdro kategooria; näitajat käsitletakse operatiivse indikatsioonina, mitte ametliku taastuvenergia statistikana.")
 
@@ -271,6 +412,17 @@ st.dataframe(pd.DataFrame(cap_rows), hide_index=True, use_container_width=True, 
     "EE impordi NTC MW": st.column_config.NumberColumn(format="%.0f"),
 })
 st.caption("ENTSO-E A61 päev-ette NTC on prognoositud suunaline ülekandevõimsus. 'Voog / NTC' on kontekstinäitaja, mitte vaba ülekandevõimsuse arvutus; A11 füüsiline voog ja A61 NTC on eri publikatsioonid ning võivad olla eri ajatempliga.")
+
+st.markdown("#### Turu põhifundamentaalid")
+f1, f2, f3, f4 = st.columns(4)
+f1.metric("TTF NGP — D", f"{ngp_current['TTF']:.1f} €/MWh" if ngp_current["TTF"] is not None else "—", help="EEX current NGP; EEX uuendab faili iga 15 minuti järel D/D+1/D+2 jaoks.")
+f2.metric("LVA–EST NGP — D", f"{ngp_current['LVA-EST']:.1f} €/MWh" if ngp_current["LVA-EST"] is not None else "—", help="EEX LVA-EST Neutral Gas Price, current gas day.")
+f3.metric("FIN NGP — D", f"{ngp_current['FIN']:.1f} €/MWh" if ngp_current["FIN"] is not None else "—", help="EEX FIN Neutral Gas Price, current gas day.")
+f4.metric("LTU NGP — D", f"{ngp_current['LTU']:.1f} €/MWh" if ngp_current["LTU"] is not None else "—", help="EEX LTU Neutral Gas Price, current gas day.")
+f5, f6 = st.columns(2)
+f5.metric("Brent — EIA spot (päevane)", f"{brent_latest:.1f} $/bbl" if brent_latest is not None else "—", help="Ametlik EIA päevane Europe Brent Spot Price FOB. See ei ole intraday reaalaja hind.")
+f6.metric("EUA — EEX oksjon", f"{eua_latest:.2f} €/tCO₂" if eua_latest is not None else "—", help="EEX EUA primaaroksjoni viimane clearing price. See ei ole secondary-market intraday hind.")
+st.caption("Operatiivne gaas: EEX NGP TTF/LVA-EST/FIN/LTU current files (15-min refresh). Brent on EIA päevane ametlik spot-seeria ja EUA EEX primaaroksjoni hind — neid ei esitata intraday reaalajana.")
 
 
 # ---------- OPERATIONAL ATTENTION RULES ----------
@@ -317,6 +469,8 @@ for region, (edf, _) in balancing_energy_results.items():
             row = g.iloc[-1]
             latest_balancing_prices.append((region, product, direction, float(row["price_eur_mwh"]), pd.Timestamp(row["time_utc"])))
 for region, product, direction, price, ts in latest_balancing_prices:
+    if not is_fresh(ts, 120):
+        continue
     if abs(price) >= 500:
         level = "🔴 Kõrge" if abs(price) >= 1000 else "🟠 Tähelepanu"
         add_alert(level, "Balancing energy", f"{region} {product} {direction}: {price:.0f} €/MWh ({fmt_age(ts)} vana; reegel: |hind| ≥ 500 €/MWh).")
@@ -407,14 +561,20 @@ with st.expander("Andmeallikate kvaliteet ja värskus", expanded=False):
             source_badge(s.source, s.ok, s.error or s.note)
     source_badge("GIE AGSI+", storage_status.ok, storage_status.error or storage_status.note)
     source_badge(entsoe_generation_status.source, entsoe_generation_status.ok, entsoe_generation_status.error or entsoe_generation_status.note)
+    source_badge(entsoe_load_status.source, entsoe_load_status.ok, entsoe_load_status.error or entsoe_load_status.note)
+    for area, (_, st_ngp) in ngp_current_results.items():
+        source_badge(st_ngp.source, st_ngp.ok, st_ngp.error or st_ngp.note)
+    source_badge(ttf_status.source, ttf_status.ok, ttf_status.error or ttf_status.note)
+    source_badge(brent_status.source, brent_status.ok, brent_status.error or brent_status.note)
+    source_badge(eua_status.source, eua_status.ok, eua_status.error or eua_status.note)
     for s in entsoe_flow_statuses:
         source_badge(s.source, s.ok, s.error or s.note)
     for s in entsoe_ntc_statuses:
         source_badge(s.source, s.ok, s.error or s.note)
 
 # ---------- 2. DETAIL TABS ----------
-tab_overview, tab_prices, tab_system, tab_entsoe, tab_umm, tab_reserves, tab_gas, tab_quality = st.tabs([
-    "📌 Põhivaade", "⚡ Elektrihinnad", "🏭 Eesti süsteem", "🌐 ENTSO-E", "📣 UMM", "🔄 Reservid", "🔥 Gaasihoidlad", "✅ Andmekvaliteet"
+tab_overview, tab_prices, tab_system, tab_entsoe, tab_umm, tab_reserves, tab_gas, tab_fundamentals, tab_quality = st.tabs([
+    "📌 Põhivaade", "⚡ Elektrihinnad", "🏭 Eesti süsteem", "🌐 ENTSO-E", "📣 UMM", "🔄 Reservid", "🔥 Gaasihoidlad", "📈 Fundamentaalid", "✅ Andmekvaliteet"
 ])
 
 with tab_overview:
@@ -644,6 +804,38 @@ with tab_gas:
         st.dataframe(storage_df[show_cols], hide_index=True, use_container_width=True)
         source_badge("GIE AGSI+", storage_status.ok, storage_status.error or storage_status.note)
 
+with tab_fundamentals:
+    st.markdown("### Turu põhifundamentaalid")
+    st.caption("Ametlikud/esmased allikad, mitte Yahoo Finance. TTF NGP on spot-referents, Brent on EIA spot-seeria ja EUA on EEX primaaroksjoni clearing price.")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("TTF NGP", f"{ttf_latest:.1f} €/MWh" if ttf_latest is not None else "—", help=f"Viimane kuupäev: {pd.Timestamp(ttf_date).date() if ttf_date is not None else '—'}")
+    c2.metric("Brent spot", f"{brent_latest:.1f} $/bbl" if brent_latest is not None else "—", help=f"Viimane kuupäev: {pd.Timestamp(brent_date).date() if brent_date is not None else '—'}")
+    c3.metric("EUA oksjon", f"{eua_latest:.2f} €/tCO₂" if eua_latest is not None else "—", help=f"Viimane oksjon: {pd.Timestamp(eua_date).date() if eua_date is not None else '—'}")
+
+    if not ttf_df.empty:
+        fig = px.line(ttf_df.tail(60), x="date", y="price_eur_mwh", markers=True, labels={"date":"Kuupäev","price_eur_mwh":"€/MWh"}, title="EEX Neutral Gas Price TTF — viimased lõplikud päevahinnad")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.warning(ttf_status.error or "EEX TTF NGP andmed pole saadaval.")
+
+    l, r = st.columns(2)
+    with l:
+        if not brent_df.empty:
+            b = brent_df.tail(180)
+            fig = px.line(b, x="date", y="price_usd_bbl", labels={"date":"Kuupäev","price_usd_bbl":"$/bbl"}, title="Europe Brent Spot Price FOB — EIA")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning(brent_status.error or "EIA Brent andmed pole saadaval.")
+    with r:
+        if not eua_df.empty:
+            fig = px.line(eua_df, x="date", y="price_eur_tco2", markers=True, labels={"date":"Oksjonipäev","price_eur_tco2":"€/tCO₂"}, title="EUA primaaroksjoni clearing price — EEX")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning(eua_status.error or "EEX EUA oksjoniandmed pole saadaval.")
+
+    st.info("Metoodika: EEX TTF NGP ei ole TTF front-month futuur; EIA Brent on füüsilise spot-turu referents; EEX EUA oksjonihind on primaarmarketi hind. Nii väldime eri instrumentide eksitavat nimetamist üheks 'turuhinnaks'.")
+
+
 with tab_quality:
     st.markdown("### Andmekvaliteedi ja ulatuse reeglid")
     st.markdown(
@@ -652,13 +844,15 @@ with tab_quality:
 - **UMM võimsusi ei liideta automaatselt.** Teated võivad kattuda, olla sama sündmuse versioonid või kirjeldada eri turuobjekte.
 - **Capacity ≠ energy.** Reservi valmisolekutasu (€/MW/h) ja aktiveeritud tasakaalustusenergia hind (€/MWh) on eri näitajad.
 - **Päev-ette hind ≠ lõpptarbija hind.** Maksud, võrgutasud ja müüja marginaal ei kuulu börsihinna sisse.
-- **Värskus on osa andmekvaliteedist.** Hetkehinda ei kuvata, kui viimane hinnavaatlus on üle kahe tunni vana.
+- **Värskus on osa andmekvaliteedist.** Spot-hind seotakse täpselt käimasoleva MTU-ga; Eleringi süsteemiväärtust lubatakse põhivaates kuni 30 min ja ENTSO-E actual/fallback väärtust kuni 120 min vanusena. Vanem väärtus ei ole “praegu”.
 - **ENTSO-E ristkontroll:** Eesti tootmisjaotus (A75) ja EE–FI/EE–LV füüsilised vood (A11) pärinevad Transparency Platformist. Eleringi kogutootmist ja ENTSO-E tootmisliike ei sunnita kunstlikult võrdseks, sest avaldamisajad ja metoodika võivad erineda.
 - **Gaasihoidlad on päevased.** AGSI+ viimane kirje kajastab gaasipäeva, mitte hetke intraday taset.
 - **Ülekandevõimsus:** A61 päev-ette NTC kuvatakse eraldi A11 füüsilisest voost. `Voog / NTC` on koormuse kontekstinäitaja, mitte intraday vaba jääkvõimsus.
-- **Ulatuse piir:** TTF/EUA lisatakse ainult valideeritud liidesega; intraday offered capacity / jääkvõimsust ei nimetata päev-ette NTC-ks.
+- **Fundamentaalid:** TTF/LVA-EST/FIN/LTU NGP = EEX current files (15-min refresh); TTF 60 päeva final history on eraldi ajaloo jaoks. Brent = U.S. EIA päevane Europe Brent Spot Price FOB; EUA = EEX primaaroksjoni clearing price. Päevaseid/event-põhiseid instrumente ei nimetata intraday reaalajaks.
+- **Fallback:** kui Eleringi tootmine/tarbimine puudub, kasutatakse ainult ENTSO-E A75/A65 tegelikke vaatlusi; sünteetilist varuväärtust ei looda.
+- **Ulatuse piir:** intraday offered capacity / jääkvõimsust ei nimetata päev-ette NTC-ks.
         """
     )
 
 st.divider()
-st.caption("Põhimõte: parem puuduv number kui usutav, kuid kontrollimata number. Allikad: Elering, ENTSO-E Transparency Platform, Nord Pool UMM, Baltic Transparency Dashboard/Volton ja GIE AGSI+.")
+st.caption("BalticPulse · Allikad: Elering, ENTSO-E Transparency Platform, Nord Pool UMM, Baltic Transparency Dashboard/Volton, GIE AGSI+, EEX ja U.S. EIA. Põhimõte: parem puuduv number kui kontrollimata number.")
