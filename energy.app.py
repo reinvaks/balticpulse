@@ -26,7 +26,7 @@ from energy_sources import (
 )
 from umm_client import fetch_umm_messages
 
-APP_BUILD_VERSION = "15.1.0"
+APP_BUILD_VERSION = "15.3.0"
 
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
@@ -162,7 +162,7 @@ def render_dashboard():
     c1, c2 = st.columns([4, 1])
     with c1:
         st.title("⚡ BalticPulse")
-        st.caption(f"Build {APP_BUILD_VERSION} • Elering actual-only • Eesti süsteemivaade parandatud • hierarchical EEX EUA")
+        st.caption(f"Build {APP_BUILD_VERSION} • Elering actual-only • latest real always visible • hierarchical EEX EUA")
         st.caption("Balti ja Põhjamaade energiaturu reaalaja olukorrapilt — elekter, võrk, reservid, UMM-id, gaas ja põhifundamentaalid.")
     with c2:
         st.write("")
@@ -235,14 +235,15 @@ def render_dashboard():
         if val_cols:
             last_sys = system_df.dropna(subset=val_cols, how="all").tail(1)
     elering_sys_time = last_sys["time_utc"].iloc[0] if not last_sys.empty and "time_utc" in last_sys else None
-    # Elering system data is treated as operational only when reasonably fresh.
-    _elering_fresh = is_fresh(elering_sys_time, 15)
-    prod = last_sys["production_mw"].iloc[0] if _elering_fresh and not last_sys.empty and "production_mw" in last_sys and pd.notna(last_sys["production_mw"].iloc[0]) else None
-    cons = last_sys["consumption_mw"].iloc[0] if _elering_fresh and not last_sys.empty and "consumption_mw" in last_sys and pd.notna(last_sys["consumption_mw"].iloc[0]) else None
+    # Always show the latest ACTUAL Elering observation returned by the API.
+    # Freshness is metadata, not a reason to hide a valid Elering value. No fallback is used.
+    prod = last_sys["production_mw"].iloc[0] if not last_sys.empty and "production_mw" in last_sys and pd.notna(last_sys["production_mw"].iloc[0]) else None
+    cons = last_sys["consumption_mw"].iloc[0] if not last_sys.empty and "consumption_mw" in last_sys and pd.notna(last_sys["consumption_mw"].iloc[0]) else None
     prod_source = "Elering" if prod is not None else None
     cons_source = "Elering" if cons is not None else None
     prod_time = elering_sys_time if prod is not None else None
     cons_time = elering_sys_time if cons is not None else None
+    elering_system_stale = (age_minutes(elering_sys_time) or 0) > 15 if elering_sys_time is not None else False
 
     # Elering-only policy for the primary production and consumption KPIs.
     # ENTSO-E remains a separate comparison/source-detail view and never fills these KPIs.
@@ -365,15 +366,16 @@ def render_dashboard():
     sys_cols[2].metric("♻️ EE taastuvtootmine", f"{renewable_generation_mw:.0f} MW" if renewable_generation_mw is not None else "—", help="ENTSO-E A75 tegelik tootmine tootmisliikide kaupa; konservatiivne taastuvate summa. Ei asenda Eleringi kogutootmist.")
     sys_cols[3].metric("♻️ Taastuvate osakaal", f"{renewable_share:.1f}%" if renewable_share is not None else "—", help="Arvutatud ENTSO-E A75 viimase värske tootmisvaatluse põhjal. Operatiivne indikatsioon, mitte ametlik statistiline osakaal.")
 
-    market_cols = st.columns(5)
+    if elering_system_stale and elering_sys_time is not None:
+        st.warning(f"Eleringi viimane tegelik tootmise/tarbimise vaatlus on {fmt_age(elering_sys_time)} vana. Kuvan Eleringi viimase 'real' väärtuse muutmata kujul; asendusandmeid ei kasutata.")
+
+    market_cols = st.columns(3)
     market_cols[0].metric("🇪🇪 EE spot — käimasolev MTU", f"{current_prices['EE']:.1f} €/MWh" if current_prices["EE"] is not None else "—")
     market_cols[1].metric("🇫🇮 FI spot — käimasolev MTU", f"{current_prices['FI']:.1f} €/MWh" if current_prices["FI"] is not None else "—")
     spread = None
     if current_prices["EE"] is not None and current_prices["FI"] is not None:
         spread = current_prices["EE"] - current_prices["FI"]
     market_cols[2].metric("EE–FI hinnavahe", f"{spread:+.1f} €/MWh" if spread is not None else "—")
-    market_cols[3].metric("Aktiivsed UMM-id", f"{len(active_umm)}")
-    market_cols[4].metric("Suurim UMM mõju", f"{largest_umm:.0f} MW" if largest_umm is not None else "—", help="Suurim üksik aktiivses UMM-is raporteeritud mõjutatud võimsus. UMM-ide MW väärtusi ei liideta, sest teated võivad kattuda või olla sama sündmuse versioonid.")
 
     flow1, flow2 = st.columns(2)
     def flow_label(v):
@@ -499,10 +501,6 @@ def render_dashboard():
         level = "🔴 Kõrge" if abs(spread) >= 100 else "🟠 Tähelepanu"
         add_alert(level, "EE–FI hinnavahe", f"Hetke hinnavahe {spread:+.1f} €/MWh (reegel: |spread| ≥ 50 €/MWh).")
 
-    if largest_umm is not None and largest_umm >= 300:
-        level = "🔴 Kõrge" if largest_umm >= 600 else "🟠 Tähelepanu"
-        add_alert(level, "UMM", f"Suurim üksik aktiivne UMM mõjutab {largest_umm:.0f} MW (reegel: ≥ 300 MW).")
-
     for border, dirs in latest_ntc.items():
         flow = latest_border_flows.get(border)
         if flow is None:
@@ -563,7 +561,7 @@ def render_dashboard():
         st.dataframe(attention_df.sort_values("_order").drop(columns="_order"), hide_index=True, use_container_width=True)
     else:
         st.success("Ükski seadistatud operatiivne tähelepanureegel ei ole praegu käivitunud.")
-    st.caption("Tähelepanureeglid on läbipaistvad heuristikad olukorrapildi kiirendamiseks, mitte ametlikud häirepiirid ega prognoosid. Lävendid: |EE–FI spread| 50/100 €/MWh; UMM 300/600 MW; voog/DA NTC 90/100%; balancing energy |500/1000| €/MWh; gaasihoidlad <30% või ~7 päeva langus ≥5 pp.")
+    st.caption("Tähelepanureeglid on läbipaistvad heuristikad olukorrapildi kiirendamiseks, mitte ametlikud häirepiirid ega prognoosid. Lävendid: |EE–FI spread| 50/100 €/MWh; voog/DA NTC 90/100%; balancing energy |500/1000| €/MWh; gaasihoidlad <30% või ~7 päeva langus ≥5 pp.")
 
     # Daily market table near top: decision-useful and compact.
     st.markdown("#### Tänane ja homne päev-ette hinnapilt")
@@ -585,23 +583,6 @@ def render_dashboard():
             column_config={
                 "Täna €/MWh": st.column_config.NumberColumn(format="%.1f"),
                 "Homme €/MWh": st.column_config.NumberColumn(format="%.1f"),
-            },
-        )
-
-    # Critical events = active UMMs with capacity, sorted descending. This is a queue, not a false aggregate.
-    st.markdown("#### Olulised aktiivsed turusündmused")
-    if active_umm.empty:
-        st.info("Aktiivseid UMM-e ei leitud või UMM allikas ei vastanud.")
-    else:
-        critical = active_umm.copy()
-        if "affected_capacity" in critical.columns:
-            critical = critical.sort_values("affected_capacity", ascending=False, na_position="last")
-        show = [c for c in ["area", "asset_name", "message_type", "affected_capacity", "event_end", "reason", "source_url"] if c in critical.columns]
-        st.dataframe(
-            critical[show].head(10), hide_index=True, use_container_width=True,
-            column_config={
-                "affected_capacity": st.column_config.NumberColumn("Mõjutatud MW", format="%.0f"),
-                "source_url": st.column_config.LinkColumn("Allikas"),
             },
         )
 
@@ -693,7 +674,7 @@ def render_dashboard():
 
     with tab_system:
         st.markdown("### 🇪🇪 Eesti elektrisüsteem — tegelik tootmine ja tarbimine")
-        st.caption("Allikas: Elering Dashboard API. Kuvatakse ainult tegelikud `real` väärtused; `plan`/prognoosi ei kasutata ja ENTSO-E ei täida Eleringi KPI-sid.")
+        st.caption("Allikas: Elering Dashboard API. Kuvatakse alati viimane Eleringi tegelik väärtus koos ajatempliga; `plan`/prognoosi ei kasutata ja ENTSO-E ei täida Eleringi KPI-sid.")
 
         if system_df.empty:
             st.warning("Eleringi tegelikud tootmise/tarbimise andmed pole hetkel saadaval.")
@@ -713,6 +694,9 @@ def render_dashboard():
             k1.metric("🇪🇪 Tootmine", f"{latest_prod:.0f} MW" if latest_prod is not None else "—")
             k2.metric("🇪🇪 Tarbimine", f"{latest_cons:.0f} MW" if latest_cons is not None else "—")
             k3.metric("Vaatluse vanus", fmt_age(latest_time) if latest_time is not None else "—")
+
+            if latest_time is not None and (age_minutes(latest_time) or 0) > 15:
+                st.warning(f"Viimane Eleringi tegelik vaatlus on {fmt_age(latest_time)} vana. Väärtused on Eleringi API-st muutmata; neid ei ole täidetud muu allika ega prognoosiga.")
 
             chart = sys.tail(24 * 12).copy()  # piisav aken ka 5-min andmete korral
             value_cols = [c for c in ["production_mw", "consumption_mw"] if c in chart.columns]
