@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import requests
 
-BUILD_VERSION = "14.0.0"
+BUILD_VERSION = "15.0.0"
 
 LOG = logging.getLogger(__name__)
 TALLINN = ZoneInfo("Europe/Tallinn")
@@ -354,9 +354,10 @@ def fetch_eia_brent() -> tuple[pd.DataFrame, SourceStatus]:
 def fetch_eex_eua_auction() -> tuple[pd.DataFrame, SourceStatus]:
     """Official EEX EUA primary-auction clearing prices for 2026 (EUR/tCO2).
 
-    Robust parser for the public EEX workbook. It searches all worksheets and
-    all early rows for semantic header names, normalising line breaks, Unicode
-    subscripts and EUR/€ notation. No inferred or synthetic prices are created.
+    The public EEX workbook uses a hierarchical/multi-row header with merged
+    cells (for example a parent group "Prices" and lower-level field names).
+    This parser reconstructs a semantic header path for every column instead
+    of assuming that all labels are on one row.
     """
     raw, status = _get_bytes(EEX_EUA_AUCTION_URL)
     status.source = "EEX EUA Primary Auction clearing price"
@@ -364,27 +365,93 @@ def fetch_eex_eua_auction() -> tuple[pd.DataFrame, SourceStatus]:
         return pd.DataFrame(), status
 
     def norm_header(value) -> str:
-        text = str(value or "").replace("\n", " ").replace("\r", " ")
-        text = text.replace("₂", "2").replace("€", "eur")
+        if value is None or (isinstance(value, float) and pd.isna(value)):
+            return ""
+        text = str(value).replace("\n", " ").replace("\r", " ")
+        text = text.replace("₂", "2").replace("€", " eur ")
         text = re.sub(r"\s+", " ", text).strip().lower()
-        text = re.sub(r"[^a-z0-9/ _-]+", "", text)
+        text = re.sub(r"[^a-z0-9/ _().-]+", "", text)
         return text
 
     def parse_excel_dates(series: pd.Series) -> pd.Series:
-        # First try ordinary datetime strings / datetime cells.
         dt = pd.to_datetime(series, errors="coerce", dayfirst=False)
-        # Excel serial dates need an explicit origin. Only replace cells that
-        # failed normal parsing and look like plausible Excel day numbers.
         numeric = pd.to_numeric(series, errors="coerce")
         mask = dt.isna() & numeric.between(30000, 70000)
         if mask.any():
-            dt.loc[mask] = pd.to_datetime(numeric.loc[mask], unit="D", origin="1899-12-30", errors="coerce")
+            dt.loc[mask] = pd.to_datetime(
+                numeric.loc[mask], unit="D", origin="1899-12-30", errors="coerce"
+            )
         return dt
+
+    def parse_numeric(series: pd.Series) -> pd.Series:
+        txt = (
+            series.astype(str)
+            .str.replace("\xa0", " ", regex=False)
+            .str.replace("€", "", regex=False)
+            .str.replace("EUR", "", regex=False, case=False)
+            .str.replace(r"[^0-9,.-]", "", regex=True)
+            .str.replace(",", ".", regex=False)
+            .str.strip()
+        )
+        return pd.to_numeric(txt, errors="coerce")
+
+    def row_tokens(df: pd.DataFrame, r: int) -> list[str]:
+        return [norm_header(v) for v in df.iloc[r].tolist()]
+
+    def find_anchor_row(df: pd.DataFrame) -> int | None:
+        """Find the lowest-level header row containing Date/Auction Name."""
+        for r in range(min(100, len(df))):
+            toks = row_tokens(df, r)
+            has_date = any(t == "date" or "auction date" in t for t in toks)
+            has_auction = any("auction name" in t for t in toks)
+            has_time = any(t == "time" or "auction time" in t for t in toks)
+            if has_date and (has_auction or has_time):
+                return r
+        return None
+
+    def build_header_paths(df: pd.DataFrame, anchor: int) -> list[str]:
+        # EEX uses merged cells. Forward-fill each header row horizontally so
+        # parent groups such as "Prices" propagate to all child columns.
+        top = max(0, anchor - 8)
+        bottom = min(len(df) - 1, anchor + 3)
+        hdr = df.iloc[top : bottom + 1].copy()
+        hdr = hdr.ffill(axis=1)
+        paths: list[str] = []
+        for c in range(df.shape[1]):
+            parts: list[str] = []
+            for r in range(len(hdr)):
+                token = norm_header(hdr.iloc[r, c])
+                if not token or token in {"nan", "none"}:
+                    continue
+                if not parts or token != parts[-1]:
+                    parts.append(token)
+            paths.append(" | ".join(parts))
+        return paths
+
+    def score_price_path(path: str) -> int:
+        p = path.lower()
+        score = 0
+        if "auction clearing price" in p:
+            score += 100
+        if "clearing price" in p:
+            score += 80
+        if "auction price" in p:
+            score += 35
+        if "prices" in p or "price" in p:
+            score += 20
+        if "eur" in p or "tco2" in p or "co2" in p:
+            score += 15
+        # Explicitly penalise columns that are clearly not the clearing price.
+        for bad in ("volume", "revenue", "participant", "bid", "time", "auction name"):
+            if bad in p:
+                score -= 30
+        return score
 
     try:
         book = pd.ExcelFile(BytesIO(raw))
         candidates = []
         diagnostics = []
+
         for sheet in book.sheet_names:
             try:
                 raw_df = pd.read_excel(book, sheet_name=sheet, header=None, dtype=object)
@@ -395,53 +462,86 @@ def fetch_eex_eua_auction() -> tuple[pd.DataFrame, SourceStatus]:
                 diagnostics.append(f"{sheet}: empty")
                 continue
 
-            found_header = False
-            for header_row in range(min(80, len(raw_df))):
-                headers_raw = raw_df.iloc[header_row].tolist()
-                headers = [norm_header(x) for x in headers_raw]
-
-                date_idx = next((i for i, h in enumerate(headers)
-                                 if "auction date" in h or h == "date"), None)
-                price_idx = next((i for i, h in enumerate(headers)
-                                  if ("auction clearing price" in h)
-                                  or ("clearing price" in h and ("tco2" in h or "co2" in h or "eur" in h))), None)
-                if date_idx is None or price_idx is None:
-                    continue
-
-                found_header = True
-                body = raw_df.iloc[header_row + 1:].copy()
-                dates = parse_excel_dates(body.iloc[:, date_idx])
-                price_text = (body.iloc[:, price_idx].astype(str)
-                              .str.replace("€", "", regex=False)
-                              .str.replace("EUR", "", regex=False, case=False)
-                              .str.replace("\xa0", " ", regex=False)
-                              .str.strip())
-                # EEX normally uses decimal point, but handle decimal comma too.
-                prices = pd.to_numeric(price_text.str.replace(",", ".", regex=False), errors="coerce")
-
-                out = pd.DataFrame({"date": dates, "price_eur_tco2": prices}).dropna()
-                out = out[(out["price_eur_tco2"] > 1) & (out["price_eur_tco2"] < 500)]
-                out = out.drop_duplicates("date", keep="last").sort_values("date")
-                if not out.empty:
-                    candidates.append((sheet, header_row, out))
-                else:
-                    diagnostics.append(f"{sheet}: header row {header_row} found but no valid data")
-            if not found_header:
-                # Include a compact sample of non-empty header-like cells for debugging.
+            anchor = find_anchor_row(raw_df)
+            if anchor is None:
                 sample = []
-                for r in range(min(12, len(raw_df))):
-                    vals = [norm_header(v) for v in raw_df.iloc[r].tolist() if str(v).strip() not in ("", "nan", "None")]
-                    if vals:
-                        sample.extend(vals[:6])
-                diagnostics.append(f"{sheet}: no semantic header; sample={sample[:12]}")
+                for r in range(min(15, len(raw_df))):
+                    vals = [norm_header(v) for v in raw_df.iloc[r].tolist() if norm_header(v)]
+                    sample.extend(vals[:6])
+                diagnostics.append(f"{sheet}: no Date/Auction header anchor; sample={sample[:16]}")
+                continue
+
+            paths = build_header_paths(raw_df, anchor)
+            date_candidates = [
+                i for i, p in enumerate(paths)
+                if re.search(r"(^| \| )(auction )?date($| \| )", p)
+                or p.endswith(" | date")
+            ]
+            # Also inspect the anchor row directly because the hierarchical
+            # path may contain parent labels before the literal Date field.
+            anchor_tokens = row_tokens(raw_df, anchor)
+            date_candidates.extend(i for i, t in enumerate(anchor_tokens) if t == "date" or "auction date" in t)
+            date_candidates = list(dict.fromkeys(date_candidates))
+
+            price_ranked = sorted(
+                [(score_price_path(p), i, p) for i, p in enumerate(paths)],
+                reverse=True,
+            )
+            price_ranked = [x for x in price_ranked if x[0] > 0]
+
+            if not date_candidates or not price_ranked:
+                diagnostics.append(
+                    f"{sheet}: anchor row {anchor + 1}; no date/price candidate; "
+                    f"paths={[p for p in paths if p][:14]}"
+                )
+                continue
+
+            # Data normally starts immediately after the lowest header row,
+            # but allow a few extra explanatory rows and keep the combination
+            # with the greatest number of valid observations.
+            best_sheet = None
+            for data_start in range(anchor + 1, min(anchor + 7, len(raw_df))):
+                body = raw_df.iloc[data_start:].copy()
+                for date_idx in date_candidates[:4]:
+                    dates = parse_excel_dates(body.iloc[:, date_idx])
+                    if dates.notna().sum() == 0:
+                        continue
+                    for score, price_idx, price_path in price_ranked[:8]:
+                        if price_idx == date_idx:
+                            continue
+                        prices = parse_numeric(body.iloc[:, price_idx])
+                        out = pd.DataFrame({"date": dates, "price_eur_tco2": prices}).dropna()
+                        # EUA auction clearing prices are safely inside this
+                        # broad sanity interval; it rejects times, volumes etc.
+                        out = out[(out["price_eur_tco2"] > 1) & (out["price_eur_tco2"] < 500)]
+                        out = out.drop_duplicates("date", keep="last").sort_values("date")
+                        if out.empty:
+                            continue
+                        # Prefer semantically stronger columns, then more rows.
+                        rank = score * 10000 + len(out)
+                        if best_sheet is None or rank > best_sheet[0]:
+                            best_sheet = (rank, data_start, date_idx, price_idx, price_path, out)
+
+            if best_sheet is None:
+                diagnostics.append(
+                    f"{sheet}: hierarchical header found at row {anchor + 1}, "
+                    f"but no plausible EUA price rows; top price paths={price_ranked[:5]}"
+                )
+                continue
+
+            _, data_start, date_idx, price_idx, price_path, out = best_sheet
+            candidates.append((sheet, anchor, data_start, date_idx, price_idx, price_path, out))
 
         if not candidates:
             raise ValueError("No valid EEX EUA auction rows found. " + " | ".join(diagnostics[:8]))
 
-        sheet, header_row, best = max(candidates, key=lambda x: len(x[2]))
+        sheet, anchor, data_start, date_idx, price_idx, price_path, best = max(
+            candidates, key=lambda x: len(x[-1])
+        )
         status.note = (
-            f"Official EEX primary-auction clearing price; worksheet '{sheet}', header row {header_row + 1}. "
-            "Not a secondary-market EUA spot/futures quote."
+            f"Official EEX primary-auction clearing price; worksheet '{sheet}', "
+            f"hierarchical header row {anchor + 1}, data from row {data_start + 1}; "
+            f"price column '{price_path}'. Not a secondary-market EUA spot/futures quote."
         )
         return best, status
     except Exception as exc:
