@@ -1,8 +1,8 @@
-# BalticPulse V12
+# BalticPulse V13
 
-**Deploy verification:** the UI must show `Build 12.0.0 • Elering actual-only parser`. If it does not, Streamlit is still running older files.
+**Deploy verification:** the UI must show `Build 13.0.0 • Elering actual-only parser`. If it does not, Streamlit is still running older files.
 
-V12 also refuses to start if `energy.app.py` and `energy_sources.py` are from different releases. This prevents stale parser files from silently surviving a partial GitHub upload.
+V13 also refuses to start if `energy.app.py` and `energy_sources.py` are from different releases. This prevents stale parser files from silently surviving a partial GitHub upload.
 
 # BalticPulse V11 — Elering actual-data parser fix
 
@@ -82,3 +82,9 @@ Elering `system/with-plan` production and consumption now use the endpoint's CSV
 - Brent kasutab esmajärjekorras EIA ametlikku HTML ajalootabelit; XLS on fallback.
 - EUA parser loeb EEX ametlikust aruandest semantilisi veerge `Auction date` ja `Auction clearing price [€/tCO2]`.
 - Kui Brent/EUA puudub, kuvatakse dashboardis allikapõhine veadiagnostika.
+
+
+## V13 UI
+- Brauseri pealkiri: 🇪🇪🇱🇻🇱🇹🇫🇮 BalticPulse.
+- Regionaalsete elektri- ja gaasihindade nimetustes on riigilipud.
+- LVA-EST kuvatakse kui 🇪🇪🇱🇻 Eesti–Läti gaas (LVA–EST).

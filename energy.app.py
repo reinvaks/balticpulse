@@ -26,13 +26,13 @@ from energy_sources import (
 )
 from umm_client import fetch_umm_messages
 
-APP_BUILD_VERSION = "12.0.0"
+APP_BUILD_VERSION = "13.0.0"
 
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
 BALTICS = ["EE", "LV", "LT"]
 
-st.set_page_config(page_title="BalticPulse | Energy Market Dashboard", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="🇪🇪🇱🇻🇱🇹🇫🇮 BalticPulse | Energy Market Dashboard", page_icon="🇪🇪", layout="wide")
 
 if getattr(_energy_sources, "BUILD_VERSION", None) != APP_BUILD_VERSION:
     st.error(
@@ -359,8 +359,8 @@ def render_dashboard():
     # ---------- 1. EXECUTIVE SNAPSHOT ----------
     st.subheader("Olukord praegu")
     cols = st.columns(7)
-    cols[0].metric("EE spot — käimasolev MTU", f"{current_prices['EE']:.1f} €/MWh" if current_prices["EE"] is not None else "—")
-    cols[1].metric("FI spot — käimasolev MTU", f"{current_prices['FI']:.1f} €/MWh" if current_prices["FI"] is not None else "—")
+    cols[0].metric("🇪🇪 EE spot — käimasolev MTU", f"{current_prices['EE']:.1f} €/MWh" if current_prices["EE"] is not None else "—")
+    cols[1].metric("🇫🇮 FI spot — käimasolev MTU", f"{current_prices['FI']:.1f} €/MWh" if current_prices["FI"] is not None else "—")
     spread = None
     if current_prices["EE"] is not None and current_prices["FI"] is not None:
         spread = current_prices["EE"] - current_prices["FI"]
@@ -409,12 +409,12 @@ def render_dashboard():
 
     st.markdown("#### Turu põhifundamentaalid")
     f1, f2, f3, f4 = st.columns(4)
-    f1.metric("TTF NGP — D", f"{ngp_current['TTF']:.1f} €/MWh" if ngp_current["TTF"] is not None else "—", help="EEX current NGP; EEX uuendab faili iga 15 minuti järel D/D+1/D+2 jaoks.")
-    f2.metric("LVA–EST NGP — D", f"{ngp_current['LVA-EST']:.1f} €/MWh" if ngp_current["LVA-EST"] is not None else "—", help="EEX LVA-EST Neutral Gas Price, current gas day.")
-    f3.metric("FIN NGP — D", f"{ngp_current['FIN']:.1f} €/MWh" if ngp_current["FIN"] is not None else "—", help="EEX FIN Neutral Gas Price, current gas day.")
-    f4.metric("LTU NGP — D", f"{ngp_current['LTU']:.1f} €/MWh" if ngp_current["LTU"] is not None else "—", help="EEX LTU Neutral Gas Price, current gas day.")
+    f1.metric("🇳🇱 TTF NGP — D", f"{ngp_current['TTF']:.1f} €/MWh" if ngp_current["TTF"] is not None else "—", help="EEX current NGP; EEX uuendab faili iga 15 minuti järel D/D+1/D+2 jaoks.")
+    f2.metric("🇪🇪🇱🇻 Eesti–Läti gaas (LVA–EST) — D", f"{ngp_current['LVA-EST']:.1f} €/MWh" if ngp_current["LVA-EST"] is not None else "—", help="EEX LVA-EST Neutral Gas Price, current gas day.")
+    f3.metric("🇫🇮 Soome gaas (FIN NGP) — D", f"{ngp_current['FIN']:.1f} €/MWh" if ngp_current["FIN"] is not None else "—", help="EEX FIN Neutral Gas Price, current gas day.")
+    f4.metric("🇱🇹 Leedu gaas (LTU NGP) — D", f"{ngp_current['LTU']:.1f} €/MWh" if ngp_current["LTU"] is not None else "—", help="EEX LTU Neutral Gas Price, current gas day.")
     f5, f6 = st.columns(2)
-    f5.metric("Brent — EIA spot (päevane)", f"{brent_latest:.1f} $/bbl" if brent_latest is not None else "—", help="Ametlik EIA päevane Europe Brent Spot Price FOB. See ei ole intraday reaalaja hind.")
+    f5.metric("🌍 Brent — EIA spot (päevane)", f"{brent_latest:.1f} $/bbl" if brent_latest is not None else "—", help="Ametlik EIA päevane Europe Brent Spot Price FOB. See ei ole intraday reaalaja hind.")
     f6.metric("EUA — EEX oksjon", f"{eua_latest:.2f} €/tCO₂" if eua_latest is not None else "—", help="EEX EUA primaaroksjoni viimane clearing price. See ei ole secondary-market intraday hind.")
     st.caption("Operatiivne gaas: EEX NGP TTF/LVA-EST/FIN/LTU current files (15-min refresh). Brent on EIA päevane ametlik spot-seeria ja EUA EEX primaaroksjoni hind — neid ei esitata intraday reaalajana.")
 
@@ -636,7 +636,7 @@ def render_dashboard():
     with tab_overview:
         left, right = st.columns(2)
         with left:
-            st.markdown("### EE/LV/LT/FI spot-hinnad")
+            st.markdown("### 🇪🇪 EE / 🇱🇻 LV / 🇱🇹 LT / 🇫🇮 FI spot-hinnad")
             if prices.empty:
                 st.warning("Eleringi hinnad pole hetkel saadaval.")
             else:
@@ -864,8 +864,8 @@ def render_dashboard():
         st.markdown("### Turu põhifundamentaalid")
         st.caption("Ametlikud/esmased allikad, mitte Yahoo Finance. TTF NGP on spot-referents, Brent on EIA spot-seeria ja EUA on EEX primaaroksjoni clearing price.")
         c1, c2, c3 = st.columns(3)
-        c1.metric("TTF NGP", f"{ttf_latest:.1f} €/MWh" if ttf_latest is not None else "—", help=f"Viimane kuupäev: {pd.Timestamp(ttf_date).date() if ttf_date is not None else '—'}")
-        c2.metric("Brent spot", f"{brent_latest:.1f} $/bbl" if brent_latest is not None else "—", help=f"Viimane kuupäev: {pd.Timestamp(brent_date).date() if brent_date is not None else '—'}")
+        c1.metric("🇳🇱 TTF NGP", f"{ttf_latest:.1f} €/MWh" if ttf_latest is not None else "—", help=f"Viimane kuupäev: {pd.Timestamp(ttf_date).date() if ttf_date is not None else '—'}")
+        c2.metric("🌍 Brent spot", f"{brent_latest:.1f} $/bbl" if brent_latest is not None else "—", help=f"Viimane kuupäev: {pd.Timestamp(brent_date).date() if brent_date is not None else '—'}")
         c3.metric("EUA oksjon", f"{eua_latest:.2f} €/tCO₂" if eua_latest is not None else "—", help=f"Viimane oksjon: {pd.Timestamp(eua_date).date() if eua_date is not None else '—'}")
 
         if not ttf_df.empty:
