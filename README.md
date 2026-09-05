@@ -1,3 +1,9 @@
+# BalticPulse V12
+
+**Deploy verification:** the UI must show `Build 12.0.0 • Elering actual-only parser`. If it does not, Streamlit is still running older files.
+
+V12 also refuses to start if `energy.app.py` and `energy_sources.py` are from different releases. This prevents stale parser files from silently surviving a partial GitHub upload.
+
 # BalticPulse V11 — Elering actual-data parser fix
 
 This release fixes the current Elering `system/with-plan` schema where a selected series can be returned as `timestamp`, `real`, `plan`. Production and consumption are requested separately and only `real` is used. `plan` is never used as a current value.

@@ -8,6 +8,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+import energy_sources as _energy_sources
 from energy_sources import (
     fetch_elering_prices,
     fetch_elering_system,
@@ -25,11 +26,21 @@ from energy_sources import (
 )
 from umm_client import fetch_umm_messages
 
+APP_BUILD_VERSION = "12.0.0"
+
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
 BALTICS = ["EE", "LV", "LT"]
 
 st.set_page_config(page_title="BalticPulse | Energy Market Dashboard", page_icon="⚡", layout="wide")
+
+if getattr(_energy_sources, "BUILD_VERSION", None) != APP_BUILD_VERSION:
+    st.error(
+        f"BalticPulse failiversioonide konflikt: energy.app.py={APP_BUILD_VERSION}, "
+        f"energy_sources.py={getattr(_energy_sources, 'BUILD_VERSION', 'vana/puudub')}. "
+        "Laadi GitHubi KÕIK V12 failid üle ja tee Streamlit Cloudis Reboot app."
+    )
+    st.stop()
 
 def secret(name: str) -> str:
     try:
@@ -151,6 +162,7 @@ def render_dashboard():
     c1, c2 = st.columns([4, 1])
     with c1:
         st.title("⚡ BalticPulse")
+        st.caption(f"Build {APP_BUILD_VERSION} • Elering actual-only parser")
         st.caption("Balti ja Põhjamaade energiaturu reaalaja olukorrapilt — elekter, võrk, reservid, UMM-id, gaas ja põhifundamentaalid.")
     with c2:
         st.write("")
