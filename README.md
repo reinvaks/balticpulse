@@ -1,3 +1,7 @@
+# BalticPulse V11 — Elering actual-data parser fix
+
+This release fixes the current Elering `system/with-plan` schema where a selected series can be returned as `timestamp`, `real`, `plan`. Production and consumption are requested separately and only `real` is used. `plan` is never used as a current value.
+
 # BalticPulse
 
 Balti ja Põhjamaade energiaturu operatiivne olukorrapilt Streamlitile. Põhimõte: operatiivses põhivaates kuvatakse ainult piisavalt värsked tegelikud väärtused; vananenud või puuduva allika korral näidatakse `—`, mitte sünteetilist asendusnumbrit.
