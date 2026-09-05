@@ -8,7 +8,7 @@ V14 adds a robust EEX EUA primary-auction workbook parser. It searches all sheet
 
 # BalticPulse V13
 
-**Deploy verification:** the UI must show `Build 15.1.0 • Elering actual-only • Eesti süsteemivaade parandatud`. If it does not, Streamlit is still running older files.
+**Deploy verification:** the UI must show `Build 15.2.0 • Elering actual-only • Eesti süsteemivaade parandatud`. If it does not, Streamlit is still running older files.
 
 V13 also refuses to start if `energy.app.py` and `energy_sources.py` are from different releases. This prevents stale parser files from silently surviving a partial GitHub upload.
 
