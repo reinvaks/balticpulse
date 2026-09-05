@@ -1,10 +1,14 @@
+# BalticPulse V15.1
+
+V15 haru parandatud versioon. Eesti süsteemi vaheleht kuvab Eleringi actual-only tootmise ja tarbimise KPI-d ning graafiku; tehniline diagnostika ei asenda kasutajavaadet. Põhivaade on system-first: EE tootmine, tarbimine, taastuvtootmine ja taastuvate osakaal kuvatakse enne turuhindu.
+
 # BalticPulse V14
 
 V14 adds a robust EEX EUA primary-auction workbook parser. It searches all sheets and header rows, normalises Unicode/line-break variants, supports Excel serial dates and emits actionable diagnostics if EEX changes the workbook layout again.
 
 # BalticPulse V13
 
-**Deploy verification:** the UI must show `Build 13.0.0 • Elering actual-only parser`. If it does not, Streamlit is still running older files.
+**Deploy verification:** the UI must show `Build 15.1.0 • Elering actual-only • Eesti süsteemivaade parandatud`. If it does not, Streamlit is still running older files.
 
 V13 also refuses to start if `energy.app.py` and `energy_sources.py` are from different releases. This prevents stale parser files from silently surviving a partial GitHub upload.
 

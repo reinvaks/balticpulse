@@ -26,7 +26,7 @@ from energy_sources import (
 )
 from umm_client import fetch_umm_messages
 
-APP_BUILD_VERSION = "15.0.0"
+APP_BUILD_VERSION = "15.1.0"
 
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
@@ -38,7 +38,7 @@ if getattr(_energy_sources, "BUILD_VERSION", None) != APP_BUILD_VERSION:
     st.error(
         f"BalticPulse failiversioonide konflikt: energy.app.py={APP_BUILD_VERSION}, "
         f"energy_sources.py={getattr(_energy_sources, 'BUILD_VERSION', 'vana/puudub')}. "
-        "Laadi GitHubi KÕIK V12 failid üle ja tee Streamlit Cloudis Reboot app."
+        "Laadi GitHubi kõik sama versiooni BalticPulse failid üle ja tee Streamlit Cloudis Reboot app."
     )
     st.stop()
 
@@ -162,7 +162,7 @@ def render_dashboard():
     c1, c2 = st.columns([4, 1])
     with c1:
         st.title("⚡ BalticPulse")
-        st.caption(f"Build {APP_BUILD_VERSION} • Elering actual-only parser • hierarchical EEX EUA")
+        st.caption(f"Build {APP_BUILD_VERSION} • Elering actual-only • Eesti süsteemivaade parandatud • hierarchical EEX EUA")
         st.caption("Balti ja Põhjamaade energiaturu reaalaja olukorrapilt — elekter, võrk, reservid, UMM-id, gaas ja põhifundamentaalid.")
     with c2:
         st.write("")
@@ -358,27 +358,30 @@ def render_dashboard():
 
     # ---------- 1. EXECUTIVE SNAPSHOT ----------
     st.subheader("Olukord praegu")
-    cols = st.columns(7)
-    cols[0].metric("🇪🇪 EE spot — käimasolev MTU", f"{current_prices['EE']:.1f} €/MWh" if current_prices["EE"] is not None else "—")
-    cols[1].metric("🇫🇮 FI spot — käimasolev MTU", f"{current_prices['FI']:.1f} €/MWh" if current_prices["FI"] is not None else "—")
+    # Süsteemi seisund kõigepealt: Eleringi tegelik tootmine/tarbimine ning eraldi ENTSO-E taastuvtootmine.
+    sys_cols = st.columns(4)
+    sys_cols[0].metric("🇪🇪 EE tootmine", f"{prod:.0f} MW" if prod is not None else "—", delta=(f"{fmt_age(prod_time)} vana" if prod_time is not None else None), delta_color="off", help=f"Allikas: {prod_source or 'andmed puuduvad'}. Ainult Eleringi tegelik 'real' väärtus; fallback'i ei kasutata.")
+    sys_cols[1].metric("🇪🇪 EE tarbimine", f"{cons:.0f} MW" if cons is not None else "—", delta=(f"{fmt_age(cons_time)} vana" if cons_time is not None else None), delta_color="off", help=f"Allikas: {cons_source or 'andmed puuduvad'}. Ainult Eleringi tegelik 'real' väärtus; fallback'i ei kasutata.")
+    sys_cols[2].metric("♻️ EE taastuvtootmine", f"{renewable_generation_mw:.0f} MW" if renewable_generation_mw is not None else "—", help="ENTSO-E A75 tegelik tootmine tootmisliikide kaupa; konservatiivne taastuvate summa. Ei asenda Eleringi kogutootmist.")
+    sys_cols[3].metric("♻️ Taastuvate osakaal", f"{renewable_share:.1f}%" if renewable_share is not None else "—", help="Arvutatud ENTSO-E A75 viimase värske tootmisvaatluse põhjal. Operatiivne indikatsioon, mitte ametlik statistiline osakaal.")
+
+    market_cols = st.columns(5)
+    market_cols[0].metric("🇪🇪 EE spot — käimasolev MTU", f"{current_prices['EE']:.1f} €/MWh" if current_prices["EE"] is not None else "—")
+    market_cols[1].metric("🇫🇮 FI spot — käimasolev MTU", f"{current_prices['FI']:.1f} €/MWh" if current_prices["FI"] is not None else "—")
     spread = None
     if current_prices["EE"] is not None and current_prices["FI"] is not None:
         spread = current_prices["EE"] - current_prices["FI"]
-    cols[2].metric("EE–FI hinnavahe", f"{spread:+.1f} €/MWh" if spread is not None else "—")
-    cols[3].metric("EE tootmine", f"{prod:.0f} MW" if prod is not None else "—", delta=(f"{fmt_age(prod_time)} vana" if prod_time is not None else None), delta_color="off", help=f"Allikas: {prod_source or 'andmed puuduvad'}. Põhi-KPI ei kasuta ENTSO-E fallback’i.")
-    cols[4].metric("EE tarbimine", f"{cons:.0f} MW" if cons is not None else "—", delta=(f"{fmt_age(cons_time)} vana" if cons_time is not None else None), delta_color="off", help=f"Allikas: {cons_source or 'andmed puuduvad'}. Põhi-KPI ei kasuta ENTSO-E fallback’i.")
-    cols[5].metric("Aktiivsed UMM-id", f"{len(active_umm)}")
-    cols[6].metric("Suurim UMM mõju", f"{largest_umm:.0f} MW" if largest_umm is not None else "—", help="Suurim üksik aktiivses UMM-is raporteeritud mõjutatud võimsus. UMM-ide MW väärtusi ei liideta, sest teated võivad kattuda või olla sama sündmuse versioonid.")
+    market_cols[2].metric("EE–FI hinnavahe", f"{spread:+.1f} €/MWh" if spread is not None else "—")
+    market_cols[3].metric("Aktiivsed UMM-id", f"{len(active_umm)}")
+    market_cols[4].metric("Suurim UMM mõju", f"{largest_umm:.0f} MW" if largest_umm is not None else "—", help="Suurim üksik aktiivses UMM-is raporteeritud mõjutatud võimsus. UMM-ide MW väärtusi ei liideta, sest teated võivad kattuda või olla sama sündmuse versioonid.")
 
-    flow1, flow2, flow3, flow4 = st.columns(4)
+    flow1, flow2 = st.columns(2)
     def flow_label(v):
         if v is None:
             return "—"
         return f"{abs(v):.0f} MW " + ("eksport" if v > 0 else "import" if v < 0 else "tasakaalus")
     flow1.metric("EE–FI füüsiline netovoog", flow_label(latest_border_flows["EE–FI"]), delta=(f"{fmt_age(latest_border_flow_time['EE–FI'])} vana" if latest_border_flow_time["EE–FI"] is not None else None), delta_color="off", help="ENTSO-E A11. Positiivne märk tähendab Eesti netoeksporti; negatiivne Eesti netoimporti.")
     flow2.metric("EE–LV füüsiline netovoog", flow_label(latest_border_flows["EE–LV"]), delta=(f"{fmt_age(latest_border_flow_time['EE–LV'])} vana" if latest_border_flow_time["EE–LV"] is not None else None), delta_color="off", help="ENTSO-E A11. Positiivne märk tähendab Eesti netoeksporti; negatiivne Eesti netoimporti.")
-    flow3.metric("EE taastuvtootmine", f"{renewable_generation_mw:.0f} MW" if renewable_generation_mw is not None else "—", help="ENTSO-E A75 tegelik tootmine tootmisliikide kaupa; taastuvate summa. See ei ole Eleringi kogutootmise asendus.")
-    flow4.metric("Taastuvate osakaal ENTSO-E tootmises", f"{renewable_share:.1f}%" if renewable_share is not None else "—", help="Arvutatud ENTSO-E A75 viimase värske tootmisvaatluse tootmisliikidest. Operatiivne indikatsioon, mitte ametlik taastuvenergia statistika.")
 
     st.markdown("#### Ühenduste võimsus ja kasutus")
     cap_rows = []
@@ -689,12 +692,45 @@ def render_dashboard():
         st.caption("Eleringi avalik NPS API; hinnad on börsi päev-ette hinnad, mitte lõpptarbija hind.")
 
     with tab_system:
-        st.markdown("### Eesti elektrisüsteemi tegelikud allikaandmed")
+        st.markdown("### 🇪🇪 Eesti elektrisüsteem — tegelik tootmine ja tarbimine")
+        st.caption("Allikas: Elering Dashboard API. Kuvatakse ainult tegelikud `real` väärtused; `plan`/prognoosi ei kasutata ja ENTSO-E ei täida Eleringi KPI-sid.")
+
         if system_df.empty:
-            st.error(system_status.error or system_status.note or "Andmed pole saadaval")
+            st.warning("Eleringi tegelikud tootmise/tarbimise andmed pole hetkel saadaval.")
+            with st.expander("Tehniline diagnostika"):
+                st.code(system_status.error or system_status.note or "Elering ei tagastanud kasutatavaid actual-andmeid.")
         else:
-            st.dataframe(system_df.tail(200), hide_index=True, use_container_width=True)
-            st.caption("Kuvatakse ainult Eleringi vastusest parsitud tegelikud väljad. Importi/eksporti ega tootmisliike ei tuletata kogutootmisest.")
+            sys = system_df.copy().sort_values("time_utc")
+            # Renderda ainult teadaolevad puhtad veerud, et API lisaväljad ei tekitaks Streamliti/Arrow renderdusvigu.
+            keep = [c for c in ["time_utc", "time_local", "production_mw", "consumption_mw"] if c in sys.columns]
+            sys = sys[keep].copy()
+            latest = sys.dropna(subset=[c for c in ["production_mw", "consumption_mw"] if c in sys.columns], how="all").tail(1)
+
+            k1, k2, k3 = st.columns(3)
+            latest_time = latest["time_utc"].iloc[0] if not latest.empty and "time_utc" in latest.columns else None
+            latest_prod = latest["production_mw"].iloc[0] if not latest.empty and "production_mw" in latest.columns and pd.notna(latest["production_mw"].iloc[0]) else None
+            latest_cons = latest["consumption_mw"].iloc[0] if not latest.empty and "consumption_mw" in latest.columns and pd.notna(latest["consumption_mw"].iloc[0]) else None
+            k1.metric("🇪🇪 Tootmine", f"{latest_prod:.0f} MW" if latest_prod is not None else "—")
+            k2.metric("🇪🇪 Tarbimine", f"{latest_cons:.0f} MW" if latest_cons is not None else "—")
+            k3.metric("Vaatluse vanus", fmt_age(latest_time) if latest_time is not None else "—")
+
+            chart = sys.tail(24 * 12).copy()  # piisav aken ka 5-min andmete korral
+            value_cols = [c for c in ["production_mw", "consumption_mw"] if c in chart.columns]
+            if value_cols and "time_local" in chart.columns:
+                long = chart.melt(id_vars=["time_local"], value_vars=value_cols, var_name="series", value_name="mw").dropna(subset=["mw"])
+                labels = {"production_mw": "Tootmine", "consumption_mw": "Tarbimine"}
+                long["series"] = long["series"].map(labels).fillna(long["series"])
+                fig = px.line(long, x="time_local", y="mw", color="series", labels={"time_local": "Aeg", "mw": "MW", "series": "Näitaja"}, title="Eesti tegelik tootmine ja tarbimine")
+                st.plotly_chart(fig, use_container_width=True)
+
+            with st.expander("Näita Eleringi lähteandmeid"):
+                display = sys.tail(200).copy()
+                st.dataframe(display, hide_index=True, use_container_width=True)
+
+            if system_status.error:
+                st.info("Andmed on olemas, kuid üks Eleringi päringuharu tagastas diagnostilise teate.")
+                with st.expander("Diagnostika"):
+                    st.code(system_status.error)
 
     with tab_entsoe:
         st.markdown("### ENTSO-E Transparency Platform — Eesti tootmisjaotus ja piiriülesed füüsilised vood")
