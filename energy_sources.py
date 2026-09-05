@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import requests
 
-BUILD_VERSION = "13.0.0"
+BUILD_VERSION = "14.0.0"
 
 LOG = logging.getLogger(__name__)
 TALLINN = ZoneInfo("Europe/Tallinn")
@@ -354,46 +354,95 @@ def fetch_eia_brent() -> tuple[pd.DataFrame, SourceStatus]:
 def fetch_eex_eua_auction() -> tuple[pd.DataFrame, SourceStatus]:
     """Official EEX EUA primary-auction clearing prices for 2026 (EUR/tCO2).
 
-    EEX's interface specification defines the columns explicitly, including
-    ``Auction date`` and ``Auction clearing price [€/tCO2]``. The parser therefore
-    selects those semantic columns rather than guessing the most plausible numeric column.
-    This is the primary-auction price, not a secondary-market EUA spot/futures quote.
+    Robust parser for the public EEX workbook. It searches all worksheets and
+    all early rows for semantic header names, normalising line breaks, Unicode
+    subscripts and EUR/€ notation. No inferred or synthetic prices are created.
     """
     raw, status = _get_bytes(EEX_EUA_AUCTION_URL)
     status.source = "EEX EUA Primary Auction clearing price"
     if raw is None:
         return pd.DataFrame(), status
+
+    def norm_header(value) -> str:
+        text = str(value or "").replace("\n", " ").replace("\r", " ")
+        text = text.replace("₂", "2").replace("€", "eur")
+        text = re.sub(r"\s+", " ", text).strip().lower()
+        text = re.sub(r"[^a-z0-9/ _-]+", "", text)
+        return text
+
+    def parse_excel_dates(series: pd.Series) -> pd.Series:
+        # First try ordinary datetime strings / datetime cells.
+        dt = pd.to_datetime(series, errors="coerce", dayfirst=False)
+        # Excel serial dates need an explicit origin. Only replace cells that
+        # failed normal parsing and look like plausible Excel day numbers.
+        numeric = pd.to_numeric(series, errors="coerce")
+        mask = dt.isna() & numeric.between(30000, 70000)
+        if mask.any():
+            dt.loc[mask] = pd.to_datetime(numeric.loc[mask], unit="D", origin="1899-12-30", errors="coerce")
+        return dt
+
     try:
-        frames = _read_excel_flex(raw)
+        book = pd.ExcelFile(BytesIO(raw))
         candidates = []
-        for raw_df in frames:
-            if raw_df.empty:
+        diagnostics = []
+        for sheet in book.sheet_names:
+            try:
+                raw_df = pd.read_excel(book, sheet_name=sheet, header=None, dtype=object)
+            except Exception as exc:
+                diagnostics.append(f"{sheet}: read failed ({exc})")
                 continue
-            for header_row in range(min(30, len(raw_df))):
-                headers = [str(x).strip() for x in raw_df.iloc[header_row].tolist()]
-                low = [h.lower() for h in headers]
-                date_idx = next((i for i,h in enumerate(low) if "auction date" in h), None)
-                price_idx = next((i for i,h in enumerate(low) if "auction clearing price" in h), None)
+            if raw_df.empty:
+                diagnostics.append(f"{sheet}: empty")
+                continue
+
+            found_header = False
+            for header_row in range(min(80, len(raw_df))):
+                headers_raw = raw_df.iloc[header_row].tolist()
+                headers = [norm_header(x) for x in headers_raw]
+
+                date_idx = next((i for i, h in enumerate(headers)
+                                 if "auction date" in h or h == "date"), None)
+                price_idx = next((i for i, h in enumerate(headers)
+                                  if ("auction clearing price" in h)
+                                  or ("clearing price" in h and ("tco2" in h or "co2" in h or "eur" in h))), None)
                 if date_idx is None or price_idx is None:
                     continue
-                body = raw_df.iloc[header_row+1:].copy()
-                dates = pd.to_datetime(body.iloc[:, date_idx], errors="coerce", dayfirst=False)
-                prices = pd.to_numeric(
-                    body.iloc[:, price_idx].astype(str)
-                    .str.replace("€", "", regex=False)
-                    .str.replace(",", ".", regex=False)
-                    .str.strip(),
-                    errors="coerce",
-                )
+
+                found_header = True
+                body = raw_df.iloc[header_row + 1:].copy()
+                dates = parse_excel_dates(body.iloc[:, date_idx])
+                price_text = (body.iloc[:, price_idx].astype(str)
+                              .str.replace("€", "", regex=False)
+                              .str.replace("EUR", "", regex=False, case=False)
+                              .str.replace("\xa0", " ", regex=False)
+                              .str.strip())
+                # EEX normally uses decimal point, but handle decimal comma too.
+                prices = pd.to_numeric(price_text.str.replace(",", ".", regex=False), errors="coerce")
+
                 out = pd.DataFrame({"date": dates, "price_eur_tco2": prices}).dropna()
                 out = out[(out["price_eur_tco2"] > 1) & (out["price_eur_tco2"] < 500)]
                 out = out.drop_duplicates("date", keep="last").sort_values("date")
                 if not out.empty:
-                    candidates.append(out)
+                    candidates.append((sheet, header_row, out))
+                else:
+                    diagnostics.append(f"{sheet}: header row {header_row} found but no valid data")
+            if not found_header:
+                # Include a compact sample of non-empty header-like cells for debugging.
+                sample = []
+                for r in range(min(12, len(raw_df))):
+                    vals = [norm_header(v) for v in raw_df.iloc[r].tolist() if str(v).strip() not in ("", "nan", "None")]
+                    if vals:
+                        sample.extend(vals[:6])
+                diagnostics.append(f"{sheet}: no semantic header; sample={sample[:12]}")
+
         if not candidates:
-            raise ValueError("Columns 'Auction date' and 'Auction clearing price [€/tCO2]' not found or contained no values")
-        best = max(candidates, key=len)
-        status.note = "Official EEX primary-auction clearing price; not secondary-market EUA spot/futures."
+            raise ValueError("No valid EEX EUA auction rows found. " + " | ".join(diagnostics[:8]))
+
+        sheet, header_row, best = max(candidates, key=lambda x: len(x[2]))
+        status.note = (
+            f"Official EEX primary-auction clearing price; worksheet '{sheet}', header row {header_row + 1}. "
+            "Not a secondary-market EUA spot/futures quote."
+        )
         return best, status
     except Exception as exc:
         status.ok = False
