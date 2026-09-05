@@ -23,7 +23,7 @@ TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
 BALTICS = ["EE", "LV", "LT"]
 
-st.set_page_config(page_title="Regiooni energeetika ülevaade", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="BalticPulse | Energy Market Dashboard", page_icon="⚡", layout="wide")
 
 
 def secret(name: str) -> str:
