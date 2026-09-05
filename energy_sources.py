@@ -32,8 +32,8 @@ EIA_BRENT_XLS_URL = "https://www.eia.gov/dnav/pet/hist_xls/RBRTEd.xls"
 ENTSOE_DOMAINS = {
     "EE": "10Y1001A1001A39I",
     "FI": "10YFI-1--------U",
-    "LV": "10YLV-1001A074V",
-    "LT": "10YLT-1001A000Q",
+    "LV": "10YLV-1001A00074",
+    "LT": "10YLT-1001A0008Q",
 }
 
 PSR_TYPES = {
@@ -93,13 +93,16 @@ def _get_json(url: str, *, params: dict[str, Any] | None = None, headers: dict[s
 
 
 
-def _get_bytes(url: str, *, timeout: tuple[int, int] = (5, 30), retries: int = 3) -> tuple[bytes | None, SourceStatus]:
+def _get_bytes(url: str, *, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None,
+               timeout: tuple[int, int] = (5, 30), retries: int = 3) -> tuple[bytes | None, SourceStatus]:
     last_error = None
     last_status = None
-    headers = {"User-Agent": "BalticPulse/1.0", "Accept": "*/*"}
+    req_headers = {"User-Agent": "BalticPulse/1.0", "Accept": "*/*"}
+    if headers:
+        req_headers.update(headers)
     for attempt in range(retries):
         try:
-            r = requests.get(url, headers=headers, timeout=timeout)
+            r = requests.get(url, params=params, headers=req_headers, timeout=timeout)
             last_status = r.status_code
             if r.status_code == 429 or 500 <= r.status_code < 600:
                 if attempt < retries - 1:
@@ -367,33 +370,108 @@ def fetch_elering_prices(start: datetime, end: datetime) -> tuple[pd.DataFrame, 
 
 
 def fetch_elering_system(start: datetime, end: datetime) -> tuple[pd.DataFrame, SourceStatus]:
-    """Fetch actual production/consumption from Elering system/with-plan.
+    """Fetch Elering actual production and consumption.
 
-    The endpoint is public. The parser accepts both list-like and series-dict variants and
-    only exposes values explicitly returned by Elering; it never synthesizes missing data.
+    Elering's public ``system/with-plan`` endpoint can return CSV as well as JSON.
+    CSV is preferred here because the column contract is flatter and more stable for the
+    production/consumption pair. JSON remains a fallback so a presentation-format change
+    does not blank the dashboard. Only actual source values are returned; planned values
+    are explicitly excluded.
     """
     url = f"{ELERING_BASE}/system/with-plan"
-    payload, status = _get_json(url, params={"start": _iso_utc(start), "end": _iso_utc(end), "fields": "_datetime,production,consumption"})
-    status.source = "Elering electricity system"
-    if not status.ok or not isinstance(payload, dict):
+    base_params = {
+        "start": _iso_utc(start),
+        "end": _iso_utc(end),
+        "fields": "_datetime,production,consumption",
+    }
+
+    # Preferred route: the endpoint's explicit CSV export.  The historical/current
+    # contract contains timestamp, actual production/consumption and planned columns.
+    csv_params = {**base_params, "language": "et", "format": "csv"}
+    raw, csv_status = _get_bytes(url, params=csv_params, headers={"Accept": "text/csv,*/*"})
+    csv_status.source = "Elering electricity system (CSV)"
+    if raw:
+        try:
+            text = raw.decode("utf-8-sig", errors="replace")
+            # Elering CSV export is normally semicolon-delimited. Fall back to sniffing
+            # to tolerate a delimiter change.
+            try:
+                df = pd.read_csv(StringIO(text), sep=";")
+                if len(df.columns) <= 1:
+                    df = pd.read_csv(StringIO(text), sep=None, engine="python")
+            except Exception:
+                df = pd.read_csv(StringIO(text), sep=None, engine="python")
+            df.columns = [str(c).strip() for c in df.columns]
+
+            # Timestamp: prefer the explicit UTC epoch column.
+            time_col = next((c for c in df.columns if "ajatempel" in c.lower() or "timestamp" in c.lower()), None)
+            if time_col is None:
+                time_col = next((c for c in df.columns if "kuup" in c.lower() or "date" in c.lower() or "time" in c.lower()), None)
+            if time_col is not None:
+                vals = df[time_col]
+                numeric = pd.to_numeric(vals, errors="coerce")
+                if numeric.notna().sum() >= max(1, len(df) // 2):
+                    unit = "ms" if numeric.dropna().median() > 10_000_000_000 else "s"
+                    df["time_utc"] = pd.to_datetime(numeric, unit=unit, utc=True, errors="coerce")
+                else:
+                    df["time_utc"] = pd.to_datetime(vals, utc=True, errors="coerce")
+
+                def actual_col(kind: str) -> str | None:
+                    keys = ("tootmine", "production") if kind == "production" else ("tarbimine", "consumption")
+                    candidates = []
+                    for c in df.columns:
+                        lc = c.lower()
+                        if any(k in lc for k in keys) and not any(k in lc for k in ("planeer", "planned", "forecast", "prognoos")):
+                            candidates.append(c)
+                    return candidates[0] if candidates else None
+
+                pcol = actual_col("production")
+                ccol = actual_col("consumption")
+                if pcol or ccol:
+                    out = pd.DataFrame({"time_utc": df["time_utc"]})
+                    if pcol:
+                        out["production_mw"] = pd.to_numeric(df[pcol].astype(str).str.replace(",", ".", regex=False), errors="coerce")
+                    if ccol:
+                        out["consumption_mw"] = pd.to_numeric(df[ccol].astype(str).str.replace(",", ".", regex=False), errors="coerce")
+                    out = out.dropna(subset=[c for c in ["production_mw", "consumption_mw"] if c in out.columns], how="all")
+                    out = out[out["time_utc"].notna()].copy()
+                    if not out.empty:
+                        out["time_local"] = out["time_utc"].dt.tz_convert("Europe/Tallinn")
+                        csv_status.note = f"CSV parsed; production column={pcol!r}, consumption column={ccol!r}"
+                        return out.sort_values("time_utc").drop_duplicates("time_utc"), csv_status
+            csv_status.note = "CSV endpoint responded but actual production/consumption columns were not recognized; trying JSON fallback."
+        except Exception as exc:
+            csv_status.note = f"CSV parse failed ({type(exc).__name__}: {exc}); trying JSON fallback."
+
+    # Fallback route: JSON. Be deliberately permissive about nested dictionaries and
+    # named series because the dashboard API has used more than one presentation shape.
+    payload, status = _get_json(url, params=base_params)
+    status.source = "Elering electricity system (JSON fallback)"
+    if not status.ok or not isinstance(payload, (dict, list)):
+        if csv_status.error or csv_status.note:
+            status.note = "; ".join(x for x in [csv_status.error, csv_status.note, status.note] if x)
         return pd.DataFrame(), status
-    data = payload.get("data", payload)
+
+    data = payload.get("data", payload) if isinstance(payload, dict) else payload
     rows: list[dict[str, Any]] = []
 
-    # Variant A: a list of observations, each containing timestamp/datetime and measurements.
+    # Flat list of observations.
     if isinstance(data, list):
-        for item in data:
-            if not isinstance(item, dict):
-                continue
-            row = dict(item)
-            rows.append(row)
+        rows.extend(item for item in data if isinstance(item, dict))
 
-    # Variant B: dict of named series, each a list of {timestamp,value} or {timestamp,<field>}.
+    # Dict of series or nested containers.
     elif isinstance(data, dict):
         series_maps: dict[int, dict[str, Any]] = {}
-        for series_name, values in data.items():
+
+        def consume_series(series_name: str, values: Any) -> None:
+            if isinstance(values, dict):
+                # Some API shapes wrap rows in data/values/items.
+                for k in ("data", "values", "items", "rows"):
+                    if isinstance(values.get(k), list):
+                        consume_series(series_name, values[k])
+                        return
             if not isinstance(values, list):
-                continue
+                return
             for item in values:
                 if not isinstance(item, dict):
                     continue
@@ -416,10 +494,20 @@ def fetch_elering_system(start: datetime, end: datetime) -> tuple[pd.DataFrame, 
                             value = v
                             break
                 series_maps.setdefault(key, {"timestamp": key})[str(series_name)] = value
-        rows = list(series_maps.values())
+
+        for series_name, values in data.items():
+            # Preserve directly flat observation lists if present under a generic container.
+            if str(series_name).lower() in {"rows", "items", "values"} and isinstance(values, list) and values and isinstance(values[0], dict):
+                if any(k in values[0] for k in ("production", "consumption", "tootmine", "tarbimine")):
+                    rows.extend(values)
+                    continue
+            consume_series(str(series_name), values)
+        if not rows:
+            rows = list(series_maps.values())
 
     if not rows:
-        status.note = "Endpoint responded but production/consumption series could not be parsed."
+        status.ok = False
+        status.error = "Endpoint responded but production/consumption series could not be parsed"
         return pd.DataFrame(), status
 
     df = pd.DataFrame(rows)
@@ -441,21 +529,23 @@ def fetch_elering_system(start: datetime, end: datetime) -> tuple[pd.DataFrame, 
     df = df[df["time_utc"].notna()].copy()
     df["time_local"] = df["time_utc"].dt.tz_convert("Europe/Tallinn")
 
-    # Normalize only explicit source fields by semantic name.
     rename: dict[str, str] = {}
     for col in df.columns:
         lc = str(col).lower()
-        if "consumption" in lc or "tarb" in lc:
-            if "plan" not in lc and "forecast" not in lc:
-                rename[col] = "consumption_mw"
-        elif "production" in lc or "toot" in lc:
-            if "plan" not in lc and "forecast" not in lc:
-                rename[col] = "production_mw"
+        if ("consumption" in lc or "tarb" in lc) and not any(k in lc for k in ("plan", "forecast", "prognoos")):
+            rename[col] = "consumption_mw"
+        elif ("production" in lc or "toot" in lc) and not any(k in lc for k in ("plan", "forecast", "prognoos")):
+            rename[col] = "production_mw"
     df = df.rename(columns=rename)
     for c in ["consumption_mw", "production_mw"]:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
     keep = [c for c in ["time_local", "time_utc", "consumption_mw", "production_mw"] if c in df.columns]
+    if len(keep) <= 2:
+        status.ok = False
+        status.error = f"JSON parsed but actual production/consumption fields were absent. Columns: {list(df.columns)}"
+        return pd.DataFrame(), status
+    status.note = "JSON fallback parsed successfully."
     return df[keep].sort_values("time_local").drop_duplicates("time_utc"), status
 
 

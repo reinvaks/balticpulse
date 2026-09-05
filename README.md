@@ -52,3 +52,16 @@ UMM-idest kasutatakse operatiivses aktiivsete teadete loendis viimast avaldatud 
 2. Lisa Streamlit Cloudis secrets.
 3. Main file path: `energy.app.py`.
 4. App URL: `balticpulse.streamlit.app` (kui nimi on saadaval).
+
+## V8 – Elering production/consumption fix
+
+Elering `system/with-plan` production and consumption now use the endpoint's CSV export as the primary parser (`format=csv`, actual `production` and `consumption` only). JSON remains a fallback. Planned/forecast values are explicitly excluded. The source-status panel reports parser/HTTP errors instead of silently returning blank KPIs.
+
+
+## V9 muudatused
+
+- EE tootmise ja tarbimise põhikPI-d on nüüd **Elering-only**. ENTSO-E ei täida neid enam asendusväärtusega. Kui Eleringi tegelik väärtus on üle 15 minuti vana või puudub, kuvatakse `—`.
+- Parandatud ENTSO-E Läti bidding-zone EIC: `10YLV-1001A00074`; parandatud ka Leedu EIC: `10YLT-1001A0008Q`. See parandab EE–LV A11 physical-flow ja A61 day-ahead NTC päringud.
+- Eemaldatud **EE bilansivajaduse** KPI ja vastav tähelepanureegel.
+- Lisatud **EE taastuvtootmine MW** ja taastuvate osakaal ENTSO-E A75 tegeliku generation-by-type andmestiku põhjal. Pumped storage ja üldine Waste kategooria ei lähe automaatselt taastuvate hulka.
+- ENTSO-E jääb tootmisliikide, EE–FI/EE–LV voogude ja NTC sõltumatuks allikaks, mitte Eleringi hetke-KPI täiteks.
