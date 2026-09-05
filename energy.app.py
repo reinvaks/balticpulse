@@ -407,6 +407,72 @@ def render_dashboard():
     st.caption("Operatiivne gaas: EEX NGP TTF/LVA-EST/FIN/LTU current files (15-min refresh). Brent on EIA päevane ametlik spot-seeria ja EUA EEX primaaroksjoni hind — neid ei esitata intraday reaalajana.")
 
 
+
+    # ---------- 2. TÄNA JA HOMME — GRAAFILINE HINNAPILT ----------
+    st.subheader("Täna ja homme — elektrihinnad")
+    st.caption("Elering / Nord Pool day-ahead · 15-min või allika tegelik MTU · ainult avaldatud hinnad, prognoos- ega täiteandmeid ei kasutata.")
+
+    if not prices.empty:
+        ph = prices.copy()
+        ph = ph[(ph["time_local"].dt.date >= today) & (ph["time_local"].dt.date <= tomorrow)]
+        if not ph.empty:
+            fig_price = px.line(
+                ph,
+                x="time_local",
+                y="price",
+                color="region",
+                labels={"time_local": "Aeg", "price": "€/MWh", "region": "Piirkond"},
+                color_discrete_map={"EE": "#1f77b4", "FI": "#2ca02c", "LV": "#d62728", "LT": "#ff7f0e"},
+            )
+            # Make Estonia visually dominant without changing the underlying data.
+            for trace in fig_price.data:
+                if trace.name == "EE":
+                    trace.update(line={"width": 4})
+                    trace.update(fill="tozeroy", fillcolor="rgba(31,119,180,0.08)")
+                else:
+                    trace.update(line={"width": 2})
+            fig_price.add_vline(
+                x=pd.Timestamp(now_local),
+                line_dash="dash",
+                line_width=1.5,
+                annotation_text="Praegu",
+                annotation_position="top",
+            )
+            midnight_tomorrow = pd.Timestamp(datetime.combine(tomorrow, datetime.min.time(), tzinfo=TALLINN))
+            fig_price.add_vline(
+                x=midnight_tomorrow,
+                line_dash="dot",
+                line_width=1,
+                annotation_text="Homme",
+                annotation_position="top right",
+            )
+            fig_price.add_hline(y=0, line_width=1, line_dash="dot")
+            fig_price.update_layout(
+                height=450,
+                margin=dict(l=10, r=10, t=25, b=10),
+                hovermode="x unified",
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                xaxis_tickformat="%d.%m %H:%M",
+                yaxis_title="Hind (€/MWh)",
+            )
+            st.plotly_chart(fig_price, use_container_width=True)
+
+            ee = ph[ph["region"] == "EE"].copy()
+            today_ee = ee[ee["time_local"].dt.date == today]
+            tomorrow_ee = ee[ee["time_local"].dt.date == tomorrow]
+            k1,k2,k3,k4 = st.columns(4)
+            k1.metric("EE hetkehind", f"{current_prices['EE']:.1f} €/MWh" if current_prices["EE"] is not None else "—")
+            k2.metric("EE tänane keskmine", f"{today_ee['price'].mean():.1f} €/MWh" if not today_ee.empty else "—")
+            if not today_ee.empty:
+                k3.metric("EE tänane min / max", f"{today_ee['price'].min():.1f} / {today_ee['price'].max():.1f} €/MWh")
+            else:
+                k3.metric("EE tänane min / max", "—")
+            k4.metric("EE homne keskmine", f"{tomorrow_ee['price'].mean():.1f} €/MWh" if not tomorrow_ee.empty else "Pole veel avaldatud")
+        else:
+            st.info("Eleringi hinnaliides ei tagastanud tänase ega homse päeva avaldatud hindu.")
+    else:
+        st.warning(f"Hinnagraafik puudub: {price_status.error or price_status.note or 'Eleringi hinnaliidesest ei tulnud andmeid.'}")
+
     # ---------- OPERATIONAL ATTENTION RULES ----------
     # These are transparent dashboard heuristics, not regulatory limits or forecasts.
     attention: list[dict[str, str]] = []

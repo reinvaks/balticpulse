@@ -65,3 +65,10 @@ Elering `system/with-plan` production and consumption now use the endpoint's CSV
 - Eemaldatud **EE bilansivajaduse** KPI ja vastav tähelepanureegel.
 - Lisatud **EE taastuvtootmine MW** ja taastuvate osakaal ENTSO-E A75 tegeliku generation-by-type andmestiku põhjal. Pumped storage ja üldine Waste kategooria ei lähe automaatselt taastuvate hulka.
 - ENTSO-E jääb tootmisliikide, EE–FI/EE–LV voogude ja NTC sõltumatuks allikaks, mitte Eleringi hetke-KPI täiteks.
+
+
+## V10 muudatused
+- Täna/homme elektrihinnad on põhivaates graafiliselt EE/LV/LT/FI 15-min MTU joongraafikul.
+- Brent kasutab esmajärjekorras EIA ametlikku HTML ajalootabelit; XLS on fallback.
+- EUA parser loeb EEX ametlikust aruandest semantilisi veerge `Auction date` ja `Auction clearing price [€/tCO2]`.
+- Kui Brent/EUA puudub, kuvatakse dashboardis allikapõhine veadiagnostika.

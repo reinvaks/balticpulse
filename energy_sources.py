@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 from io import BytesIO, StringIO
 import xml.etree.ElementTree as ET
@@ -28,6 +29,7 @@ EEX_NGP_CURRENT_URLS = {
 }
 EEX_EUA_AUCTION_URL = "https://public.eex-group.com/eex/eua-auction-report/emission-spot-primary-market-auction-report-2026-data.xlsx"
 EIA_BRENT_XLS_URL = "https://www.eia.gov/dnav/pet/hist_xls/RBRTEd.xls"
+EIA_BRENT_HTML_URL = "https://www.eia.gov/dnav/pet/hist/rbrteD.htm"
 
 ENTSOE_DOMAINS = {
     "EE": "10Y1001A1001A39I",
@@ -263,11 +265,64 @@ def _read_excel_flex(raw: bytes) -> list[pd.DataFrame]:
 
 
 def fetch_eia_brent() -> tuple[pd.DataFrame, SourceStatus]:
-    """EIA Europe Brent Spot Price FOB daily series (USD/bbl), official downloadable XLS."""
-    raw, status = _get_bytes(EIA_BRENT_XLS_URL)
+    """Official EIA Europe Brent Spot Price FOB daily series (USD/bbl).
+
+    Primary route is the public EIA HTML history table, which is more stable for
+    server-side apps than depending on the legacy XLS workbook layout. The XLS
+    file remains a fallback. No synthetic or interpolated values are created.
+    """
+    raw_html, status = _get_bytes(EIA_BRENT_HTML_URL, headers={"Accept": "text/html,*/*"})
     status.source = "U.S. EIA Europe Brent Spot Price FOB"
+    if raw_html:
+        try:
+            tables = pd.read_html(StringIO(raw_html.decode("utf-8", errors="replace")))
+            best = pd.DataFrame()
+            weekday_map = {"Mon": 0, "Tue": 1, "Wed": 2, "Thu": 3, "Fri": 4}
+            for tab in tables:
+                if tab.empty:
+                    continue
+                cols = [str(c) for c in tab.columns]
+                if not any("Week Of" in c for c in cols):
+                    continue
+                week_col = next(c for c in tab.columns if "Week Of" in str(c))
+                rows = []
+                for _, r in tab.iterrows():
+                    label = str(r.get(week_col, "")).strip()
+                    m = re.search(r"(\d{4})\s+([A-Za-z]{3})-\s*(\d{1,2})", label)
+                    if not m:
+                        continue
+                    try:
+                        base = pd.Timestamp(datetime.strptime(f"{m.group(1)} {m.group(2)} {m.group(3)}", "%Y %b %d"))
+                    except Exception:
+                        continue
+                    for col in tab.columns:
+                        cname = str(col).strip()
+                        day = next((k for k in weekday_map if cname.startswith(k)), None)
+                        if day is None:
+                            continue
+                        val = pd.to_numeric(pd.Series([r.get(col)]), errors="coerce").iloc[0]
+                        if pd.isna(val):
+                            continue
+                        d = base + pd.Timedelta(days=weekday_map[day])
+                        rows.append({"date": d.normalize(), "price_usd_bbl": float(val)})
+                out = pd.DataFrame(rows)
+                if not out.empty:
+                    out = out.drop_duplicates("date", keep="last").sort_values("date")
+                    if len(out) > len(best):
+                        best = out
+            if not best.empty:
+                status.note = "Official EIA Europe Brent Spot Price FOB daily history table; no interpolation."
+                return best.tail(500), status
+        except Exception as exc:
+            status.note = f"HTML parse failed; trying official XLS fallback: {exc}"
+
+    # Fallback to official EIA XLS download.
+    raw, xls_status = _get_bytes(EIA_BRENT_XLS_URL)
+    xls_status.source = "U.S. EIA Europe Brent Spot Price FOB"
     if raw is None:
-        return pd.DataFrame(), status
+        if status.error and not xls_status.error:
+            xls_status.error = status.error
+        return pd.DataFrame(), xls_status
     try:
         frames = _read_excel_flex(raw)
         best = pd.DataFrame()
@@ -276,27 +331,31 @@ def fetch_eia_brent() -> tuple[pd.DataFrame, SourceStatus]:
                 header = raw_df.iloc[header_row].astype(str).str.strip()
                 df = raw_df.iloc[header_row + 1:].copy()
                 df.columns = header
-                dcol, dates = _best_datetime_column(df)
-                pcol, prices = _best_numeric_column(df, ("brent", "dollar", "price", "value"))
+                _, dates = _best_datetime_column(df)
+                _, prices = _best_numeric_column(df, ("brent", "dollar", "price", "value"))
                 if dates is None or prices is None:
                     continue
-                out = pd.DataFrame({"date": dates, "price_usd_bbl": prices}).dropna().drop_duplicates("date").sort_values("date")
+                out = pd.DataFrame({"date": dates, "price_usd_bbl": prices}).dropna()
+                out = out[(out["price_usd_bbl"] > 1) & (out["price_usd_bbl"] < 500)]
+                out = out.drop_duplicates("date", keep="last").sort_values("date")
                 if len(out) > len(best):
                     best = out
         if best.empty:
-            raise ValueError("No Brent observations parsed from EIA workbook")
-        status.note = "Official EIA Europe Brent Spot Price FOB daily series; publication can lag market trading days."
-        return best.tail(400), status
+            raise ValueError("No Brent observations parsed from EIA HTML or XLS")
+        xls_status.note = "Official EIA XLS fallback; no interpolation."
+        return best.tail(500), xls_status
     except Exception as exc:
-        status.ok = False
-        status.error = f"EIA Brent XLS parse error: {exc}"
-        return pd.DataFrame(), status
-
+        xls_status.ok = False
+        xls_status.error = f"EIA Brent parse error: {exc}"
+        return pd.DataFrame(), xls_status
 
 def fetch_eex_eua_auction() -> tuple[pd.DataFrame, SourceStatus]:
-    """EEX EUA primary auction clearing prices for 2026 (EUR/EUA).
+    """Official EEX EUA primary-auction clearing prices for 2026 (EUR/tCO2).
 
-    This is an official primary-market auction price, intentionally not labelled as secondary-market EUA spot.
+    EEX's interface specification defines the columns explicitly, including
+    ``Auction date`` and ``Auction clearing price [€/tCO2]``. The parser therefore
+    selects those semantic columns rather than guessing the most plausible numeric column.
+    This is the primary-auction price, not a secondary-market EUA spot/futures quote.
     """
     raw, status = _get_bytes(EEX_EUA_AUCTION_URL)
     status.source = "EEX EUA Primary Auction clearing price"
@@ -304,30 +363,40 @@ def fetch_eex_eua_auction() -> tuple[pd.DataFrame, SourceStatus]:
         return pd.DataFrame(), status
     try:
         frames = _read_excel_flex(raw)
-        best = pd.DataFrame()
+        candidates = []
         for raw_df in frames:
-            for header_row in range(min(20, len(raw_df))):
-                header = raw_df.iloc[header_row].astype(str).str.strip()
-                df = raw_df.iloc[header_row + 1:].copy()
-                df.columns = header
-                dcol, dates = _best_datetime_column(df)
-                pcol, prices = _best_numeric_column(df, ("clearing", "auction price", "price", "eur"))
-                if dates is None or prices is None:
+            if raw_df.empty:
+                continue
+            for header_row in range(min(30, len(raw_df))):
+                headers = [str(x).strip() for x in raw_df.iloc[header_row].tolist()]
+                low = [h.lower() for h in headers]
+                date_idx = next((i for i,h in enumerate(low) if "auction date" in h), None)
+                price_idx = next((i for i,h in enumerate(low) if "auction clearing price" in h), None)
+                if date_idx is None or price_idx is None:
                     continue
+                body = raw_df.iloc[header_row+1:].copy()
+                dates = pd.to_datetime(body.iloc[:, date_idx], errors="coerce", dayfirst=False)
+                prices = pd.to_numeric(
+                    body.iloc[:, price_idx].astype(str)
+                    .str.replace("€", "", regex=False)
+                    .str.replace(",", ".", regex=False)
+                    .str.strip(),
+                    errors="coerce",
+                )
                 out = pd.DataFrame({"date": dates, "price_eur_tco2": prices}).dropna()
-                # EUA prices are economically plausible positive two/three-digit values; filter volumes/IDs accidentally selected.
-                out = out[(out["price_eur_tco2"] > 1) & (out["price_eur_tco2"] < 500)].drop_duplicates("date").sort_values("date")
-                if len(out) > len(best):
-                    best = out
-        if best.empty:
-            raise ValueError("No EUA auction clearing-price rows parsed")
-        status.note = "Official EEX primary-auction clearing price; not the secondary-market EUA spot/futures price."
+                out = out[(out["price_eur_tco2"] > 1) & (out["price_eur_tco2"] < 500)]
+                out = out.drop_duplicates("date", keep="last").sort_values("date")
+                if not out.empty:
+                    candidates.append(out)
+        if not candidates:
+            raise ValueError("Columns 'Auction date' and 'Auction clearing price [€/tCO2]' not found or contained no values")
+        best = max(candidates, key=len)
+        status.note = "Official EEX primary-auction clearing price; not secondary-market EUA spot/futures."
         return best, status
     except Exception as exc:
         status.ok = False
         status.error = f"EUA auction XLSX parse error: {exc}"
         return pd.DataFrame(), status
-
 
 def _iso_utc(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
