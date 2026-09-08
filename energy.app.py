@@ -28,7 +28,7 @@ from energy_sources import (
 )
 from umm_client import fetch_umm_messages
 
-APP_BUILD_VERSION = "15.6.0"
+APP_BUILD_VERSION = "15.6.1"
 
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
@@ -261,7 +261,7 @@ def render_dashboard():
     c1, c2 = st.columns([4, 1])
     with c1:
         st.title("⚡ BalticPulse")
-        st.caption(f"Build {APP_BUILD_VERSION} • resilient Baltic system • ENTSO-E snapshot fallback")
+        st.caption(f"Build {APP_BUILD_VERSION} • resilient Baltic system • NameError hotfix")
         st.caption("Balti ja Põhjamaade energiaturu reaalaja olukorrapilt — elekter, võrk, reservid, UMM-id, gaas ja põhifundamentaalid.")
     with c2:
         st.write("")
@@ -796,7 +796,7 @@ def render_dashboard():
         left_status, right_status = st.columns(2)
 
         with left_status:
-            price_has_current = current_price(prices, "EE") is not None
+            price_has_current = current_prices.get("EE") is not None
             source_badge(
                 "Elering hinnad",
                 detail=status_detail(

@@ -38,3 +38,9 @@ Allikapoliitika: AST operatiivvaade on AST enda sõnul valideerimata ning Litgri
 - No synthetic values are generated.
 - KPIs show relative change vs same time 24h earlier.
 - GitHub repository secret required: `ENTSOE_API_KEY`.
+
+## V15.6.1 hotfix
+- Fixed runtime `NameError: current_price is not defined` in the source-health panel.
+- The panel now uses the already-computed `current_prices["EE"]` value.
+- `energy.app.py` and `energy_sources.py` are both version 15.6.1.
+- Added a regression check that no undefined `current_price(...)` call remains.
