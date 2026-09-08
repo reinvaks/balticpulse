@@ -7,11 +7,26 @@
 
 Streamlit main file: `energy.app.py`.
 
+## V15.4 reservituru YTD vaade
 
-## 15.3.1 — unified source health
-- BalticPulse V15.3 data/UI logic retained.
-- Existing source results are reused; the health panel does not duplicate normal API loads.
-- Green = source OK and sufficiently fresh.
-- Yellow = source responds but data is stale, partial, empty or fallback-like.
-- Red = request/authentication/source failed.
-- Source-specific freshness thresholds are applied to operational data.
+Reservvõimsuse põhigraafik kuvab jooksva aasta aFRR/mFRR capacity hindade kuukeskmisi EE/LV/LT lõikes. Voltoni avalik `latest.json` katab ainult jooksva 7 päeva akna, seetõttu koostab `.github/workflows/update-reserve-ytd.yml` päevaarhiividest `data/reserve_capacity_ytd.csv` faili. Workflow käivitub kord päevas ja seda saab esimesel deploy'l käsitsi käivitada (`Run workflow`), et jooksva aasta ajalugu backfill'ida. Vanad päevafailid on Voltoni dokumentatsiooni järgi immutable; viimased kolm päeva loetakse uuesti võimalike hiliste paranduste tõttu.
+
+
+## V15.5 Baltikumi reaalaja süsteemivaade
+
+- Avalehe `Olukord praegu` kuvab nüüd samad süsteemi KPI-d Eesti, Läti ja Leedu kohta: tootmine MW, tarbimine MW, taastuvtootmine MW ja taastuvate osakaal %.
+- Eesti kogutootmine ja tarbimine jäävad rangelt Eleringi actual-andmeteks; ENTSO-E ei täida neid KPI-sid.
+- Läti ja Leedu kogutootmine tuleb ENTSO-E A75 actual generation andmetest ning tarbimine A65 actual total load andmetest.
+- Taastuvtootmine arvutatakse kõigis kolmes riigis ENTSO-E A75 tootmisliikide põhjal konservatiivselt: biomass, tavahüdro, reservuaarhüdro, päike, tuul, geotermaal, marine ja Other renewable. Pumped storage ja kogu Waste kategooria ei kuulu automaatselt taastuvate hulka.
+- `Baltikumi süsteem` detailvaates on EE/LV/LT alamvaated, 24 h tootmine vs tarbimine, tootmisjaotus ning kõrvalpiiride ENTSO-E A11 tegelikud füüsilised vood.
+- Läti/Leedu väärtuste juures kuvatakse vaatluse vanus. Kui tegelik vaatlus on üle 2 tunni vana, kuvatakse hoiatus; väärtust ei asendata prognoosi ega sünteetilise numbriga.
+- Build: 15.5.1.
+
+Allikapoliitika: AST operatiivvaade on AST enda sõnul valideerimata ning Litgridi veebigraafik on küll väga sage, kuid HTML/veebikihi scraping oleks habras. Seetõttu kasutab V15.5 LV/LT põhisüsteemi KPI-deks ENTSO-E Transparency Platformi actual-andmeid.
+
+
+## V15.5.1 — source health
+- Built directly on BalticPulse V15.5.
+- `energy.app.py` and `energy_sources.py` are both version 15.5.1.
+- Adds green/yellow/red source health without changing the V15.5 data architecture.
+- Yellow means stale, partial, empty or mirror/fallback-like state; red means query/source failure.

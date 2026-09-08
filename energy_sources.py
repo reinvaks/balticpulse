@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import requests
 
-BUILD_VERSION = "15.3.1"
+BUILD_VERSION = "15.5.1"
 
 LOG = logging.getLogger(__name__)
 TALLINN = ZoneInfo("Europe/Tallinn")
@@ -38,6 +38,8 @@ ENTSOE_DOMAINS = {
     "FI": "10YFI-1--------U",
     "LV": "10YLV-1001A00074",
     "LT": "10YLT-1001A0008Q",
+    "SE4": "10Y1001A1001A47J",
+    "PL": "10YPL-AREA-----S",
 }
 
 PSR_TYPES = {
@@ -1051,6 +1053,30 @@ def fetch_entsoe_physical_flow(token: str | None, start: datetime, end: datetime
     df["from_region"] = from_region.upper()
     df["to_region"] = to_region.upper()
     return df[["time_utc", "time_local", "from_region", "to_region", "flow_mw", "resolution"]], status
+
+
+def fetch_entsoe_baltic_flows(token: str | None, start: datetime, end: datetime) -> tuple[pd.DataFrame, list[SourceStatus]]:
+    """Fetch actual physical flows (A11) on the main Baltic borders in both directions.
+
+    Borders: EE-FI, EE-LV, LV-LT, LT-SE4 and LT-PL. Values are directional actual
+    physical flows from ENTSO-E; no synthetic net-flow fill is created.
+    """
+    frames: list[pd.DataFrame] = []
+    statuses: list[SourceStatus] = []
+    borders = [("EE", "FI"), ("EE", "LV"), ("LV", "LT"), ("LT", "SE4"), ("LT", "PL")]
+    for left, right in borders:
+        border = f"{left}–{right}"
+        for a, b in [(left, right), (right, left)]:
+            df, st = fetch_entsoe_physical_flow(token, start, end, a, b)
+            statuses.append(st)
+            if not df.empty:
+                x = df.copy()
+                x["border"] = border
+                x["direction"] = f"{a}→{b}"
+                frames.append(x)
+    if not frames:
+        return pd.DataFrame(), statuses
+    return pd.concat(frames, ignore_index=True).sort_values("time_utc"), statuses
 
 
 def fetch_entsoe_estonia_flows(token: str | None, start: datetime, end: datetime) -> tuple[pd.DataFrame, list[SourceStatus]]:
