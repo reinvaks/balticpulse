@@ -30,3 +30,11 @@ Allikapoliitika: AST operatiivvaade on AST enda sõnul valideerimata ning Litgri
 - `energy.app.py` and `energy_sources.py` are both version 15.5.1.
 - Adds green/yellow/red source health without changing the V15.5 data architecture.
 - Yellow means stale, partial, empty or mirror/fallback-like state; red means query/source failure.
+
+## V15.6.0
+- GitHub Actions stores last successful ENTSO-E EE/LV/LT system snapshot every 15 min.
+- Streamlit uses direct ENTSO-E first and snapshot second.
+- Failed refresh does not replace valid previous values with blanks.
+- No synthetic values are generated.
+- KPIs show relative change vs same time 24h earlier.
+- GitHub repository secret required: `ENTSOE_API_KEY`.
