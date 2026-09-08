@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-09-08T09:12:41.377625+00:00",
+  "source": "ENTSO-E Transparency Platform via GitHub Actions",
+  "regions": {
+    "EE": {
+      "region": "EE",
+      "current": {
+        "production_mw": null,
+        "renewable_mw": null,
+        "renewable_share": null,
+        "consumption_mw": null
+      },
+      "previous_24h": {
+        "production_mw": null,
+        "renewable_mw": null,
+        "renewable_share": null,
+        "consumption_mw": null
+      },
+      "history": [],
+      "generation_status": {
+        "ok": false,
+        "error": "HTTPError: 404 Client Error: Not Found for url: https://web-api.tp.entsoe.eu/api?documentType=A75&processType=A16&in_Domain=10Y1001A1001A39I&periodStart=202609060812&periodEnd=202609081012&securityToken=9d2a4491-8d6c-43e3-902e-404da5088861",
+        "note": null,
+        "status_code": 404
+      },
+      "load_status": {
+        "ok": false,
+        "error": "HTTPError: 404 Client Error: Not Found for url: https://web-api.tp.entsoe.eu/api?documentType=A65&processType=A16&outBiddingZone_Domain=10Y1001A1001A39I&periodStart=202609060812&periodEnd=202609081012&securityToken=9d2a4491-8d6c-43e3-902e-404da5088861",
+        "note": null,
+        "status_code": 404
+      }
+    },
+    "LV": {
+      "region": "LV",
+      "current": {
+        "production_mw": null,
+        "renewable_mw": null,
+        "renewable_share": null,
+        "consumption_mw": null
+      },
+      "previous_24h": {
+        "production_mw": null,
+        "renewable_mw": null,
+        "renewable_share": null,
+        "consumption_mw": null
+      },
+      "history": [],
+      "generation_status": {
+        "ok": false,
+        "error": "HTTPError: 404 Client Error: Not Found for url: https://web-api.tp.entsoe.eu/api?documentType=A75&processType=A16&in_Domain=10YLV-1001A00074&periodStart=202609060812&periodEnd=202609081012&securityToken=9d2a4491-8d6c-43e3-902e-404da5088861",
+        "note": null,
+        "status_code": 404
+      },
+      "load_status": {
+        "ok": false,
+        "error": "HTTPError: 404 Client Error: Not Found for url: https://web-api.tp.entsoe.eu/api?documentType=A65&processType=A16&outBiddingZone_Domain=10YLV-1001A00074&periodStart=202609060812&periodEnd=202609081012&securityToken=9d2a4491-8d6c-43e3-902e-404da5088861",
+        "note": null,
+        "status_code": 404
+      }
+    },
+    "LT": {
+      "region": "LT",
+      "current": {
+        "production_mw": null,
+        "renewable_mw": null,
+        "renewable_share": null,
+        "consumption_mw": null
+      },
+      "previous_24h": {
+        "production_mw": null,
+        "renewable_mw": null,
+        "renewable_share": null,
+        "consumption_mw": null
+      },
+      "history": [],
+      "generation_status": {
+        "ok": false,
+        "error": "HTTPError: 404 Client Error: Not Found for url: https://web-api.tp.entsoe.eu/api?documentType=A75&processType=A16&in_Domain=10YLT-1001A0008Q&periodStart=202609060812&periodEnd=202609081012&securityToken=9d2a4491-8d6c-43e3-902e-404da5088861",
+        "note": null,
+        "status_code": 404
+      },
+      "load_status": {
+        "ok": false,
+        "error": "HTTPError: 404 Client Error: Not Found for url: https://web-api.tp.entsoe.eu/api?documentType=A65&processType=A16&outBiddingZone_Domain=10YLT-1001A0008Q&periodStart=202609060812&periodEnd=202609081012&securityToken=9d2a4491-8d6c-43e3-902e-404da5088861",
+        "note": null,
+        "status_code": 404
+      }
+    }
+  }
+}
