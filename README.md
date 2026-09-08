@@ -44,3 +44,10 @@ Allikapoliitika: AST operatiivvaade on AST enda sõnul valideerimata ning Litgri
 - The panel now uses the already-computed `current_prices["EE"]` value.
 - `energy.app.py` and `energy_sources.py` are both version 15.6.1.
 - Added a regression check that no undefined `current_price(...)` call remains.
+
+## V15.6.2 — ENTSO-E 404 safe
+- A75/A16 + in_Domain remains the official ENTSO-E request contract.
+- Actual-data windows are now rounded to completed UTC hours.
+- HTTP failures do not overwrite the last successful per-country GitHub snapshot.
+- Baltic KPIs are rendered prominently with 24h percentage comparison.
+- No synthetic values.

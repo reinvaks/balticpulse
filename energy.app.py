@@ -28,7 +28,7 @@ from energy_sources import (
 )
 from umm_client import fetch_umm_messages
 
-APP_BUILD_VERSION = "15.6.1"
+APP_BUILD_VERSION = "15.6.2"
 
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
@@ -261,7 +261,7 @@ def render_dashboard():
     c1, c2 = st.columns([4, 1])
     with c1:
         st.title("⚡ BalticPulse")
-        st.caption(f"Build {APP_BUILD_VERSION} • resilient Baltic system • NameError hotfix")
+        st.caption(f"Build {APP_BUILD_VERSION} • ENTSO-E 404-safe • Baltikumi KPI-d")
         st.caption("Balti ja Põhjamaade energiaturu reaalaja olukorrapilt — elekter, võrk, reservid, UMM-id, gaas ja põhifundamentaalid.")
     with c2:
         st.write("")
@@ -569,6 +569,35 @@ def render_dashboard():
         ages = [age_minutes(t) for t in [snap.get("generation_time"), snap.get("load_time")] if t is not None]
         if ages and max(ages) > 120:
             st.warning(f"{flag} {name}: viimane tegelik vaatlus on üle 2 tunni vana. Kuvatakse viimane edukas tegelik väärtus; sünteetilist täidet ei kasutata.")
+
+
+    st.markdown("## 🇪🇪🇱🇻🇱🇹 Baltikumi võtmenäitajad")
+    st.caption(
+        "Tegelik tootmine, tarbimine, taastuvtootmine ja taastuvate osakaal. "
+        "Delta = sama aeg 24 tundi tagasi. LV/LT: otse-ENTSO-E või viimane edukas GitHub snapshot."
+    )
+    _country = {"EE":("🇪🇪","Eesti"),"LV":("🇱🇻","Läti"),"LT":("🇱🇹","Leedu")}
+    for _region in ["EE","LV","LT"]:
+        _flag, _name = _country[_region]
+        _snap = baltic_snapshots.get(_region, {}) or {}
+        _prev = _snap.get("previous_24h", {}) or {}
+        st.markdown(f"### {_flag} {_name}")
+        _a,_b,_c,_d = st.columns(4)
+        _pv = _snap.get("production_mw")
+        _cv = _snap.get("consumption_mw")
+        _rv = _snap.get("renewable_mw")
+        _sv = _snap.get("renewable_share")
+        _a.metric("Tootmine", f"{_pv:.0f} MW" if _pv is not None and pd.notna(_pv) else "Andmed puuduvad",
+                  delta=delta_text(_pv,_prev.get("production_mw")))
+        _b.metric("Tarbimine", f"{_cv:.0f} MW" if _cv is not None and pd.notna(_cv) else "Andmed puuduvad",
+                  delta=delta_text(_cv,_prev.get("consumption_mw")))
+        _c.metric("Taastuvtootmine", f"{_rv:.0f} MW" if _rv is not None and pd.notna(_rv) else "Andmed puuduvad",
+                  delta=delta_text(_rv,_prev.get("renewable_mw")))
+        _d.metric("Taastuvate osakaal", f"{_sv:.1f}%" if _sv is not None and pd.notna(_sv) else "Andmed puuduvad",
+                  delta=delta_text(_sv,_prev.get("renewable_share")))
+        if _snap.get("source") == "ENTSO-E GitHub snapshot":
+            st.info(f"{_flag} {_name}: kasutatakse viimast edukat ENTSO-E snapshot'i.")
+    st.divider()
 
     market_cols = st.columns(3)
     market_cols[0].metric("🇪🇪 EE spot — käimasolev MTU", f"{current_prices['EE']:.1f} €/MWh" if current_prices["EE"] is not None else "—")
