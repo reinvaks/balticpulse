@@ -1,6 +1,11 @@
 name: Update Baltic system snapshot
+
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/update-baltic-system.yml"
+      - "fetch_baltic_system_snapshot.py"
   schedule:
     - cron: "*/15 * * * *"
 permissions:
