@@ -182,18 +182,97 @@ def _capacity_summary(m: dict[str, Any]) -> tuple[float | None, float | None, fl
     return installed, available, unavailable, affected, unique_profile
 
 
+
+def _unit_collections(m: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return all unit objects used by the current Nord Pool UMM JSON contract."""
+    units: list[dict[str, Any]] = []
+    for key in ("generationUnits", "productionUnits", "consumptionUnits", "transmissionUnits", "otherUnits"):
+        value = m.get(key)
+        if isinstance(value, list):
+            units.extend(x for x in value if isinstance(x, dict))
+    return units
+
+
+def _current_contract_summary(m: dict[str, Any]) -> dict[str, Any]:
+    """Extract fields from the current public /messages contract.
+
+    Verified against the live Nord Pool public REST payload:
+    generationUnits / productionUnits / consumptionUnits / transmissionUnits /
+    otherUnits, each with nested timePeriods.
+    """
+    units = _unit_collections(m)
+    periods: list[dict[str, Any]] = []
+    areas: list[str] = []
+    assets: list[str] = []
+    fuels: list[Any] = []
+
+    for unit in units:
+        name = unit.get("name")
+        parent = unit.get("productionUnitName")
+        if parent and name:
+            assets.append(f"{parent} / {name}")
+        elif name:
+            assets.append(str(name))
+
+        for area_key in ("areaName", "inAreaName", "outAreaName"):
+            if unit.get(area_key):
+                areas.append(str(unit[area_key]))
+
+        if unit.get("fuelType") is not None:
+            fuels.append(unit.get("fuelType"))
+
+        tps = unit.get("timePeriods")
+        if isinstance(tps, list):
+            periods.extend(x for x in tps if isinstance(x, dict))
+
+    # Root-level event dates occur in some transmission/other messages.
+    root_start = m.get("eventStart")
+    root_stop = m.get("eventStop")
+    starts = [p.get("eventStart") for p in periods if p.get("eventStart")]
+    stops = [p.get("eventStop") for p in periods if p.get("eventStop")]
+    if root_start:
+        starts.append(root_start)
+    if root_stop:
+        stops.append(root_stop)
+
+    def iso_min(values):
+        vals = [_iso(v) for v in values if _iso(v)]
+        return min(vals) if vals else ""
+
+    def iso_max(values):
+        vals = [_iso(v) for v in values if _iso(v)]
+        return max(vals) if vals else ""
+
+    # Current public API exposes assets separately for some transmission messages.
+    raw_assets = m.get("assets")
+    if isinstance(raw_assets, list):
+        for a in raw_assets:
+            if isinstance(a, dict) and a.get("name"):
+                assets.append(str(a["name"]))
+
+    return {
+        "asset_name": ", ".join(dict.fromkeys(assets)),
+        "area": ", ".join(dict.fromkeys(areas)),
+        "fuel_type": ", ".join(str(x) for x in dict.fromkeys(fuels)),
+        "event_start": iso_min(starts),
+        "event_end": iso_max(stops),
+    }
+
+
 def normalize_message(m: dict[str, Any]) -> dict[str, Any]:
-    message_id = _text(_get_nested(m, "id", "messageId", "messageID", "ummId", "message.id"))
+    message_id = _text(_get_nested(m, "messageId", "id", "messageID", "ummId", "message.id"))
     version = _text(_get_nested(m, "version", "messageVersion", "revisionNumber"))
+    current = _current_contract_summary(m)
 
-    asset = _get_nested(m, "assetName", "asset.name", "assets", "assetList", "productionUnit.name", "infrastructureName")
-    area = _get_nested(m, "area", "areas", "biddingZone", "biddingZones", "location.area", "eventArea")
-    participant = _get_nested(m, "marketParticipant", "marketParticipants", "participant", "publisher")
-    fuel = _get_nested(m, "fuelType", "fuelTypes", "asset.fuelType", "productionUnit.fuelType")
-
-    event_type = _text(_get_nested(m, "eventType", "messageType", "type", "event.type", "unavailabilityType"))
+    participant = _get_nested(m, "marketParticipants", "marketParticipant", "participant", "publisherName", "publisher")
+    event_type = _text(_get_nested(m, "messageType", "eventType", "type", "event.type"))
     status = _text(_get_nested(m, "eventStatus", "status", "messageStatus"))
-    reason = _text(_get_nested(m, "reason", "reasonText", "remarks", "remark", "description", "messageText", "event.reason"))
+    reason_parts = [
+        _text(m.get("unavailabilityReason")),
+        _text(m.get("remarks")),
+        _text(m.get("cancellationReason")),
+    ]
+    reason = " — ".join(x for x in reason_parts if x)
 
     installed, available, unavailable, affected, capacity_profile = _capacity_summary(m)
 
@@ -206,15 +285,15 @@ def normalize_message(m: dict[str, Any]) -> dict[str, Any]:
     return {
         "message_id": message_id,
         "version": version,
-        "publication_time": _iso(_get_nested(m, "publicationDate", "publicationTime", "published", "createdAt", "message.publicationDate")),
-        "event_start": _iso(_get_nested(m, "eventStart", "eventStartDate", "startDate", "event.start", "eventPeriod.start")),
-        "event_end": _iso(_get_nested(m, "eventStop", "eventEnd", "eventStopDate", "endDate", "event.end", "eventPeriod.end")),
+        "publication_time": _iso(_get_nested(m, "publicationDate", "publicationTime", "published", "createdAt")),
+        "event_start": current["event_start"],
+        "event_end": current["event_end"],
         "status": status,
         "message_type": event_type,
-        "market_participant": _text(participant),
-        "asset_name": _text(asset),
-        "area": _text(area),
-        "fuel_type": _text(fuel),
+        "market_participant": _text(participant) or _text(m.get("publisherName")),
+        "asset_name": current["asset_name"],
+        "area": current["area"],
+        "fuel_type": current["fuel_type"],
         "installed_capacity": installed,
         "available_capacity": available,
         "unavailable_capacity": unavailable,
@@ -222,7 +301,8 @@ def normalize_message(m: dict[str, Any]) -> dict[str, Any]:
         "capacity_profile": capacity_profile,
         "reason": reason,
         "source_url": link,
-        "source": "Nord Pool UMM",
+        "source": "Nord Pool UMM REST API",
+        "is_outdated": bool(m.get("isOutdated", False)),
         "raw": m,
     }
 
@@ -317,6 +397,7 @@ def fetch_umm_messages(limit: int = 1000, max_pages: int = 5, retries: int = 3) 
             break
 
     normalized = [normalize_message(x) for x in all_items]
+    normalized.sort(key=lambda r: r.get("publication_time") or "", reverse=True)
     seen = set()
     unique = []
     for row in normalized:

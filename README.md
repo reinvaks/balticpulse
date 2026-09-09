@@ -51,3 +51,13 @@ Allikapoliitika: AST operatiivvaade on AST enda sõnul valideerimata ning Litgri
 - HTTP failures do not overwrite the last successful per-country GitHub snapshot.
 - Baltic KPIs are rendered prominently with 24h percentage comparison.
 - No synthetic values.
+
+
+## V15.7.0 — UMM + global energy news
+- UMM normalization updated to the current public Nord Pool `/messages` JSON contract.
+- Nested `generationUnits`, `productionUnits`, `consumptionUnits`, `transmissionUnits`, `otherUnits` and `timePeriods` are parsed.
+- UMM list defaults to newest publication/update first. V15.6 sorted by affected MW, which could make old large outages appear "stale".
+- UMM polling: dashboard 60 s, UMM cache 30 s.
+- Explicit UMM freshness KPI and API/UI divergence warning.
+- SignalR `/messageHub` is NOT enabled yet because the hub event/payload contract remains [KONTROLLIMATA] in this build.
+- New global energy-news tab: Reuters, S&P Global Energy, Energy Intelligence, Utility Dive and IEA discovery feeds; no fabricated articles.

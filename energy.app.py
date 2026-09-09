@@ -27,8 +27,9 @@ from energy_sources import (
     fetch_eex_eua_auction,
 )
 from umm_client import fetch_umm_messages
+from energy_news import fetch_energy_news
 
-APP_BUILD_VERSION = "15.6.2"
+APP_BUILD_VERSION = "15.7.0"
 
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
@@ -196,9 +197,15 @@ def load_reserve_ytd_file():
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=120)
+@st.cache_data(ttl=30)
 def load_umm():
-    return fetch_umm_messages(limit=500, max_pages=4, retries=3)
+    # Public Nord Pool REST API is polled every dashboard refresh; 30 s cache keeps it near-live.
+    return fetch_umm_messages(limit=500, max_pages=2, retries=3)
+
+
+@st.cache_data(ttl=300)
+def load_energy_news():
+    return fetch_energy_news(max_items=30)
 
 
 @st.cache_data(ttl=1800)
@@ -255,13 +262,13 @@ def load_eua():
     return fetch_eex_eua_auction()
 
 
-@st.fragment(run_every=120)
+@st.fragment(run_every=60)
 def render_dashboard():
     # Header
     c1, c2 = st.columns([4, 1])
     with c1:
         st.title("⚡ BalticPulse")
-        st.caption(f"Build {APP_BUILD_VERSION} • ENTSO-E 404-safe • Baltikumi KPI-d")
+        st.caption(f"Build {APP_BUILD_VERSION} • UMM live REST • energiauudised")
         st.caption("Balti ja Põhjamaade energiaturu reaalaja olukorrapilt — elekter, võrk, reservid, UMM-id, gaas ja põhifundamentaalid.")
     with c2:
         st.write("")
@@ -272,7 +279,7 @@ def render_dashboard():
     now_local = datetime.now(TALLINN)
     today = now_local.date()
     tomorrow = today + timedelta(days=1)
-    st.caption(f"Vaate aeg: **{now_local:%d.%m.%Y %H:%M:%S}** Europe/Tallinn · automaatne värskendus iga 2 min (Streamliti native fragment)")
+    st.caption(f"Vaate aeg: **{now_local:%d.%m.%Y %H:%M:%S}** Europe/Tallinn · automaatne värskendus iga 1 min (Streamliti native fragment)")
 
     with st.spinner("Laadin operatiivandmeid..."):
         entsoe_key = secret("ENTSOE_API_KEY")
@@ -284,6 +291,7 @@ def render_dashboard():
             fut_system = pool.submit(load_system)
             fut_baltic_snapshot = pool.submit(load_baltic_system_snapshot)
             fut_umm = pool.submit(load_umm)
+            fut_news = pool.submit(load_energy_news)
             fut_storage = pool.submit(load_storage, agsi_key)
             gen_futs = {r: pool.submit(load_entsoe_generation, entsoe_key, r) for r in BALTICS}
             load_futs = {r: pool.submit(load_entsoe_load, entsoe_key, r) for r in BALTICS}
@@ -301,6 +309,7 @@ def render_dashboard():
             system_df, system_status = fut_system.result()
             baltic_system_snapshot, baltic_snapshot_status = fut_baltic_snapshot.result()
             umm_rows, umm_meta = fut_umm.result()
+            news_rows, news_meta = fut_news.result()
             storage_df, storage_status = fut_storage.result()
             entsoe_generation_results = {r: f.result() for r, f in gen_futs.items()}
             entsoe_load_results = {r: f.result() for r, f in load_futs.items()}
@@ -372,9 +381,20 @@ def render_dashboard():
         now_utc_ts = pd.Timestamp.now(tz="UTC")
         starts = umm_df.get("event_start", pd.Series(pd.NaT, index=umm_df.index, dtype="datetime64[ns, UTC]"))
         ends = umm_df.get("event_end", pd.Series(pd.NaT, index=umm_df.index, dtype="datetime64[ns, UTC]"))
-        active_umm = umm_df[(starts.isna() | (starts <= now_utc_ts)) & (ends.isna() | (ends >= now_utc_ts))].copy()
+        active_mask = (starts.isna() | (starts <= now_utc_ts)) & (ends.isna() | (ends >= now_utc_ts))
+        if "is_outdated" in umm_df.columns:
+            active_mask &= ~umm_df["is_outdated"].fillna(False).astype(bool)
+        active_umm = umm_df[active_mask].copy()
         if "affected_capacity" in active_umm.columns:
             active_umm["affected_capacity"] = pd.to_numeric(active_umm["affected_capacity"], errors="coerce")
+
+    newest_umm_time = None
+    umm_age_minutes = None
+    if not umm_df.empty and "publication_time" in umm_df.columns:
+        _pub = umm_df["publication_time"].dropna()
+        if not _pub.empty:
+            newest_umm_time = _pub.max()
+            umm_age_minutes = max(0.0, (pd.Timestamp.now(tz="UTC") - newest_umm_time).total_seconds() / 60.0)
 
     largest_umm = None
     if not active_umm.empty and "affected_capacity" in active_umm.columns:
@@ -986,8 +1006,8 @@ def render_dashboard():
             )
 
     # ---------- 2. DETAIL TABS ----------
-    tab_overview, tab_prices, tab_system, tab_entsoe, tab_umm, tab_reserves, tab_gas, tab_fundamentals, tab_quality = st.tabs([
-        "📌 Põhivaade", "⚡ Elektrihinnad", "🏭 Baltikumi süsteem", "🌐 ENTSO-E", "📣 UMM", "🔄 Reservid", "🔥 Gaasihoidlad", "📈 Fundamentaalid", "✅ Andmekvaliteet"
+    tab_overview, tab_prices, tab_system, tab_entsoe, tab_umm, tab_news, tab_reserves, tab_gas, tab_fundamentals, tab_quality = st.tabs([
+        "📌 Põhivaade", "⚡ Elektrihinnad", "🏭 Baltikumi süsteem", "🌐 ENTSO-E", "📣 UMM", "🌍 Energiauudised", "🔄 Reservid", "🔥 Gaasihoidlad", "📈 Fundamentaalid", "✅ Andmekvaliteet"
     ])
 
     with tab_overview:
@@ -1169,30 +1189,102 @@ def render_dashboard():
 
     with tab_umm:
         st.markdown("### Nord Pool UMM — kiireloomulised turuteated")
-        st.caption("UMM võib hõlmata tootmist, tarbimist, ülekannet ja muud siseteavet. Mõjutatud MW on teatepõhine ning eri teateid ei summeerita süsteemi netokatkestuseks.")
+        st.caption(
+            "Allikas on Nord Pooli avalik UMM REST API. BalticPulse küsib API-t uuesti iga minuti järel "
+            "(cache 30 s). Vaikimisi kuvatakse kõige uuemad avaldatud/uuendatud teated esimesena."
+        )
         if umm_meta.error:
             st.error(f"Nord Pool UMM API viga: {umm_meta.error}")
         elif umm_df.empty:
             st.info("UMM teateid ei leitud.")
         else:
-            only_active = st.toggle("Ainult aktiivsed", value=True)
-            u = active_umm if only_active else umm_df
-            areas = sorted([x for x in u.get("area", pd.Series(dtype=str)).dropna().astype(str).unique() if x])
+            c_fresh, c_count, c_active = st.columns(3)
+            c_fresh.metric(
+                "Uusim UMM",
+                newest_umm_time.tz_convert(TALLINN).strftime("%d.%m %H:%M") if newest_umm_time is not None else "—",
+                delta=f"{umm_age_minutes:.0f} min tagasi" if umm_age_minutes is not None else None,
+                delta_color="off",
+            )
+            c_count.metric("API-st laaditud", f"{len(umm_df)} teadet")
+            c_active.metric("Hetkel aktiivsed", f"{len(active_umm)} teadet")
+
+            if umm_age_minutes is not None and umm_age_minutes > 180:
+                st.warning(
+                    "Nord Pool API vastas, kuid uusim API-s nähtav UMM on üle 3 tunni vana. "
+                    "See võib olla täiesti normaalne vaiksel perioodil; kui Nord Pooli veebis on uuem teade, "
+                    "on tegu API/UI lahknevusega ja seda ei varjata."
+                )
+
+            only_active = st.toggle("Ainult hetkel aktiivsed sündmused", value=False)
+            u = active_umm if only_active else umm_df.copy()
+
+            # Latest publication/version first. The previous build sorted by MW, which made old large
+            # outages look like the newest messages.
+            if "publication_time" in u.columns:
+                u = u.sort_values("publication_time", ascending=False, na_position="last")
+
+            areas = sorted({
+                part.strip()
+                for value in u.get("area", pd.Series(dtype=str)).dropna().astype(str)
+                for part in value.split(",")
+                if part.strip()
+            })
             area_sel = st.multiselect("Piirkond", areas, default=[])
-            if area_sel:
-                u = u[u["area"].astype(str).isin(area_sel)]
-            if "affected_capacity" in u.columns:
-                u = u.copy()
-                u["affected_capacity"] = pd.to_numeric(u["affected_capacity"], errors="coerce")
-                u = u.sort_values(["affected_capacity", "publication_time"] if "publication_time" in u.columns else ["affected_capacity"], ascending=False, na_position="last")
-            columns = [c for c in ["area","asset_name","market_participant","status","message_type","affected_capacity","installed_capacity","available_capacity","publication_time","event_start","event_end","reason","source_url"] if c in u.columns]
-            st.dataframe(u[columns], hide_index=True, use_container_width=True,
-                         column_config={
-                             "affected_capacity": st.column_config.NumberColumn("Mõjutatud MW", format="%.0f"),
-                             "installed_capacity": st.column_config.NumberColumn("Installeeritud MW", format="%.0f"),
-                             "available_capacity": st.column_config.NumberColumn("Saadaval MW", format="%.0f"),
-                             "source_url": st.column_config.LinkColumn("Nord Pool"),
-                         })
+            if area_sel and "area" in u.columns:
+                u = u[u["area"].astype(str).apply(lambda x: any(sel in [p.strip() for p in x.split(",")] for sel in area_sel))]
+
+            columns = [c for c in [
+                "publication_time","area","asset_name","market_participant","status","message_type",
+                "affected_capacity","installed_capacity","available_capacity","event_start","event_end",
+                "reason","source_url"
+            ] if c in u.columns]
+            st.dataframe(
+                u[columns], hide_index=True, use_container_width=True,
+                column_config={
+                    "publication_time": st.column_config.DatetimeColumn("Avaldatud/uuendatud", format="DD.MM.YYYY HH:mm"),
+                    "affected_capacity": st.column_config.NumberColumn("Mõjutatud MW", format="%.0f"),
+                    "installed_capacity": st.column_config.NumberColumn("Installeeritud MW", format="%.0f"),
+                    "available_capacity": st.column_config.NumberColumn("Saadaval MW", format="%.0f"),
+                    "source_url": st.column_config.LinkColumn("Nord Pool"),
+                }
+            )
+            st.caption(
+                "Märkus: SignalR push-kanal on Nord Pooli poolt kinnitatud, kuid BalticPulse ei kasuta seda enne, "
+                "kui messageHub sündmuse nimi ja payload-contract on ametlikust arendusdokumentatsioonist kontrollitud. "
+                "Praegune lahendus kasutab valideeritud avalikku /messages REST API-t."
+            )
+
+    with tab_news:
+        st.markdown("### 🌍 Olulised energiauudised")
+        st.caption(
+            "Kuratoeritud värske voog energiale keskendunud või tugeva energiatoimetusega allikatest. "
+            "BalticPulse ei genereeri uudiseid: kuvatakse väljaande pealkiri, avaldamisaeg, teema ja allikalink."
+        )
+        if not news_rows:
+            st.warning("Uudistevoogu ei õnnestunud hetkel laadida.")
+            if news_meta.errors:
+                st.caption(" · ".join(news_meta.errors[:4]))
+        else:
+            st.caption(f"Allikad kättesaadavad: {news_meta.sources_ok}/{news_meta.sources_total}")
+            ndf = pd.DataFrame(news_rows)
+            ndf["published_at"] = pd.to_datetime(ndf["published_at"], utc=True, errors="coerce")
+            ndf = ndf.sort_values("published_at", ascending=False, na_position="last")
+
+            topics = sorted(x for x in ndf["topic"].dropna().unique() if x)
+            selected_topics = st.multiselect("Teemad", topics, default=[])
+            if selected_topics:
+                ndf = ndf[ndf["topic"].isin(selected_topics)]
+
+            for _, row in ndf.head(18).iterrows():
+                ts = row["published_at"]
+                when = ts.tz_convert(TALLINN).strftime("%d.%m %H:%M") if pd.notna(ts) else "aeg teadmata"
+                st.markdown(f"**{row['title']}**")
+                st.caption(f"{row['source']} · {when} · {row['topic']}")
+                if row.get("summary"):
+                    st.write(str(row["summary"])[:320])
+                st.link_button("Ava artikkel ↗", row["url"])
+                st.divider()
+
 
     with tab_reserves:
         st.markdown("### Balti balancing capacity market — jooksva aasta areng")
@@ -1346,7 +1438,7 @@ def render_dashboard():
         )
 
     st.divider()
-    st.caption("BalticPulse · Allikad: Elering, ENTSO-E Transparency Platform, Nord Pool UMM, Baltic Transparency Dashboard/Volton, GIE AGSI+, EEX ja U.S. EIA. Põhimõte: parem puuduv number kui kontrollimata number.")
+    st.caption("BalticPulse · Allikad: Elering, ENTSO-E Transparency Platform, Nord Pool UMM, Baltic Transparency Dashboard/Volton, GIE AGSI+, EEX, U.S. EIA ning kuratoeritud energia-uudisallikad. Põhimõte: parem puuduv number kui kontrollimata number.")
 
 
 render_dashboard()
