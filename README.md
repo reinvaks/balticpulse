@@ -61,3 +61,8 @@ Allikapoliitika: AST operatiivvaade on AST enda sõnul valideerimata ning Litgri
 - Explicit UMM freshness KPI and API/UI divergence warning.
 - SignalR `/messageHub` is NOT enabled yet because the hub event/payload contract remains [KONTROLLIMATA] in this build.
 - New global energy-news tab: Reuters, S&P Global Energy, Energy Intelligence, Utility Dive and IEA discovery feeds; no fabricated articles.
+
+## V15.7.1 hotfix
+- Fixed BalticPulse file-version mismatch.
+- `energy.app.py` and `energy_sources.py` are both `15.7.1`.
+- No functional UMM/news logic changed from V15.7.0.

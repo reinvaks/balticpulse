@@ -29,7 +29,7 @@ from energy_sources import (
 from umm_client import fetch_umm_messages
 from energy_news import fetch_energy_news
 
-APP_BUILD_VERSION = "15.7.0"
+APP_BUILD_VERSION = "15.7.1"
 
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
@@ -268,7 +268,7 @@ def render_dashboard():
     c1, c2 = st.columns([4, 1])
     with c1:
         st.title("⚡ BalticPulse")
-        st.caption(f"Build {APP_BUILD_VERSION} • UMM live REST • energiauudised")
+        st.caption(f"Build {APP_BUILD_VERSION} • UMM live REST • energiauudised • version sync")
         st.caption("Balti ja Põhjamaade energiaturu reaalaja olukorrapilt — elekter, võrk, reservid, UMM-id, gaas ja põhifundamentaalid.")
     with c2:
         st.write("")
