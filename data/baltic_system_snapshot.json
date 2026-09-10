@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-10T06:11:44.485570+00:00",
+  "updated_at": "2026-09-10T06:38:21.590509+00:00",
   "source": "ENTSO-E Transparency Platform via GitHub Actions",
   "regions": {
     "EE": {
@@ -1376,7 +1376,8 @@
           "renewable_mw": null,
           "renewable_share": null
         }
-      ]
+      ],
+      "snapshot_note": "Last successful region preserved after ENTSO-E failure"
     },
     "LV": {
       "region": "LV",
@@ -1737,8 +1738,8 @@
         "production_mw": null,
         "renewable_mw": null,
         "renewable_share": null,
-        "consumption_mw": 1664.87356,
-        "load_time": "2026-09-10T05:30:00+00:00"
+        "consumption_mw": 1685.03488,
+        "load_time": "2026-09-10T05:45:00+00:00"
       },
       "previous_24h": {
         "production_mw": null,
@@ -3075,6 +3076,13 @@
           "time_utc": "2026-09-10T05:30:00+00:00",
           "production_mw": null,
           "consumption_mw": 1664.87356,
+          "renewable_mw": null,
+          "renewable_share": null
+        },
+        {
+          "time_utc": "2026-09-10T05:45:00+00:00",
+          "production_mw": null,
+          "consumption_mw": 1685.03488,
           "renewable_mw": null,
           "renewable_share": null
         }
