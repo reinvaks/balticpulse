@@ -29,7 +29,7 @@ from energy_sources import (
 from umm_client import fetch_umm_messages
 from energy_news import fetch_energy_news
 
-APP_BUILD_VERSION = "15.7.2"
+APP_BUILD_VERSION = "15.7.3"
 
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
@@ -268,7 +268,7 @@ def render_dashboard():
     c1, c2 = st.columns([4, 1])
     with c1:
         st.title("⚡ BalticPulse")
-        st.caption(f"Build {APP_BUILD_VERSION} • UMM live REST • energiauudised • version sync")
+        st.caption(f"Build {APP_BUILD_VERSION} • UMM live REST • news fix • Baltic KPI dedup • version sync")
         st.caption("Balti ja Põhjamaade energiaturu reaalaja olukorrapilt — elekter, võrk, reservid, UMM-id, gaas ja põhifundamentaalid.")
     with c2:
         st.write("")
@@ -588,34 +588,6 @@ def render_dashboard():
         if ages and max(ages) > 120:
             st.warning(f"{flag} {name}: viimane tegelik vaatlus on üle 2 tunni vana. Kuvatakse viimane edukas tegelik väärtus; sünteetilist täidet ei kasutata.")
 
-
-    st.markdown("## 🇪🇪🇱🇻🇱🇹 Baltikumi võtmenäitajad")
-    st.caption(
-        "Tegelik tootmine, tarbimine, taastuvtootmine ja taastuvate osakaal. "
-        "Delta = sama aeg 24 tundi tagasi. LV/LT: otse-ENTSO-E või viimane edukas GitHub snapshot."
-    )
-    _country = {"EE":("🇪🇪","Eesti"),"LV":("🇱🇻","Läti"),"LT":("🇱🇹","Leedu")}
-    for _region in ["EE","LV","LT"]:
-        _flag, _name = _country[_region]
-        _snap = baltic_snapshots.get(_region, {}) or {}
-        _prev = _snap.get("previous_24h", {}) or {}
-        st.markdown(f"### {_flag} {_name}")
-        _a,_b,_c,_d = st.columns(4)
-        _pv = _snap.get("production_mw")
-        _cv = _snap.get("consumption_mw")
-        _rv = _snap.get("renewable_mw")
-        _sv = _snap.get("renewable_share")
-        _a.metric("Tootmine", f"{_pv:.0f} MW" if _pv is not None and pd.notna(_pv) else "Andmed puuduvad",
-                  delta=delta_text(_pv,_prev.get("production_mw")))
-        _b.metric("Tarbimine", f"{_cv:.0f} MW" if _cv is not None and pd.notna(_cv) else "Andmed puuduvad",
-                  delta=delta_text(_cv,_prev.get("consumption_mw")))
-        _c.metric("Taastuvtootmine", f"{_rv:.0f} MW" if _rv is not None and pd.notna(_rv) else "Andmed puuduvad",
-                  delta=delta_text(_rv,_prev.get("renewable_mw")))
-        _d.metric("Taastuvate osakaal", f"{_sv:.1f}%" if _sv is not None and pd.notna(_sv) else "Andmed puuduvad",
-                  delta=delta_text(_sv,_prev.get("renewable_share")))
-        if _snap.get("source") == "ENTSO-E GitHub snapshot":
-            st.info(f"{_flag} {_name}: kasutatakse viimast edukat ENTSO-E snapshot'i.")
-    st.divider()
 
     market_cols = st.columns(3)
     market_cols[0].metric("🇪🇪 EE spot — käimasolev MTU", f"{current_prices['EE']:.1f} €/MWh" if current_prices["EE"] is not None else "—")
@@ -1267,9 +1239,15 @@ def render_dashboard():
         if not news_rows:
             st.warning("Uudistevoogu ei õnnestunud hetkel laadida.")
             if news_meta is not None and news_meta.errors:
-                st.caption(" · ".join(news_meta.errors[:4]))
+                with st.expander("Näita uudiseallikate veateateid", expanded=True):
+                    for err in news_meta.errors:
+                        st.write(f"• {err}")
         else:
             st.caption(f"Allikad kättesaadavad: {news_meta.sources_ok}/{news_meta.sources_total}")
+            if news_meta.errors:
+                with st.expander("Uudiseallikate staatus"):
+                    for err in news_meta.errors:
+                        st.write(f"• {err}")
             ndf = pd.DataFrame(news_rows)
             ndf["published_at"] = pd.to_datetime(ndf["published_at"], utc=True, errors="coerce")
             ndf = ndf.sort_values("published_at", ascending=False, na_position="last")

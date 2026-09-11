@@ -66,3 +66,9 @@ Allikapoliitika: AST operatiivvaade on AST enda sõnul valideerimata ning Litgri
 - Fixed BalticPulse file-version mismatch.
 - `energy.app.py` and `energy_sources.py` are both `15.7.1`.
 - No functional UMM/news logic changed from V15.7.0.
+
+## V15.7.3
+- Removed the second consecutive Baltic KPI overview; only the original “Olukord praegu” EE/LV/LT block remains.
+- Energy news core feed now uses direct publisher RSS/Atom feeds rather than Google News.
+- Added visible per-source diagnostics for partial/failed news feeds.
+- News remains on-demand and cannot block startup.
