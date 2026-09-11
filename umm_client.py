@@ -351,7 +351,7 @@ def fetch_umm_messages(limit: int = 1000, max_pages: int = 5, retries: int = 3) 
         response = None
         for attempt in range(retries):
             try:
-                response = session.get(UMM_API, params=params, timeout=(5, 25))
+                response = session.get(UMM_API, params=params, timeout=(4, 8))
                 last_status = response.status_code
                 if response.status_code == 429 or 500 <= response.status_code < 600:
                     if attempt < retries - 1:

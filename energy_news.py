@@ -68,7 +68,7 @@ def _parse_date(s: str | None):
             return None
 
 
-def _feed(url: str, source: str, timeout=12) -> list[dict[str, Any]]:
+def _feed(url: str, source: str, timeout=6) -> list[dict[str, Any]]:
     r = requests.get(url, timeout=timeout, headers={"User-Agent": "BalticPulse/15.7 energy-news"})
     r.raise_for_status()
     root = ET.fromstring(r.content)

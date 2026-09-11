@@ -29,7 +29,7 @@ from energy_sources import (
 from umm_client import fetch_umm_messages
 from energy_news import fetch_energy_news
 
-APP_BUILD_VERSION = "15.7.1"
+APP_BUILD_VERSION = "15.7.2"
 
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
@@ -200,7 +200,7 @@ def load_reserve_ytd_file():
 @st.cache_data(ttl=30)
 def load_umm():
     # Public Nord Pool REST API is polled every dashboard refresh; 30 s cache keeps it near-live.
-    return fetch_umm_messages(limit=500, max_pages=2, retries=3)
+    return fetch_umm_messages(limit=200, max_pages=1, retries=2)
 
 
 @st.cache_data(ttl=300)
@@ -291,7 +291,6 @@ def render_dashboard():
             fut_system = pool.submit(load_system)
             fut_baltic_snapshot = pool.submit(load_baltic_system_snapshot)
             fut_umm = pool.submit(load_umm)
-            fut_news = pool.submit(load_energy_news)
             fut_storage = pool.submit(load_storage, agsi_key)
             gen_futs = {r: pool.submit(load_entsoe_generation, entsoe_key, r) for r in BALTICS}
             load_futs = {r: pool.submit(load_entsoe_load, entsoe_key, r) for r in BALTICS}
@@ -309,7 +308,6 @@ def render_dashboard():
             system_df, system_status = fut_system.result()
             baltic_system_snapshot, baltic_snapshot_status = fut_baltic_snapshot.result()
             umm_rows, umm_meta = fut_umm.result()
-            news_rows, news_meta = fut_news.result()
             storage_df, storage_status = fut_storage.result()
             entsoe_generation_results = {r: f.result() for r, f in gen_futs.items()}
             entsoe_load_results = {r: f.result() for r, f in load_futs.items()}
@@ -1006,6 +1004,9 @@ def render_dashboard():
             )
 
     # ---------- 2. DETAIL TABS ----------
+    news_rows = []
+    news_meta = None
+
     tab_overview, tab_prices, tab_system, tab_entsoe, tab_umm, tab_news, tab_reserves, tab_gas, tab_fundamentals, tab_quality = st.tabs([
         "📌 Põhivaade", "⚡ Elektrihinnad", "🏭 Baltikumi süsteem", "🌐 ENTSO-E", "📣 UMM", "🌍 Energiauudised", "🔄 Reservid", "🔥 Gaasihoidlad", "📈 Fundamentaalid", "✅ Andmekvaliteet"
     ])
@@ -1258,11 +1259,14 @@ def render_dashboard():
         st.markdown("### 🌍 Olulised energiauudised")
         st.caption(
             "Kuratoeritud värske voog energiale keskendunud või tugeva energiatoimetusega allikatest. "
-            "BalticPulse ei genereeri uudiseid: kuvatakse väljaande pealkiri, avaldamisaeg, teema ja allikalink."
+            "Uudiste välisallikaid ei laadita enam rakenduse käivitamisel, et need ei saaks BalticPulse'i põhivaadet blokeerida."
         )
+        if st.button("Laadi värsked energiauudised", key="load_energy_news_button"):
+            with st.spinner("Laadin energiauudiseid..."):
+                news_rows, news_meta = load_energy_news()
         if not news_rows:
             st.warning("Uudistevoogu ei õnnestunud hetkel laadida.")
-            if news_meta.errors:
+            if news_meta is not None and news_meta.errors:
                 st.caption(" · ".join(news_meta.errors[:4]))
         else:
             st.caption(f"Allikad kättesaadavad: {news_meta.sources_ok}/{news_meta.sources_total}")
