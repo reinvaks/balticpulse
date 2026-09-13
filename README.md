@@ -86,3 +86,18 @@ Allikapoliitika: AST operatiivvaade on AST enda sõnul valideerimata ning Litgri
 - Curated discovery: Reuters, S&P Global Energy, IEA, Utility Dive, Energy Intelligence.
 - Previous valid snapshot is preserved if a refresh returns zero stories.
 - BalticPulse only reads the local JSON snapshot, so news-source DNS/TLS/Cloudflare failures cannot break the app.
+
+## V15.9.0 — power and gas futures
+- Power futures snapshot from official Euronext Nord Pool Power Futures pages.
+- Nordic SYS M/Q/Y curves plus Helsinki (HL) and Vilnius (VI) EPADs.
+- FI implied = SYS + Helsinki EPAD; LT implied = SYS + Vilnius EPAD for matching delivery periods.
+- Key view: M+1 / Q+1 / Y+1 plus full forward curve.
+- Gas futures snapshot from official ICE Endex Dutch TTF Natural Gas Futures delayed-data page.
+- Key view: M+1 / Q+1 / Y+1 plus full TTF forward curve.
+- GitHub Actions refreshes hourly and preserves the previous valid snapshot on source failure.
+
+## V15.9.1 — UI and gas-chart cleanup
+- Reserve-market detail tables removed; charts/KPIs retained.
+- Fundamentals moved immediately after Electricity in navigation.
+- Stronger headings/captions distinguish overview and detail sections.
+- EEX NGP history chart rebuilt as separate daily traces with missing days as NaN and `connectgaps=False`.

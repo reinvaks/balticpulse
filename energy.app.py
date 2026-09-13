@@ -29,7 +29,7 @@ from energy_sources import (
 )
 from umm_client import fetch_umm_messages
 
-APP_BUILD_VERSION = "15.8.1"
+APP_BUILD_VERSION = "15.9.1"
 
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
@@ -402,7 +402,31 @@ def load_eua():
 
 
 @st.fragment(run_every=60)
+@st.cache_data(ttl=300)
+def load_futures_snapshot():
+    path = Path(__file__).resolve().parent / "data" / "futures.json"
+    if not path.exists():
+        return {}, {"ok": False, "error": "data/futures.json puudub"}
+    try:
+        import json
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        return payload, {"ok": True, "error": None}
+    except Exception as exc:
+        return {}, {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+
+
+def _future_key_rows(payload: dict, section: str):
+    rows = payload.get(section, {}).get("key", []) if isinstance(payload, dict) else []
+    return pd.DataFrame(rows) if rows else pd.DataFrame()
+
+
+def _future_curve_rows(payload: dict, section: str):
+    rows = payload.get(section, {}).get("curve", []) if isinstance(payload, dict) else []
+    return pd.DataFrame(rows) if rows else pd.DataFrame()
+
 def render_dashboard():
+    futures_snapshot, futures_snapshot_status = load_futures_snapshot()
+
     # Header
     c1, c2 = st.columns([4, 1])
     with c1:
@@ -1131,11 +1155,13 @@ def render_dashboard():
             )
 
     # ---------- 2. DETAIL TABS ----------
-    tab_overview, tab_prices, tab_system, tab_entsoe, tab_umm, tab_news, tab_reserves, tab_gas, tab_fundamentals, tab_quality = st.tabs([
-        "📌 Põhivaade", "⚡ Elektrihinnad", "🏭 Baltikumi süsteem", "🌐 ENTSO-E", "📣 UMM", "🌍 Energiauudised", "🔄 Reservid", "🔥 Gaasihoidlad", "📈 Fundamentaalid", "✅ Andmekvaliteet"
+    tab_overview, tab_prices, tab_fundamentals, tab_system, tab_entsoe, tab_umm, tab_news, tab_reserves, tab_gas, tab_quality = st.tabs([
+        "📌 Põhivaade", "⚡ Elektrihinnad", "📈 Fundamentaalid", "🏭 Baltikumi süsteem", "🌐 ENTSO-E", "📣 UMM", "🌍 Energiauudised", "🔄 Reservid", "🔥 Gaasihoidlad", "✅ Andmekvaliteet"
     ])
 
     with tab_overview:
+        st.markdown("## 📌 Üldine armatuurlaud")
+        st.caption("Kiirvaade olulisematele elektri-, süsteemi-, gaasi- ja reservinäitajatele.")
         left, right = st.columns(2)
         with left:
             st.markdown("### 🇪🇪 EE / 🇱🇻 LV / 🇱🇹 LT / 🇫🇮 FI spot-hinnad")
@@ -1176,6 +1202,8 @@ def render_dashboard():
             st.info("Jooksva aasta reserviajaloo fail pole veel loodud. Kuni GitHub Actionsi esimese backfill'ini vaata detailvaates viimase 7 päeva live-andmeid.")
 
     with tab_prices:
+        st.markdown("## ⚡ Elektriturg")
+        st.caption("Päeva-ette hinnad, ajalugu, kuustatistika ja elektri forward-vaade.")
         st.markdown("### Regionaalsed päeva-ette hinnad")
         st.caption("EE/LV/LT/FI Nord Pool päev-ette hinnad Eleringi avalikust NPS API-st.")
 
@@ -1276,7 +1304,64 @@ def render_dashboard():
         st.caption("Allikas: Eleringi avalik NPS API / Nord Pool päev-ette turg.")
 
 
+        st.divider()
+        st.markdown("#### ⚡ Elektri forward-vaade")
+        st.caption(
+            "Euronext Nord Pool Power Futures. Nordic SYS on süsteemihinna futuur; "
+            "FI implied = SYS + Helsinki EPAD; LT implied = SYS + Vilnius EPAD. "
+            "Kuvatakse viimase eduka GitHub snapshot'i settlement-hinnad."
+        )
+
+        pkey = _future_key_rows(futures_snapshot, "power")
+        pcurve = _future_curve_rows(futures_snapshot, "power")
+        pmeta = futures_snapshot.get("power", {}) if futures_snapshot else {}
+        p_updated = pd.to_datetime(futures_snapshot.get("updated_at"), utc=True, errors="coerce") if futures_snapshot else pd.NaT
+
+        if pkey.empty:
+            st.warning(
+                "Elektrifutuuride snapshot pole veel saadaval. Käivita GitHub Actions → "
+                "Update BalticPulse futures → Run workflow."
+            )
+            if pmeta.get("errors"):
+                with st.expander("Futuuride diagnostika"):
+                    for err in pmeta.get("errors", []): st.write(f"• {err}")
+        else:
+            if pd.notna(p_updated):
+                st.caption(f"Futuuride snapshot uuendatud: {p_updated.tz_convert(TALLINN).strftime('%d.%m.%Y %H:%M')}")
+            st.dataframe(
+                pkey,
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    "settlement": st.column_config.NumberColumn("Settlement €/MWh", format="%.2f"),
+                    "open_interest": st.column_config.NumberColumn("Open interest", format="%.0f"),
+                },
+            )
+
+            if not pcurve.empty:
+                curve_sel = st.multiselect(
+                    "Forward curve",
+                    sorted(pcurve["series"].dropna().unique().tolist()),
+                    default=[x for x in ["Nordic SYS", "FI implied", "LT implied"] if x in set(pcurve["series"])],
+                    key="power_future_curve_series",
+                )
+                pc = pcurve[pcurve["series"].isin(curve_sel)].copy()
+                if not pc.empty:
+                    pc["delivery_start"] = pd.to_datetime(pc["delivery_start"], errors="coerce")
+                    fig = px.line(
+                        pc.sort_values("delivery_start"), x="delivery_start", y="settlement",
+                        color="series", markers=True,
+                        hover_data=[c for c in ["delivery", "open_interest", "source_product"] if c in pc.columns],
+                        labels={"delivery_start":"Tarneperioodi algus", "settlement":"€/MWh", "series":"Forward"},
+                        title="Elektri forward curve",
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+            st.caption("Allikas: Euronext Amsterdam — Nordic System Price Futures, Helsinki EPAD ja Vilnius EPAD.")
+
+
     with tab_system:
+        st.markdown("## 🏭 Baltikumi elektrisüsteem")
+        st.caption("Tootmine, tarbimine, taastuvtootmine ja süsteemivoogude detailvaade.")
         st.markdown("### 🇪🇪🇱🇻🇱🇹 Baltikumi elektrisüsteem — tegelik tootmine, tarbimine ja taastuvad")
         st.caption("Eesti kogutootmine/tarbimine: Elering actual-only. Läti ja Leedu: ENTSO-E A75 actual generation ja A65 actual total load. Taastuvjaotus kõigis riikides ENTSO-E A75 järgi.")
         ee_tab, lv_tab, lt_tab = st.tabs(["🇪🇪 Eesti", "🇱🇻 Läti", "🇱🇹 Leedu"])
@@ -1535,6 +1620,7 @@ def render_dashboard():
 
 
     with tab_reserves:
+        st.markdown("## 🔄 Reservturud")
         st.markdown("### Balti balancing capacity market — jooksva aasta areng")
         st.caption("Põhivaade on jooksva aasta YTD trend: aFRR ja mFRR võimsuse valmisolekutasud (€/MW/h), agregeeritud kuukeskmisteks. Autoriteetne algallikas on Baltic Transparency Dashboard; arhiiv tuleb Voltoni CC-BY-4.0 päevafailidest.")
         if not reserve_ytd.empty:
@@ -1563,7 +1649,6 @@ def render_dashboard():
             st.plotly_chart(fig, use_container_width=True)
             latest_day = r["time_local"].dt.date.max()
             s = r[r["time_local"].dt.date == latest_day].groupby(["region","product","direction"])["price_eur_mw_h"].agg(["mean","min","max"]).reset_index()
-            st.dataframe(s, hide_index=True, use_container_width=True)
             st.info("FCR-i ei kuvata enne, kui selle kasutatav andmeliides on eraldi valideeritud. Capacity hind (€/MW/h) ja balancing-energy hind (€/MWh) jäävad eraldi plokkidesse.")
 
         st.markdown("### Balti aktiveeritud tasakaalustusenergia hinnad — EE/LV/LT")
@@ -1591,13 +1676,11 @@ def render_dashboard():
                             .groupby(["region", "product", "direction"], as_index=False)
                             .tail(1)[["region", "product", "direction", "time_local", "price_eur_mwh"]]
                             .sort_values(["region", "product", "direction"]))
-                st.dataframe(latest_e, hide_index=True, use_container_width=True, column_config={
-                    "price_eur_mwh": st.column_config.NumberColumn("Viimane €/MWh", format="%.1f"),
-                    "time_local": st.column_config.DatetimeColumn("MTU", format="DD.MM.YYYY HH:mm"),
-                })
                 st.caption("Allikas: Elering / Baltic Transparency Dashboard via Volton Public Data. Andmestik on eraldi balancing-capacity turust.")
 
     with tab_gas:
+        st.markdown("## 🔥 Gaasihoidlad")
+        st.caption("EL ja Inčukalnsi täituvus ning gaasivarude operatiivne seis.")
         st.markdown("### EL ja Läti gaasihoidlad — GIE AGSI+")
         st.caption("AGSI+ on päevane andmestik: see ei ole intraday reaalaja mõõdik. GIE järgi kajastab päevakirje eelmise gaasipäeva lõpu seisu.")
         if storage_df.empty:
@@ -1636,14 +1719,60 @@ def render_dashboard():
             source_badge("GIE AGSI+", storage_status.ok, storage_status.error or storage_status.note)
 
     with tab_fundamentals:
+        st.markdown("## 📈 Turu fundamentaalid")
+        st.caption("Gaas, futuurid, Brent ja EUA — spot- ja forward-vaade ühes plokis.")
         st.markdown("### Turu põhifundamentaalid")
 
+        st.markdown("---")
+        st.markdown("### 🔥 Gaasiturg")
+        st.caption("Spot-indeksid, ajalooline hinnapilt ja TTF forward curve.")
         st.markdown("#### Gaasihinnad — EEX Neutral Gas Price")
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("🇳🇱 TTF NGP", f"{ngp_current['TTF']:.1f} €/MWh" if ngp_current["TTF"] is not None else "—")
         c2.metric("🇪🇪🇱🇻 LVA-EST NGP", f"{ngp_current['LVA-EST']:.1f} €/MWh" if ngp_current["LVA-EST"] is not None else "—")
         c3.metric("🇫🇮 FIN NGP", f"{ngp_current['FIN']:.1f} €/MWh" if ngp_current["FIN"] is not None else "—")
         c4.metric("🇱🇹 LTU NGP", f"{ngp_current['LTU']:.1f} €/MWh" if ngp_current["LTU"] is not None else "—")
+
+
+        st.markdown("#### 🔥 TTF forward-vaade")
+        st.caption(
+            "ICE Endex Dutch TTF Natural Gas Futures (vähemalt 15 min viitega). "
+            "M+1 / Q+1 / Y+1 on futuurid, mitte prognoos tulevasest spot-hinnast."
+        )
+        gkey = _future_key_rows(futures_snapshot, "gas")
+        gcurve = _future_curve_rows(futures_snapshot, "gas")
+        gmeta = futures_snapshot.get("gas", {}) if futures_snapshot else {}
+        if gkey.empty:
+            st.warning(
+                "TTF futuuride snapshot pole veel saadaval. Käivita GitHub Actions → "
+                "Update BalticPulse futures → Run workflow."
+            )
+            if gmeta.get("errors"):
+                with st.expander("TTF futuuride diagnostika"):
+                    for err in gmeta.get("errors", []): st.write(f"• {err}")
+        else:
+            st.dataframe(
+                gkey,
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    "last": st.column_config.NumberColumn("Viimane €/MWh", format="%.3f"),
+                    "volume": st.column_config.NumberColumn("Volume", format="%.0f"),
+                },
+            )
+            if not gcurve.empty:
+                gc = gcurve.copy()
+                gc["delivery_start"] = pd.to_datetime(gc["delivery_start"], errors="coerce")
+                gc = gc.dropna(subset=["delivery_start", "last"]).sort_values("delivery_start")
+                if not gc.empty:
+                    fig = px.line(
+                        gc, x="delivery_start", y="last", markers=True,
+                        hover_data=[c for c in ["contract", "volume", "time"] if c in gc.columns],
+                        labels={"delivery_start":"Tarneperioodi algus", "last":"€/MWh"},
+                        title="Dutch TTF forward curve — ICE Endex",
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+            st.caption("Allikas: ICE Endex Dutch TTF Natural Gas Futures; turuandmed on ICE järgi vähemalt 15 min viitega.")
 
         gas_period = st.segmented_control(
             "Gaasiajaloo periood",
@@ -1684,9 +1813,55 @@ def render_dashboard():
 
             if frames:
                 gh = pd.concat(frames, ignore_index=True)
-                fig = px.line(
-                    gh, x="date", y="price_eur_mwh", color="Piirkond", markers=True,
-                    labels={"date":"Gaasipäev","price_eur_mwh":"€/MWh"},
+                gh["date"] = pd.to_datetime(gh["date"], errors="coerce")
+                gh["price_eur_mwh"] = pd.to_numeric(gh["price_eur_mwh"], errors="coerce")
+                gh = gh.dropna(subset=["date", "price_eur_mwh", "Piirkond"])
+
+                fig = go.Figure()
+                for area in gas_areas:
+                    g = gh[gh["Piirkond"] == area].copy().sort_values("date")
+                    if g.empty:
+                        continue
+
+                    g = (
+                        g.groupby("date", as_index=False)["price_eur_mwh"]
+                        .last()
+                        .sort_values("date")
+                    )
+
+                    # Insert missing calendar days as NaN so Plotly never draws
+                    # a false diagonal segment across gaps.
+                    full_days = pd.date_range(
+                        g["date"].min().normalize(),
+                        g["date"].max().normalize(),
+                        freq="D",
+                    )
+                    g = (
+                        g.set_index("date")
+                        .reindex(full_days)
+                        .rename_axis("date")
+                        .reset_index()
+                    )
+
+                    fig.add_trace(
+                        go.Scatter(
+                            x=g["date"],
+                            y=g["price_eur_mwh"],
+                            mode="lines+markers",
+                            name=area,
+                            connectgaps=False,
+                            hovertemplate=(
+                                f"{area}<br>%{{x|%d.%m.%Y}}"
+                                "<br>%{y:.2f} €/MWh<extra></extra>"
+                            ),
+                        )
+                    )
+
+                fig.update_layout(
+                    xaxis_title="Gaasipäev",
+                    yaxis_title="€/MWh",
+                    legend_title="Piirkond",
+                    hovermode="x unified",
                 )
                 st.plotly_chart(fig, use_container_width=True)
 
@@ -1726,6 +1901,8 @@ def render_dashboard():
             )
 
         st.divider()
+        st.markdown("---")
+        st.markdown("### 🛢️ Toorained ja CO₂")
         st.markdown("#### Muud fundamentaalhinnad")
         l, r = st.columns(2)
 
