@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated_at": "2026-09-13T15:12:58.642462+00:00",
+  "updated_at": "2026-09-13T15:20:32.655861+00:00",
   "power": {
     "curve": [],
     "key": [],
@@ -20,7 +20,7 @@
     "curve": [],
     "key": [],
     "errors": [
-      "ICE TTF: HTTPError: 403 Client Error: Forbidden for url: https://www.ice.com/products/27996665/Dutch-TTF-Natural-Gas-Futures/data?marketId=5927115"
+      "ICE TTF: ValueError: No tables found"
     ],
     "source_url": "https://www.ice.com/products/27996665/Dutch-TTF-Natural-Gas-Futures/data?marketId=5927115"
   },
@@ -28,7 +28,7 @@
     "curve": [],
     "key": [],
     "errors": [
-      "ICE Brent: HTTPError: 403 Client Error: Forbidden for url: https://www.ice.com/products/219/Brent-Crude-Futures/data?marketId=5049381"
+      "ICE Brent: ValueError: No tables found"
     ],
     "source_url": "https://www.ice.com/products/219/Brent-Crude-Futures/data?marketId=5049381"
   }
