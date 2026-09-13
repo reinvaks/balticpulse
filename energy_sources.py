@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import requests
 
-BUILD_VERSION = "15.7.3"
+BUILD_VERSION = "15.8.1"
 
 LOG = logging.getLogger(__name__)
 TALLINN = ZoneInfo("Europe/Tallinn")
@@ -29,6 +29,14 @@ EEX_NGP_CURRENT_URLS = {
     "LTU": "https://gasandregistry.eex.com/Gas/NGP/LTU_NGP_15_Mins.csv",
     "LVA-EST": "https://gasandregistry.eex.com/Gas/NGP/LVA-EST_NGP_15_Mins.csv",
 }
+
+EEX_NGP_HISTORY_URLS = {
+    "TTF": "https://gasandregistry.eex.com/Gas/NGP/TTF_NGP_60_Days.csv",
+    "FIN": "https://gasandregistry.eex.com/Gas/NGP/FIN_NGP_60_Days.csv",
+    "LTU": "https://gasandregistry.eex.com/Gas/NGP/LTU_NGP_60_Days.csv",
+    "LVA-EST": "https://gasandregistry.eex.com/Gas/NGP/LVA-EST_NGP_60_Days.csv",
+}
+
 EEX_EUA_AUCTION_URL = "https://public.eex-group.com/eex/eua-auction-report/emission-spot-primary-market-auction-report-2026-data.xlsx"
 EIA_BRENT_XLS_URL = "https://www.eia.gov/dnav/pet/hist_xls/RBRTEd.xls"
 EIA_BRENT_HTML_URL = "https://www.eia.gov/dnav/pet/hist/rbrteD.htm"
@@ -226,35 +234,69 @@ def fetch_eex_ngp_current(area: str = "TTF") -> tuple[pd.DataFrame, SourceStatus
         return pd.DataFrame(), status
 
 
-def fetch_eex_ttf_ngp() -> tuple[pd.DataFrame, SourceStatus]:
-    """EEX Neutral Gas Price TTF — final daily history, public 60-day CSV.
 
-    This is a spot-market TTF reference published by EEX, not a front-month futures price.
+def fetch_eex_ngp_history(area: str = "TTF") -> tuple[pd.DataFrame, SourceStatus]:
+    """Official public EEX NGP final daily history.
+
+    EEX documents these free public history files as covering the last 60 days.
+    No values beyond source coverage are extrapolated.
     """
-    raw, status = _get_bytes(EEX_TTF_HISTORY_URL)
-    status.source = "EEX Neutral Gas Price TTF (NGP TTF)"
+    area = area.upper()
+    url = EEX_NGP_HISTORY_URLS.get(area)
+    if not url:
+        return pd.DataFrame(), SourceStatus(
+            source=f"EEX NGP {area} history",
+            ok=False,
+            fetched_at=_now_iso(),
+            error="Unsupported NGP area",
+        )
+
+    raw, status = _get_bytes(url)
+    status.source = f"EEX NGP {area} final history"
     if raw is None:
         return pd.DataFrame(), status
+
     try:
-        text = raw.decode("utf-8-sig", errors="replace")
         try:
-            df = pd.read_csv(StringIO(text), sep=None, engine="python")
+            text = raw.decode("cp1252")
         except Exception:
-            df = pd.read_csv(StringIO(text), sep=";", engine="python")
+            text = raw.decode("utf-8-sig", errors="replace")
+
+        df = pd.read_csv(StringIO(text), sep=";", engine="python")
         df.columns = [str(c).strip() for c in df.columns]
-        dcol, dates = _best_datetime_column(df)
-        pcol, prices = _best_numeric_column(df, ("ttf", "ngp", "price", "eur", "value"))
-        if dcol is None or dates is None or pcol is None or prices is None:
-            raise ValueError(f"Could not identify date/price columns: {list(df.columns)}")
-        out = pd.DataFrame({"date": dates, "price_eur_mwh": prices}).dropna().drop_duplicates("date").sort_values("date")
+
+        if len(df.columns) >= 2 and "gasday" in df.columns[0].lower():
+            dates = pd.to_datetime(df.iloc[:, 0], format="%d/%m/%Y", errors="coerce")
+            prices = pd.to_numeric(
+                df.iloc[:, 1].astype(str).str.replace(",", ".", regex=False),
+                errors="coerce",
+            )
+        else:
+            dcol, dates = _best_datetime_column(df)
+            pcol, prices = _best_numeric_column(df, (area, "ngp", "price", "eur", "value"))
+            if dcol is None or dates is None or pcol is None or prices is None:
+                raise ValueError(f"Could not identify date/price columns: {list(df.columns)}")
+
+        out = pd.DataFrame({
+            "date": pd.to_datetime(dates, errors="coerce"),
+            "price_eur_mwh": pd.to_numeric(prices, errors="coerce"),
+        }).dropna()
+        out = out[(out["price_eur_mwh"] > -500) & (out["price_eur_mwh"] < 1000)]
+        out = out.drop_duplicates("date", keep="last").sort_values("date")
         if out.empty:
-            raise ValueError("No TTF NGP rows parsed")
-        status.note = "Final daily EEX NGP TTF history (public 60-day file); not TTF front-month futures."
-        return out, status
+            raise ValueError("No valid EEX NGP history rows parsed")
+
+        status.note = "Official EEX public final NGP history; free history file covers the last 60 days."
+        return out.reset_index(drop=True), status
     except Exception as exc:
         status.ok = False
-        status.error = f"TTF CSV parse error: {exc}"
+        status.error = f"{area} NGP history CSV parse error: {exc}"
         return pd.DataFrame(), status
+
+
+def fetch_eex_ttf_ngp() -> tuple[pd.DataFrame, SourceStatus]:
+    """Backward-compatible wrapper for official EEX TTF NGP public history."""
+    return fetch_eex_ngp_history("TTF")
 
 
 def _read_excel_flex(raw: bytes) -> list[pd.DataFrame]:

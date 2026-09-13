@@ -22,14 +22,14 @@ from energy_sources import (
     fetch_entsoe_estonia_ntc,
     fetch_entsoe_actual_load,
     fetch_eex_ngp_current,
+    fetch_eex_ngp_history,
     fetch_eex_ttf_ngp,
     fetch_eia_brent,
     fetch_eex_eua_auction,
 )
 from umm_client import fetch_umm_messages
-from energy_news import fetch_energy_news
 
-APP_BUILD_VERSION = "15.7.3"
+APP_BUILD_VERSION = "15.8.1"
 
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
@@ -131,6 +131,121 @@ def load_short_prices():
     return fetch_elering_prices(now - timedelta(days=1), now + timedelta(days=2))
 
 
+
+@st.cache_data(ttl=21600)
+def load_electricity_price_history(days: int):
+    end = datetime.now(timezone.utc)
+    start = end - timedelta(days=int(days))
+    chunks = []
+    cur = start
+    step = timedelta(days=31)
+    while cur < end:
+        nxt = min(cur + step, end)
+        chunks.append((cur, nxt))
+        cur = nxt
+
+    frames, errors = [], []
+    with ThreadPoolExecutor(max_workers=min(8, max(1, len(chunks)))) as pool:
+        futures = [pool.submit(fetch_elering_prices, x, y) for x, y in chunks]
+        for fut in futures:
+            try:
+                df, stx = fut.result()
+                if not df.empty:
+                    frames.append(df)
+                if not stx.ok and stx.error:
+                    errors.append(stx.error)
+            except Exception as exc:
+                errors.append(f"{type(exc).__name__}: {exc}")
+
+    if not frames:
+        return pd.DataFrame(), errors
+
+    df = pd.concat(frames, ignore_index=True).drop_duplicates(["region", "timestamp"])
+    return df.sort_values(["region", "time_utc"]), errors
+
+
+@st.cache_data(ttl=21600)
+def load_gas_ngp_history():
+    return {area: fetch_eex_ngp_history(area) for area in ["TTF", "LVA-EST", "FIN", "LTU"]}
+
+
+def _price_interval_hours(group: pd.DataFrame) -> pd.Series:
+    g = group.sort_values("time_utc")
+    hours = (g["time_utc"].shift(-1) - g["time_utc"]).dt.total_seconds() / 3600.0
+    hours = hours.where((hours >= 0.20) & (hours <= 1.10))
+    fallback = hours.dropna().tail(16).median()
+    if pd.isna(fallback):
+        fallback = 1.0
+    return hours.fillna(float(fallback))
+
+
+def electricity_monthly_summary(df: pd.DataFrame, months: int = 12) -> pd.DataFrame:
+    if df.empty:
+        return pd.DataFrame()
+
+    x = df.copy()
+    x["time_local"] = pd.to_datetime(x["time_local"], errors="coerce")
+    x = x.dropna(subset=["time_local", "price", "region"])
+    cutoff = pd.Timestamp.now(tz=TALLINN) - pd.DateOffset(months=months)
+    x = x[x["time_local"] >= cutoff]
+
+    rows = []
+    for region, g in x.groupby("region"):
+        g = g.sort_values("time_utc").copy()
+        g["duration_h"] = _price_interval_hours(g)
+        g["month"] = g["time_local"].dt.to_period("M").astype(str)
+        for month, m in g.groupby("month"):
+            denom = m["duration_h"].sum()
+            mean = (m["price"] * m["duration_h"]).sum() / denom if denom > 0 else m["price"].mean()
+            min_row = m.loc[m["price"].idxmin()]
+            max_row = m.loc[m["price"].idxmax()]
+            rows.append({
+                "Kuu": month,
+                "Piirkond": region,
+                "Keskmine €/MWh": float(mean),
+                "Min €/MWh": float(min_row["price"]),
+                "Min aeg": min_row["time_local"],
+                "Max €/MWh": float(max_row["price"]),
+                "Max aeg": max_row["time_local"],
+            })
+
+    return pd.DataFrame(rows).sort_values(["Kuu", "Piirkond"], ascending=[False, True]) if rows else pd.DataFrame()
+
+
+def gas_monthly_summary(history_by_area: dict, months: int = 12) -> pd.DataFrame:
+    rows = []
+    cutoff = pd.Timestamp.now().normalize() - pd.DateOffset(months=months)
+
+    for area, payload in history_by_area.items():
+        df, status = payload
+        if df.empty:
+            continue
+        x = df.copy()
+        x["date"] = pd.to_datetime(x["date"], errors="coerce")
+        x = x.dropna(subset=["date", "price_eur_mwh"])
+        x = x[x["date"] >= cutoff]
+        x["month"] = x["date"].dt.to_period("M").astype(str)
+
+        for month, m in x.groupby("month"):
+            min_row = m.loc[m["price_eur_mwh"].idxmin()]
+            max_row = m.loc[m["price_eur_mwh"].idxmax()]
+            rows.append({
+                "Kuu": month,
+                "Piirkond": area,
+                "Keskmine €/MWh": float(m["price_eur_mwh"].mean()),
+                "Min €/MWh": float(min_row["price_eur_mwh"]),
+                "Min kuupäev": min_row["date"].date(),
+                "Max €/MWh": float(max_row["price_eur_mwh"]),
+                "Max kuupäev": max_row["date"].date(),
+            })
+
+    return pd.DataFrame(rows).sort_values(["Kuu", "Piirkond"], ascending=[False, True]) if rows else pd.DataFrame()
+
+
+def _history_days(label: str) -> int:
+    return {"1 nädal": 7, "1 kuu": 31, "1 aasta": 366, "5 aastat": 1826}[label]
+
+
 @st.cache_data(ttl=60)
 def load_system():
     now = datetime.now(timezone.utc)
@@ -203,9 +318,33 @@ def load_umm():
     return fetch_umm_messages(limit=200, max_pages=1, retries=2)
 
 
-@st.cache_data(ttl=300)
-def load_energy_news():
-    return fetch_energy_news(max_items=30)
+@st.cache_data(ttl=120)
+def load_energy_news_snapshot():
+    path = Path(__file__).resolve().parent / "data" / "energy_news.json"
+    if not path.exists():
+        return [], {
+            "updated_at": None,
+            "sources_ok": 0,
+            "sources_total": 0,
+            "errors": ["data/energy_news.json puudub"],
+        }
+    try:
+        import json
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        return payload.get("items", []), {
+            "updated_at": payload.get("updated_at"),
+            "sources_ok": payload.get("sources_ok", 0),
+            "sources_total": payload.get("sources_total", 0),
+            "errors": payload.get("errors", []),
+        }
+    except Exception as exc:
+        return [], {
+            "updated_at": None,
+            "sources_ok": 0,
+            "sources_total": 0,
+            "errors": [f"{type(exc).__name__}: {exc}"],
+        }
+
 
 
 @st.cache_data(ttl=1800)
@@ -848,6 +987,22 @@ def render_dashboard():
                 detail=umm_meta.error or f"HTTP {umm_meta.status_code or '—'} · {len(umm_rows)} teadet",
                 level=umm_level,
             )
+            _news_items, _news_meta = load_energy_news_snapshot()
+            _news_updated = pd.to_datetime(_news_meta.get("updated_at"), utc=True, errors="coerce")
+            _news_age = age_minutes(_news_updated) if pd.notna(_news_updated) else None
+            source_badge(
+                "Energia uudiste snapshot",
+                detail=(
+                    f"{len(_news_items)} lugu · {_news_meta.get('sources_ok', 0)}/"
+                    f"{_news_meta.get('sources_total', 0)} allikat"
+                ),
+                level=(
+                    "ok" if _news_items and (_news_age is None or _news_age <= 120)
+                    else "warning" if _news_items
+                    else "error"
+                ),
+            )
+
 
             source_badge(
                 "GIE AGSI+",
@@ -976,9 +1131,6 @@ def render_dashboard():
             )
 
     # ---------- 2. DETAIL TABS ----------
-    news_rows = []
-    news_meta = None
-
     tab_overview, tab_prices, tab_system, tab_entsoe, tab_umm, tab_news, tab_reserves, tab_gas, tab_fundamentals, tab_quality = st.tabs([
         "📌 Põhivaade", "⚡ Elektrihinnad", "🏭 Baltikumi süsteem", "🌐 ENTSO-E", "📣 UMM", "🌍 Energiauudised", "🔄 Reservid", "🔥 Gaasihoidlad", "📈 Fundamentaalid", "✅ Andmekvaliteet"
     ])
@@ -1025,17 +1177,104 @@ def render_dashboard():
 
     with tab_prices:
         st.markdown("### Regionaalsed päeva-ette hinnad")
+        st.caption("EE/LV/LT/FI Nord Pool päev-ette hinnad Eleringi avalikust NPS API-st.")
+
         if prices.empty:
             st.error(price_status.error or "Andmed pole saadaval")
         else:
-            selected = st.multiselect("Piirkonnad", REGIONS, default=REGIONS)
+            selected = st.multiselect("Piirkonnad", REGIONS, default=REGIONS, key="price_live_regions")
             p = prices[prices["region"].isin(selected)]
-            fig = px.line(p, x="time_local", y="price", color="region", markers=False)
+            fig = px.line(p, x="time_local", y="price", color="region")
             fig.update_layout(yaxis_title="€/MWh", xaxis_title="Aeg (Europe/Tallinn)")
             st.plotly_chart(fig, use_container_width=True)
-            summary = p.assign(day=p["time_local"].dt.date).groupby(["day", "region"])["price"].agg(["mean","min","max"]).reset_index()
-            st.dataframe(summary, hide_index=True, use_container_width=True)
-        st.caption("Eleringi avalik NPS API; hinnad on börsi päev-ette hinnad, mitte lõpptarbija hind.")
+
+        st.divider()
+        st.markdown("#### Ajaloolised päev-ette hinnad")
+
+        price_period = st.segmented_control(
+            "Periood",
+            ["1 nädal", "1 kuu", "1 aasta", "5 aastat"],
+            default="1 kuu",
+            key="electricity_history_period",
+        )
+        hist_regions = st.multiselect(
+            "Ajaloo piirkonnad", REGIONS, default=REGIONS, key="price_history_regions"
+        )
+
+        if st.button("Laadi elektrihindade ajalugu", key="load_electricity_history"):
+            with st.spinner(f"Laadin perioodi „{price_period}“..."):
+                hist_df, hist_errors = load_electricity_price_history(_history_days(price_period))
+                st.session_state["electricity_history_df"] = hist_df
+                st.session_state["electricity_history_period_loaded"] = price_period
+                st.session_state["electricity_history_errors"] = hist_errors
+
+        hist_df = st.session_state.get("electricity_history_df", pd.DataFrame())
+        loaded_period = st.session_state.get("electricity_history_period_loaded")
+
+        if loaded_period and loaded_period != price_period:
+            st.info(f"Laaditud on „{loaded_period}“. Vajuta nuppu, et laadida „{price_period}“.")
+
+        if not hist_df.empty:
+            h = hist_df[hist_df["region"].isin(hist_regions)].copy()
+
+            if loaded_period in ("1 aasta", "5 aastat"):
+                rows = []
+                for region, g in h.groupby("region"):
+                    g = g.sort_values("time_utc").copy()
+                    g["duration_h"] = _price_interval_hours(g)
+                    g["day"] = g["time_local"].dt.date
+                    for day, d in g.groupby("day"):
+                        denom = d["duration_h"].sum()
+                        avg = (d["price"] * d["duration_h"]).sum() / denom if denom > 0 else d["price"].mean()
+                        rows.append({"date": pd.Timestamp(day), "region": region, "price": avg})
+                chart_df = pd.DataFrame(rows)
+                fig = px.line(
+                    chart_df, x="date", y="price", color="region",
+                    labels={"date":"Kuupäev","price":"Päeva keskmine €/MWh","region":"Piirkond"},
+                )
+            else:
+                fig = px.line(
+                    h, x="time_local", y="price", color="region",
+                    labels={"time_local":"Aeg","price":"€/MWh","region":"Piirkond"},
+                )
+
+            st.plotly_chart(fig, use_container_width=True)
+
+            errs = st.session_state.get("electricity_history_errors", [])
+            if errs:
+                with st.expander("Ajaloo päringu hoiatused"):
+                    for err in errs[:20]:
+                        st.write(f"• {err}")
+
+        st.markdown("#### Viimase 12 kuu kuuhinnad")
+        st.caption(
+            "Keskmine on ajakaalutud MTU keskmine. Minimaalne ja maksimaalne hind on "
+            "konkreetse turuperioodi hind koos kuupäeva ja kellaajaga."
+        )
+
+        if st.button("Laadi viimase 12 kuu kuustatistika", key="load_electricity_monthly"):
+            with st.spinner("Laadin viimase 12 kuu andmeid..."):
+                year_df, year_errors = load_electricity_price_history(370)
+                st.session_state["electricity_monthly_table"] = electricity_monthly_summary(year_df, 12)
+                st.session_state["electricity_monthly_errors"] = year_errors
+
+        monthly_el = st.session_state.get("electricity_monthly_table", pd.DataFrame())
+        if not monthly_el.empty:
+            st.dataframe(
+                monthly_el,
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    "Keskmine €/MWh": st.column_config.NumberColumn(format="%.2f"),
+                    "Min €/MWh": st.column_config.NumberColumn(format="%.2f"),
+                    "Max €/MWh": st.column_config.NumberColumn(format="%.2f"),
+                    "Min aeg": st.column_config.DatetimeColumn(format="DD.MM.YYYY HH:mm"),
+                    "Max aeg": st.column_config.DatetimeColumn(format="DD.MM.YYYY HH:mm"),
+                },
+            )
+
+        st.caption("Allikas: Eleringi avalik NPS API / Nord Pool päev-ette turg.")
+
 
     with tab_system:
         st.markdown("### 🇪🇪🇱🇻🇱🇹 Baltikumi elektrisüsteem — tegelik tootmine, tarbimine ja taastuvad")
@@ -1230,42 +1469,69 @@ def render_dashboard():
     with tab_news:
         st.markdown("### 🌍 Olulised energiauudised")
         st.caption(
-            "Kuratoeritud värske voog energiale keskendunud või tugeva energiatoimetusega allikatest. "
-            "Uudiste välisallikaid ei laadita enam rakenduse käivitamisel, et need ei saaks BalticPulse'i põhivaadet blokeerida."
+            "Uudised kogub GitHub Actions iga 30 minuti järel. BalticPulse loeb ainult repo snapshot'i, "
+            "seega väljaannete võrgupiirangud ei saa rakenduse käivitust ega uudiste vaadet blokeerida."
         )
-        if st.button("Laadi värsked energiauudised", key="load_energy_news_button"):
-            with st.spinner("Laadin energiauudiseid..."):
-                news_rows, news_meta = load_energy_news()
+
+        news_rows, news_meta = load_energy_news_snapshot()
+        updated_at = pd.to_datetime(news_meta.get("updated_at"), utc=True, errors="coerce")
+
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Lugusid", len(news_rows))
+        c2.metric(
+            "Allikaid korras",
+            f"{news_meta.get('sources_ok', 0)}/{news_meta.get('sources_total', 0)}",
+        )
+        c3.metric(
+            "Viimati uuendatud",
+            updated_at.tz_convert(TALLINN).strftime("%d.%m %H:%M") if pd.notna(updated_at) else "Pole veel uuendatud",
+        )
+
         if not news_rows:
-            st.warning("Uudistevoogu ei õnnestunud hetkel laadida.")
-            if news_meta is not None and news_meta.errors:
-                with st.expander("Näita uudiseallikate veateateid", expanded=True):
-                    for err in news_meta.errors:
+            st.warning(
+                "Uudiste snapshot on tühi. Käivita GitHub Actions → "
+                "Update BalticPulse energy news → Run workflow."
+            )
+            if news_meta.get("errors"):
+                with st.expander("Diagnostika", expanded=True):
+                    for err in news_meta["errors"]:
                         st.write(f"• {err}")
         else:
-            st.caption(f"Allikad kättesaadavad: {news_meta.sources_ok}/{news_meta.sources_total}")
-            if news_meta.errors:
-                with st.expander("Uudiseallikate staatus"):
-                    for err in news_meta.errors:
-                        st.write(f"• {err}")
             ndf = pd.DataFrame(news_rows)
             ndf["published_at"] = pd.to_datetime(ndf["published_at"], utc=True, errors="coerce")
             ndf = ndf.sort_values("published_at", ascending=False, na_position="last")
 
             topics = sorted(x for x in ndf["topic"].dropna().unique() if x)
-            selected_topics = st.multiselect("Teemad", topics, default=[])
+            selected_topics = st.multiselect(
+                "Teemad", topics, default=[], key="news_topic_filter"
+            )
             if selected_topics:
                 ndf = ndf[ndf["topic"].isin(selected_topics)]
 
-            for _, row in ndf.head(18).iterrows():
+            sources_news = sorted(x for x in ndf["source"].dropna().unique() if x)
+            selected_sources = st.multiselect(
+                "Väljaanded", sources_news, default=[], key="news_source_filter"
+            )
+            if selected_sources:
+                ndf = ndf[ndf["source"].isin(selected_sources)]
+
+            for _, row in ndf.head(24).iterrows():
                 ts = row["published_at"]
-                when = ts.tz_convert(TALLINN).strftime("%d.%m %H:%M") if pd.notna(ts) else "aeg teadmata"
+                when = (
+                    ts.tz_convert(TALLINN).strftime("%d.%m %H:%M")
+                    if pd.notna(ts) else "aeg teadmata"
+                )
                 st.markdown(f"**{row['title']}**")
                 st.caption(f"{row['source']} · {when} · {row['topic']}")
                 if row.get("summary"):
-                    st.write(str(row["summary"])[:320])
+                    st.write(str(row["summary"])[:360])
                 st.link_button("Ava artikkel ↗", row["url"])
                 st.divider()
+
+            if news_meta.get("errors"):
+                with st.expander("Osaliselt ebaõnnestunud uudiseallikad"):
+                    for err in news_meta["errors"]:
+                        st.write(f"• {err}")
 
 
     with tab_reserves:
@@ -1371,34 +1637,126 @@ def render_dashboard():
 
     with tab_fundamentals:
         st.markdown("### Turu põhifundamentaalid")
-        st.caption("Ametlikud/esmased allikad, mitte Yahoo Finance. TTF NGP on spot-referents, Brent on EIA spot-seeria ja EUA on EEX primaaroksjoni clearing price.")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("🇳🇱 TTF NGP", f"{ttf_latest:.1f} €/MWh" if ttf_latest is not None else "—", help=f"Viimane kuupäev: {pd.Timestamp(ttf_date).date() if ttf_date is not None else '—'}")
-        c2.metric("🌍 Brent spot", f"{brent_latest:.1f} $/bbl" if brent_latest is not None else "—", help=f"Viimane kuupäev: {pd.Timestamp(brent_date).date() if brent_date is not None else '—'}")
-        c3.metric("EUA oksjon", f"{eua_latest:.2f} €/tCO₂" if eua_latest is not None else "—", help=f"Viimane oksjon: {pd.Timestamp(eua_date).date() if eua_date is not None else '—'}")
 
-        if not ttf_df.empty:
-            fig = px.line(ttf_df.tail(60), x="date", y="price_eur_mwh", markers=True, labels={"date":"Kuupäev","price_eur_mwh":"€/MWh"}, title="EEX Neutral Gas Price TTF — viimased lõplikud päevahinnad")
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning(ttf_status.error or "EEX TTF NGP andmed pole saadaval.")
+        st.markdown("#### Gaasihinnad — EEX Neutral Gas Price")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("🇳🇱 TTF NGP", f"{ngp_current['TTF']:.1f} €/MWh" if ngp_current["TTF"] is not None else "—")
+        c2.metric("🇪🇪🇱🇻 LVA-EST NGP", f"{ngp_current['LVA-EST']:.1f} €/MWh" if ngp_current["LVA-EST"] is not None else "—")
+        c3.metric("🇫🇮 FIN NGP", f"{ngp_current['FIN']:.1f} €/MWh" if ngp_current["FIN"] is not None else "—")
+        c4.metric("🇱🇹 LTU NGP", f"{ngp_current['LTU']:.1f} €/MWh" if ngp_current["LTU"] is not None else "—")
 
+        gas_period = st.segmented_control(
+            "Gaasiajaloo periood",
+            ["1 nädal", "1 kuu", "1 aasta", "5 aastat"],
+            default="1 kuu",
+            key="gas_history_period",
+        )
+        gas_areas = st.multiselect(
+            "Gaasipiirkonnad",
+            ["TTF", "LVA-EST", "FIN", "LTU"],
+            default=["TTF", "LVA-EST", "FIN", "LTU"],
+            key="gas_history_areas",
+        )
+
+        if st.button("Laadi gaasihindade ajalugu", key="load_gas_history"):
+            with st.spinner("Laadin EEX NGP ajaloo..."):
+                st.session_state["gas_ngp_history"] = load_gas_ngp_history()
+
+        gas_hist = st.session_state.get("gas_ngp_history", {})
+        if gas_hist:
+            cutoff = pd.Timestamp.now().normalize() - pd.Timedelta(days=_history_days(gas_period))
+            frames, coverage = [], []
+
+            for area in gas_areas:
+                df, status = gas_hist.get(area, (pd.DataFrame(), None))
+                if df.empty:
+                    continue
+                x = df.copy()
+                x["date"] = pd.to_datetime(x["date"], errors="coerce")
+                coverage.append({
+                    "Piirkond": area,
+                    "Andmed alates": x["date"].min(),
+                    "Andmed kuni": x["date"].max(),
+                })
+                x = x[x["date"] >= cutoff]
+                x["Piirkond"] = area
+                frames.append(x)
+
+            if frames:
+                gh = pd.concat(frames, ignore_index=True)
+                fig = px.line(
+                    gh, x="date", y="price_eur_mwh", color="Piirkond", markers=True,
+                    labels={"date":"Gaasipäev","price_eur_mwh":"€/MWh"},
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+            if gas_period in ("1 aasta", "5 aastat"):
+                st.warning(
+                    "EEX ametlik tasuta avalik NGP ajaloo fail katab 60 päeva. "
+                    "BalticPulse ei täida 1 aasta ega 5 aasta puuduvat osa kontrollimata hinnaseeriaga."
+                )
+
+            if coverage:
+                st.dataframe(pd.DataFrame(coverage), hide_index=True, use_container_width=True)
+
+        st.markdown("#### Gaasi kuuhinnad")
+        st.caption(
+            "NGP on päevane lõplik spot-indeks. Seetõttu näidatakse kuumiinimumi ja -maksimumi juures "
+            "kuupäeva, mitte kellaaega. Avalik EEX ajalugu katab 60 päeva."
+        )
+
+        if st.button("Koosta gaasi kuustatistika", key="load_gas_monthly"):
+            with st.spinner("Koostan EEX NGP kuustatistika..."):
+                if not gas_hist:
+                    gas_hist = load_gas_ngp_history()
+                    st.session_state["gas_ngp_history"] = gas_hist
+                st.session_state["gas_monthly_table"] = gas_monthly_summary(gas_hist, 12)
+
+        monthly_gas = st.session_state.get("gas_monthly_table", pd.DataFrame())
+        if not monthly_gas.empty:
+            st.dataframe(
+                monthly_gas,
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    "Keskmine €/MWh": st.column_config.NumberColumn(format="%.2f"),
+                    "Min €/MWh": st.column_config.NumberColumn(format="%.2f"),
+                    "Max €/MWh": st.column_config.NumberColumn(format="%.2f"),
+                },
+            )
+
+        st.divider()
+        st.markdown("#### Muud fundamentaalhinnad")
         l, r = st.columns(2)
+
         with l:
+            st.metric("🌍 Brent spot", f"{brent_latest:.1f} $/bbl" if brent_latest is not None else "—")
             if not brent_df.empty:
-                b = brent_df.tail(180)
-                fig = px.line(b, x="date", y="price_usd_bbl", labels={"date":"Kuupäev","price_usd_bbl":"$/bbl"}, title="Europe Brent Spot Price FOB — EIA")
+                fig = px.line(
+                    brent_df.tail(180), x="date", y="price_usd_bbl",
+                    labels={"date":"Kuupäev","price_usd_bbl":"$/bbl"},
+                    title="Europe Brent Spot Price FOB — EIA",
+                )
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.warning(brent_status.error or "EIA Brent andmed pole saadaval.")
+
         with r:
+            st.metric("EUA oksjon", f"{eua_latest:.2f} €/tCO₂" if eua_latest is not None else "—")
             if not eua_df.empty:
-                fig = px.line(eua_df, x="date", y="price_eur_tco2", markers=True, labels={"date":"Oksjonipäev","price_eur_tco2":"€/tCO₂"}, title="EUA primaaroksjoni clearing price — EEX")
+                fig = px.line(
+                    eua_df, x="date", y="price_eur_tco2", markers=True,
+                    labels={"date":"Oksjonipäev","price_eur_tco2":"€/tCO₂"},
+                    title="EUA primaaroksjoni clearing price — EEX",
+                )
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.warning(eua_status.error or "EEX EUA oksjoniandmed pole saadaval.")
 
-        st.info("Metoodika: EEX TTF NGP ei ole TTF front-month futuur; EIA Brent on füüsilise spot-turu referents; EEX EUA oksjonihind on primaarmarketi hind. Nii väldime eri instrumentide eksitavat nimetamist üheks 'turuhinnaks'.")
+        st.info(
+            "Metoodika: EEX NGP on spot-turu päevane indeks, mitte TTF front-month futuur. "
+            "Pikemat gaasiajalugu ei konstrueerita avaliku allika 60 päeva piirist väljapoole."
+        )
 
 
     with tab_quality:

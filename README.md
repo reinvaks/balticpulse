@@ -72,3 +72,17 @@ Allikapoliitika: AST operatiivvaade on AST enda sõnul valideerimata ning Litgri
 - Energy news core feed now uses direct publisher RSS/Atom feeds rather than Google News.
 - Added visible per-source diagnostics for partial/failed news feeds.
 - News remains on-demand and cannot block startup.
+
+## V15.8.0 — market price history
+- Electricity EE/LV/LT/FI: 1 week / 1 month / 1 year / 5 years on demand from Elering NPS.
+- Electricity last 12 months: time-weighted monthly mean plus exact MTU minimum/maximum and timestamps.
+- Gas TTF/LVA-EST/FIN/LTU: same period selector from official EEX NGP history.
+- EEX free public NGP history is officially limited to 60 days; 1y/5y gas history is not fabricated.
+- Added daily GitHub Action to accumulate validated EEX NGP history in `data/gas_ngp_history.csv`.
+
+## V15.8.1 — reliable energy news
+- News is no longer fetched by Streamlit Cloud.
+- GitHub Actions refreshes `data/energy_news.json` every 30 minutes.
+- Curated discovery: Reuters, S&P Global Energy, IEA, Utility Dive, Energy Intelligence.
+- Previous valid snapshot is preserved if a refresh returns zero stories.
+- BalticPulse only reads the local JSON snapshot, so news-source DNS/TLS/Cloudflare failures cannot break the app.
