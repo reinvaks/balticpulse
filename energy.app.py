@@ -30,7 +30,7 @@ from energy_sources import (
     fetch_eex_eua_auction,
 )
 
-APP_BUILD_VERSION = "16.1.1"
+APP_BUILD_VERSION = "16.1.3"
 
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
@@ -389,12 +389,16 @@ def _build_system_history_chart(region: str, elering_df: pd.DataFrame, gen_df: p
     parts = []
 
     # Production: EE prefers Elering actual; if absent, use ENTSO-E actual generation total.
+    _ee_prod_added = False
     if region == "EE" and elering_df is not None and not elering_df.empty and "production_mw" in elering_df.columns:
         p = elering_df[["time_utc", "time_local", "production_mw"]].copy()
         p["MW"] = pd.to_numeric(p["production_mw"], errors="coerce")
-        p["series"] = "Tootmine"
-        parts.append(p[["time_utc", "time_local", "MW", "series"]].dropna(subset=["MW"]))
-    elif gen_df is not None and not gen_df.empty:
+        p = p.dropna(subset=["MW"])
+        if not p.empty:
+            p["series"] = "Tootmine"
+            parts.append(p[["time_utc", "time_local", "MW", "series"]])
+            _ee_prod_added = True
+    if (region != "EE" or not _ee_prod_added) and gen_df is not None and not gen_df.empty:
         p = (
             gen_df.groupby(["time_utc", "time_local"], as_index=False)["generation_mw"]
             .sum()
@@ -404,12 +408,16 @@ def _build_system_history_chart(region: str, elering_df: pd.DataFrame, gen_df: p
         parts.append(p[["time_utc", "time_local", "MW", "series"]])
 
     # Consumption: EE prefers Elering actual; otherwise ENTSO-E A65.
+    _ee_cons_added = False
     if region == "EE" and elering_df is not None and not elering_df.empty and "consumption_mw" in elering_df.columns:
         c = elering_df[["time_utc", "time_local", "consumption_mw"]].copy()
         c["MW"] = pd.to_numeric(c["consumption_mw"], errors="coerce")
-        c["series"] = "Tarbimine"
-        parts.append(c[["time_utc", "time_local", "MW", "series"]].dropna(subset=["MW"]))
-    elif load_df is not None and not load_df.empty:
+        c = c.dropna(subset=["MW"])
+        if not c.empty:
+            c["series"] = "Tarbimine"
+            parts.append(c[["time_utc", "time_local", "MW", "series"]])
+            _ee_cons_added = True
+    if (region != "EE" or not _ee_cons_added) and load_df is not None and not load_df.empty:
         c = load_df[["time_utc", "time_local", "load_mw"]].copy()
         c["MW"] = pd.to_numeric(c["load_mw"], errors="coerce")
         c["series"] = "Tarbimine"
@@ -616,6 +624,33 @@ def load_eu_day_ahead_snapshot():
         return {}, {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
 
 
+
+EU_PRICE_LABEL_POINTS = {
+    "AUT": (47.5, 14.3, "AT"),
+    "BEL": (50.8, 4.7, "BE"),
+    "BGR": (42.7, 25.5, "BG"),
+    "HRV": (45.2, 16.2, "HR"),
+    "CZE": (49.8, 15.5, "CZ"),
+    "DEU": (51.1, 10.4, "DE"),
+    "LUX": (49.6, 6.1, "LU"),
+    "DNK": (56.1, 9.4, "DK"),
+    "EST": (58.6, 25.2, "EE"),
+    "ESP": (40.3, -3.7, "ES"),
+    "FIN": (63.8, 26.0, "FI"),
+    "FRA": (46.5, 2.4, "FR"),
+    "GRC": (39.1, 22.0, "GR"),
+    "HUN": (47.1, 19.3, "HU"),
+    "LVA": (56.9, 24.6, "LV"),
+    "LTU": (55.2, 23.9, "LT"),
+    "NLD": (52.2, 5.5, "NL"),
+    "POL": (52.0, 19.2, "PL"),
+    "PRT": (39.7, -8.0, "PT"),
+    "ROU": (45.8, 24.9, "RO"),
+    "SVK": (48.7, 19.5, "SK"),
+    "SVN": (46.1, 14.9, "SI"),
+    "SWE": (62.0, 16.0, "SE"),
+}
+
 def _eu_map_df(payload: dict, date_str: str) -> pd.DataFrame:
     if not _snapshot_is_fresh(payload, 180):
         return pd.DataFrame()
@@ -632,18 +667,99 @@ def _render_eu_price_map(df: pd.DataFrame, title: str):
     if df.empty:
         st.info(f"{title}: andmed pole snapshot'is saadaval.")
         return
+
+    x = df.copy()
+    x["price_eur_mwh"] = pd.to_numeric(x["price_eur_mwh"], errors="coerce")
+    x = x.dropna(subset=["iso3", "price_eur_mwh"])
+    if x.empty:
+        st.info(f"{title}: valideeritud hinnad puuduvad.")
+        return
+
+    # Base choropleth keeps the colour comparison.
     fig = px.choropleth(
-        df,
+        x,
         locations="iso3",
         color="price_eur_mwh",
         hover_name="country",
-        hover_data={"iso3": False, "price_eur_mwh": ":.2f", "zones": True},
-        labels={"price_eur_mwh": "€/MWh", "zones": "Hinnapiirkonnad"},
+        hover_data={
+            "iso3": False,
+            "price_eur_mwh": ":.2f",
+            "zones": True,
+        },
+        labels={
+            "price_eur_mwh": "€/MWh",
+            "zones": "Hinnapiirkonnad",
+        },
         scope="europe",
         title=title,
+        color_continuous_scale="YlOrRd",
     )
-    fig.update_layout(margin={"r":0,"t":45,"l":0,"b":0}, coloraxis_colorbar_title="€/MWh")
+
+    # Numeric labels are a separate Scattergeo layer because choropleth itself
+    # only shows numeric values in hover, not persistently on the map.
+    label_rows = []
+    for _, row in x.iterrows():
+        point = EU_PRICE_LABEL_POINTS.get(str(row["iso3"]))
+        if point is None:
+            continue
+        lat, lon, code = point
+        label_rows.append({
+            "lat": lat,
+            "lon": lon,
+            "code": code,
+            "price": float(row["price_eur_mwh"]),
+            "country": row.get("country", code),
+        })
+
+    if label_rows:
+        labels_df = pd.DataFrame(label_rows)
+        fig.add_trace(
+            go.Scattergeo(
+                lon=labels_df["lon"],
+                lat=labels_df["lat"],
+                mode="markers+text",
+                marker={
+                    "size": 31,
+                    "color": "rgba(255,255,255,0.90)",
+                    "line": {"width": 1, "color": "rgba(30,30,30,0.70)"},
+                },
+                text=[
+                    f"<b>{code}</b><br>{price:.1f}"
+                    for code, price in zip(labels_df["code"], labels_df["price"])
+                ],
+                textposition="middle center",
+                textfont={"size": 9, "color": "#111111"},
+                customdata=labels_df[["country", "price"]],
+                hovertemplate=(
+                    "<b>%{customdata[0]}</b><br>"
+                    "%{customdata[1]:.2f} €/MWh"
+                    "<extra></extra>"
+                ),
+                showlegend=False,
+            )
+        )
+
+    fig.update_geos(
+        showcountries=True,
+        countrycolor="rgba(255,255,255,0.75)",
+        showcoastlines=True,
+        coastlinecolor="rgba(90,90,90,0.45)",
+        showocean=True,
+        oceancolor="rgba(230,238,247,0.65)",
+        fitbounds="locations",
+        visible=False,
+    )
+    fig.update_layout(
+        margin={"r": 0, "t": 48, "l": 0, "b": 0},
+        coloraxis_colorbar_title="€/MWh",
+        height=620,
+    )
     st.plotly_chart(fig, use_container_width=True)
+    st.caption(
+        "Kaardil olev number = päeva-ette keskmine hind €/MWh. "
+        "Mitme hinnapiirkonnaga riigi puhul on kuvatud snapshot'is arvutatud "
+        "piirkondade aritmeetiline keskmine."
+    )
 
 
 def _shade_month_groups(df: pd.DataFrame):
@@ -1979,6 +2095,8 @@ def render_dashboard():
                                 title="Eesti tegelik tootmine, tarbimine ja taastuvtootmine",
                             )
                             st.plotly_chart(fig, use_container_width=True)
+                            _shown_series = sorted(chart["series"].dropna().unique().tolist())
+                            st.caption("Graafikul: " + ", ".join(_shown_series))
 
                         source_badge(
                             "Elering / ENTSO-E EE",

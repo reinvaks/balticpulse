@@ -162,3 +162,16 @@ Core freshness rules in this build: Elering system 20 min; ENTSO-E actual 180 mi
 - LV/LT history uses ENTSO-E A75 generation and A65 actual total load.
 - 1y/5y views are shown as daily actual averages; missing source periods are not interpolated or synthesized.
 - UI shows actual data coverage and source-query errors.
+
+## V16.1.2 — Estonia production/consumption series fix
+- Elering production and consumption are now requested as separate `system/with-plan` series.
+- The observed Elering schema `timestamp, real, plan` is normalized explicitly; only `real` is accepted as actual.
+- Production and consumption are merged on timestamp.
+- If either Elering series is absent/empty, that individual line falls back to validated ENTSO-E actual instead of disappearing.
+- EE chart now shows a caption listing the series actually rendered.
+
+## V16.1.3 — EU day-ahead map price labels
+- Both ENTSO-E day-ahead maps retain the colour scale and now show a persistent numeric €/MWh label on each available country.
+- Labels use a separate Plotly Scattergeo layer over the choropleth.
+- Hover still shows the full country name, exact price and bidding-zone metadata.
+- Multi-zone countries remain explicitly described as BalticPulse country-level arithmetic averages of available bidding-zone daily averages.
