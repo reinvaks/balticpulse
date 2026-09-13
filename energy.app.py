@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 import energy_sources as _energy_sources
+from data_quality import SourceHealth, assess as assess_source, mask as mask_source, human_age as dq_human_age
 from energy_sources import (
     fetch_elering_prices,
     fetch_elering_system,
@@ -29,7 +30,7 @@ from energy_sources import (
     fetch_eex_eua_auction,
 )
 
-APP_BUILD_VERSION = "16.0.5"
+APP_BUILD_VERSION = "16.1.0"
 
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
@@ -123,6 +124,30 @@ def age_minutes(ts) -> float | None:
 def is_fresh(ts, max_minutes: float) -> bool:
     a = age_minutes(ts)
     return a is not None and a <= max_minutes
+
+def _snapshot_updated_at(payload: dict):
+    if not isinstance(payload, dict):
+        return None
+    return pd.to_datetime(payload.get("updated_at"), utc=True, errors="coerce")
+
+
+def _snapshot_is_fresh(payload: dict, max_minutes: float) -> bool:
+    ts = _snapshot_updated_at(payload)
+    return pd.notna(ts) and is_fresh(ts, max_minutes)
+
+
+def render_health_badge(health: SourceHealth) -> None:
+    age_txt = dq_human_age(health.age_minutes)
+    connection = "otseühendus" if health.direct else ("snapshot" if health.state == "SNAPSHOT" else "peegel/mirror")
+    detail = f"{health.state} · {connection} · {age_txt}"
+    if health.detail:
+        detail += f" · {health.detail}"
+    source_badge(
+        health.name,
+        detail=detail,
+        level=("ok" if health.state == "LIVE" else "warning" if health.state in ("SNAPSHOT","MIRROR","STALE") else "error"),
+    )
+
 
 
 @st.cache_data(ttl=60)
@@ -409,6 +434,8 @@ def load_eu_day_ahead_snapshot():
 
 
 def _eu_map_df(payload: dict, date_str: str) -> pd.DataFrame:
+    if not _snapshot_is_fresh(payload, 180):
+        return pd.DataFrame()
     rows = []
     day = (payload.get("days", {}) or {}).get(date_str, {}) if isinstance(payload, dict) else {}
     for row in day.get("countries", []) or []:
@@ -465,15 +492,34 @@ def load_futures_snapshot():
 
 
 def _future_key_rows(payload: dict, section: str):
+    if not _snapshot_is_fresh(payload, 120):
+        return pd.DataFrame()
     rows = payload.get(section, {}).get("key", []) if isinstance(payload, dict) else []
     return pd.DataFrame(rows) if rows else pd.DataFrame()
 
 
 def _future_curve_rows(payload: dict, section: str):
+    if not _snapshot_is_fresh(payload, 120):
+        return pd.DataFrame()
     rows = payload.get(section, {}).get("curve", []) if isinstance(payload, dict) else []
     return pd.DataFrame(rows) if rows else pd.DataFrame()
 
 
+
+
+
+def _futures_diag(payload: dict, section: str) -> tuple[str, list[str]]:
+    if not isinstance(payload, dict) or not payload:
+        return "snapshot puudub", []
+    updated = pd.to_datetime(payload.get("updated_at"), utc=True, errors="coerce")
+    updated_txt = "uuendamata"
+    if pd.notna(updated):
+        try:
+            updated_txt = updated.tz_convert(TALLINN).strftime("%d.%m.%Y %H:%M")
+        except Exception:
+            updated_txt = str(updated)
+    errors = payload.get(section, {}).get("errors", []) if isinstance(payload.get(section, {}), dict) else []
+    return updated_txt, list(errors or [])
 
 
 def render_dashboard():
@@ -484,7 +530,7 @@ def render_dashboard():
     c1, c2 = st.columns([4, 1])
     with c1:
         st.title("⚡ BalticPulse")
-        st.caption(f"DEPLOY CHECK: V16.0.4 • Build {APP_BUILD_VERSION} • news fix • Baltic KPI dedup • version sync")
+        st.caption(f"DEPLOY CHECK: V16.1.0 • Build {APP_BUILD_VERSION} • news fix • Baltic KPI dedup • version sync")
         st.caption("Balti ja Põhjamaade energiaturu reaalaja olukorrapilt — elekter, võrk, reservid, gaas ja põhifundamentaalid.")
     with c2:
         st.write("")
@@ -553,16 +599,15 @@ def render_dashboard():
         if _ngp_x.empty or "price_eur_mwh" not in _ngp_x.columns:
             continue
 
-        # Prefer the current gas day. If it is absent from an otherwise valid
-        # current D/D+1/D+2 file, use the nearest available delivery day and
-        # preserve the source timestamp/status elsewhere in the UI.
+        # Strict current-day policy: D KPI may only use today's delivery row.
+        # D+1/D+2 must never silently replace today's gas price.
         if "delivery_date" in _ngp_x.columns:
             _today = now_local.date()
             _today_rows = _ngp_x[_ngp_x["delivery_date"] == _today]
-            _row = _today_rows.iloc[-1] if not _today_rows.empty else _ngp_x.sort_values("delivery_date").iloc[0]
-        else:
-            _row = _ngp_x.iloc[-1]
-        ngp_current[_area] = float(_row["price_eur_mwh"])
+            if _today_rows.empty:
+                continue
+            _row = _today_rows.iloc[-1]
+            ngp_current[_area] = float(_row["price_eur_mwh"])
 
     brent_latest = None
     if brent_df is not None and not brent_df.empty and "price_usd_bbl" in brent_df.columns:
@@ -575,6 +620,127 @@ def render_dashboard():
         _eua_vals = pd.to_numeric(eua_df["price_eur_tco2"], errors="coerce").dropna()
         if not _eua_vals.empty:
             eua_latest = float(_eua_vals.iloc[-1])
+
+
+    # ---------- BALTICPULSE SOURCE-INTEGRITY STANDARD ----------
+    # Current/headline values are displayable only when their source state is acceptable.
+    source_health: dict[str, SourceHealth] = {}
+
+    _price_obs = None
+    if not prices.empty and "time_utc" in prices.columns:
+        _pvals = pd.to_datetime(prices["time_utc"], utc=True, errors="coerce").dropna()
+        _past = _pvals[_pvals <= pd.Timestamp.now(tz="UTC")]
+        _price_obs = _past.max() if not _past.empty else None
+    source_health["Elering prices"] = assess_source(
+        "Elering hinnad",
+        has_data=not prices.empty,
+        direct_ok=bool(getattr(price_status, "ok", False)),
+        observed_at=_price_obs,
+        max_age_minutes=120,
+        mode="direct",
+        checked_at=getattr(price_status, "fetched_at", None),
+        detail=getattr(price_status, "error", None) or "",
+    )
+
+    _sys_obs = None
+    if not system_df.empty and "time_utc" in system_df.columns:
+        _svals = pd.to_datetime(system_df["time_utc"], utc=True, errors="coerce").dropna()
+        if not _svals.empty:
+            _sys_obs = _svals.max()
+    source_health["Elering system"] = assess_source(
+        "Elering süsteem",
+        has_data=not system_df.empty,
+        direct_ok=bool(getattr(system_status, "ok", False)),
+        observed_at=_sys_obs,
+        max_age_minutes=20,
+        mode="direct",
+        checked_at=getattr(system_status, "fetched_at", None),
+        detail=getattr(system_status, "error", None) or "",
+    )
+
+    # Strictly mask stale/failed primary current values.
+    if not source_health["Elering system"].displayable:
+        prod = None
+        cons = None
+        prod_time = None
+        cons_time = None
+
+    # Current NGP is direct-only and must contain today's delivery date.
+    for _area in ["TTF", "LVA-EST", "FIN", "LTU"]:
+        _df_ngp, _st_ngp = ngp_current_results.get(_area, (pd.DataFrame(), None))
+        _has_today = ngp_current.get(_area) is not None
+        source_health[f"EEX NGP {_area}"] = assess_source(
+            f"EEX NGP {_area}",
+            has_data=_has_today,
+            direct_ok=bool(getattr(_st_ngp, "ok", False)),
+            observed_at=pd.Timestamp.now(tz="UTC") if _has_today else None,
+            max_age_minutes=60,
+            mode="direct",
+            checked_at=getattr(_st_ngp, "fetched_at", None),
+            detail=(getattr(_st_ngp, "error", None) or ("tänase gas day rida puudub" if not _has_today else "")),
+        )
+        ngp_current[_area] = mask_source(ngp_current.get(_area), source_health[f"EEX NGP {_area}"])
+
+    _brent_obs = brent_df["date"].max() if not brent_df.empty and "date" in brent_df.columns else None
+    source_health["Brent"] = assess_source(
+        "U.S. EIA Brent spot",
+        has_data=brent_latest is not None,
+        direct_ok=bool(getattr(brent_status, "ok", False)),
+        observed_at=_brent_obs,
+        max_age_minutes=7 * 24 * 60,
+        mode="direct",
+        checked_at=getattr(brent_status, "fetched_at", None),
+        detail=getattr(brent_status, "error", None) or "",
+    )
+    brent_latest = mask_source(brent_latest, source_health["Brent"])
+
+    _eua_obs = eua_df["date"].max() if not eua_df.empty and "date" in eua_df.columns else None
+    source_health["EUA"] = assess_source(
+        "EEX EUA oksjon",
+        has_data=eua_latest is not None,
+        direct_ok=bool(getattr(eua_status, "ok", False)),
+        observed_at=_eua_obs,
+        max_age_minutes=10 * 24 * 60,
+        mode="direct",
+        checked_at=getattr(eua_status, "fetched_at", None),
+        detail=getattr(eua_status, "error", None) or "",
+    )
+    eua_latest = mask_source(eua_latest, source_health["EUA"])
+
+    # Snapshot-based sources are explicitly NOT direct connections.
+    _fut_updated = _snapshot_updated_at(futures_snapshot)
+    source_health["Futures snapshot"] = assess_source(
+        "Futuurid (Euronext/ICE)",
+        has_data=bool(futures_snapshot and any((futures_snapshot.get(k, {}) or {}).get("curve") for k in ("power","gas","brent"))),
+        direct_ok=False,
+        observed_at=_fut_updated,
+        max_age_minutes=120,
+        mode="snapshot",
+        detail="GitHub Actions snapshot; Streamlitil puudub otseühendus börsiga",
+    )
+
+    _map_updated = _snapshot_updated_at(eu_da_snapshot)
+    source_health["Day-ahead map snapshot"] = assess_source(
+        "ENTSO-E EL hinnakaart",
+        has_data=bool((eu_da_snapshot or {}).get("days")),
+        direct_ok=False,
+        observed_at=_map_updated,
+        max_age_minutes=180,
+        mode="snapshot",
+        detail="GitHub Actions A44 snapshot; Streamlitil puudub otseühendus ENTSO-E kaardipäringuga",
+    )
+
+    _news_rows_q, _news_meta_q = load_energy_news_snapshot()
+    _news_updated_q = pd.to_datetime(_news_meta_q.get("updated_at"), utc=True, errors="coerce")
+    source_health["News snapshot"] = assess_source(
+        "Energia uudised",
+        has_data=bool(_news_rows_q),
+        direct_ok=False,
+        observed_at=_news_updated_q,
+        max_age_minutes=90,
+        mode="snapshot",
+        detail="GitHub Actions snapshot; Streamlitil puudub otseühendus väljaannetega",
+    )
 
 
     # ---------- NORMALISEERITUD HETKESEIS ----------
@@ -595,14 +761,17 @@ def render_dashboard():
             if not active.empty:
                 current_prices[region] = float(active.iloc[-1]["price"])
 
+    # Apply source-integrity gate to live spot KPIs.
+    if not source_health["Elering prices"].displayable:
+        current_prices = {r: None for r in REGIONS}
+
     last_sys = pd.DataFrame()
     if not system_df.empty:
         val_cols = [c for c in ["production_mw", "consumption_mw"] if c in system_df.columns]
         if val_cols:
             last_sys = system_df.dropna(subset=val_cols, how="all").tail(1)
     elering_sys_time = last_sys["time_utc"].iloc[0] if not last_sys.empty and "time_utc" in last_sys else None
-    # Always show the latest ACTUAL Elering observation returned by the API.
-    # Freshness is metadata, not a reason to hide a valid Elering value. No fallback is used.
+    # Source-integrity standard: stale Elering current values are not shown as current KPIs.
     prod = last_sys["production_mw"].iloc[0] if not last_sys.empty and "production_mw" in last_sys and pd.notna(last_sys["production_mw"].iloc[0]) else None
     cons = last_sys["consumption_mw"].iloc[0] if not last_sys.empty and "consumption_mw" in last_sys and pd.notna(last_sys["consumption_mw"].iloc[0]) else None
     prod_source = "Elering" if prod is not None else None
@@ -667,6 +836,7 @@ def render_dashboard():
     def make_snapshot(region):
         gdf, gst = entsoe_generation_results.get(region, (pd.DataFrame(), None))
         ldf, lst = entsoe_load_results.get(region, (pd.DataFrame(), None))
+        _snapshot_fresh = _snapshot_is_fresh(baltic_system_snapshot, 60)
         out = {"production_mw":None,"consumption_mw":None,"renewable_mw":None,"renewable_share":None,
                "generation_time":None,"load_time":None,"generation_status":gst,"load_status":lst,
                "previous_24h":{},"source":"ENTSO-E direct"}
@@ -712,17 +882,67 @@ def render_dashboard():
             out["generation_time"] = pd.to_datetime(cur["generation_time"], utc=True, errors="coerce")
         if out["load_time"] is None and cur.get("load_time"):
             out["load_time"] = pd.to_datetime(cur["load_time"], utc=True, errors="coerce")
-        if used: out["source"] = "ENTSO-E GitHub snapshot"
+        if used:
+            out["source"] = "ENTSO-E GitHub snapshot"
+
+        _gen_direct_ok = bool(getattr(gst, "ok", False))
+        _load_direct_ok = bool(getattr(lst, "ok", False))
+        _gen_age_ok = out["generation_time"] is not None and is_fresh(out["generation_time"], 180)
+        _load_age_ok = out["load_time"] is not None and is_fresh(out["load_time"], 180)
+
+        if out.get("source") == "ENTSO-E GitHub snapshot" and not _snapshot_fresh:
+            out["production_mw"] = None
+            out["consumption_mw"] = None
+            out["renewable_mw"] = None
+            out["renewable_share"] = None
+            out["source"] = "STALE GitHub snapshot — not displayed"
+        else:
+            if not _gen_age_ok:
+                out["production_mw"] = None
+                out["renewable_mw"] = None
+                out["renewable_share"] = None
+            if not _load_age_ok:
+                out["consumption_mw"] = None
+
+        # Explicit connection mode used by UI.
+        if _gen_direct_ok or _load_direct_ok:
+            out["connection_mode"] = "LIVE"
+        elif out.get("source") == "ENTSO-E GitHub snapshot":
+            out["connection_mode"] = "SNAPSHOT"
+        elif "STALE" in str(out.get("source")):
+            out["connection_mode"] = "STALE"
+        else:
+            out["connection_mode"] = "UNAVAILABLE"
         return out
 
     baltic_snapshots = {r: make_snapshot(r) for r in BALTICS}
 
-    # Estonia total production/consumption remain strictly Elering actual.
-    baltic_snapshots["EE"]["production_mw"] = float(prod) if prod is not None else None
-    baltic_snapshots["EE"]["consumption_mw"] = float(cons) if cons is not None else None
-    baltic_snapshots["EE"]["generation_time"] = pd.Timestamp(prod_time) if prod_time is not None else baltic_snapshots["EE"]["generation_time"]
-    baltic_snapshots["EE"]["load_time"] = pd.Timestamp(cons_time) if cons_time is not None else baltic_snapshots["EE"]["load_time"]
-    baltic_snapshots["EE"]["source"] = "Elering actual + ENTSO-E renewables"
+    # Estonia: Elering actual is primary. If Elering is temporarily unavailable,
+    # retain validated ENTSO-E / GitHub snapshot values instead of overwriting them with None.
+    _ee_used_elering_prod = prod is not None and source_health["Elering system"].displayable
+    _ee_used_elering_cons = cons is not None and source_health["Elering system"].displayable
+
+    if prod is not None:
+        baltic_snapshots["EE"]["production_mw"] = float(prod)
+        if prod_time is not None:
+            baltic_snapshots["EE"]["generation_time"] = pd.Timestamp(prod_time)
+
+    if cons is not None:
+        baltic_snapshots["EE"]["consumption_mw"] = float(cons)
+        if cons_time is not None:
+            baltic_snapshots["EE"]["load_time"] = pd.Timestamp(cons_time)
+
+    if _ee_used_elering_prod or _ee_used_elering_cons:
+        if _ee_used_elering_prod and _ee_used_elering_cons:
+            baltic_snapshots["EE"]["source"] = "Elering actual + ENTSO-E renewables"
+        else:
+            baltic_snapshots["EE"]["source"] = "Elering partial actual + ENTSO-E fallback"
+    else:
+        # make_snapshot() has already resolved direct ENTSO-E first and GitHub snapshot second.
+        baltic_snapshots["EE"]["source"] = (
+            baltic_snapshots["EE"].get("source")
+            or "ENTSO-E / GitHub snapshot fallback"
+        )
     if not system_df.empty:
         sx = system_df.copy()
         sx["time_utc"] = pd.to_datetime(sx["time_utc"], utc=True, errors="coerce")
@@ -751,11 +971,16 @@ def render_dashboard():
         sys_cols[3].metric(f"{flag} Taastuvate osakaal", f"{snap['renewable_share']:.1f}%" if snap['renewable_share'] is not None else "—",
                            delta=delta_text(snap.get("renewable_share"),prev.get("renewable_share")),
                            help="Suhteline muutus võrreldes sama ajaga 24 tundi tagasi.")
-        if snap.get("source") == "ENTSO-E GitHub snapshot":
-            st.info(f"{flag} {name}: kasutatakse viimast edukat ENTSO-E GitHub snapshot'i.")
+        _mode = snap.get("connection_mode", "LIVE" if "Elering" in str(snap.get("source")) else "UNAVAILABLE")
+        if _mode == "SNAPSHOT":
+            st.warning(f"{flag} {name}: otseühendus puudub — kasutatakse värsket ametliku ENTSO-E GitHub snapshot'i. Allikas: {snap.get('source')}.")
+        elif _mode == "STALE":
+            st.error(f"{flag} {name}: snapshot on vananenud; väärtusi ei kuvata.")
+        elif _mode == "UNAVAILABLE":
+            st.error(f"{flag} {name}: värske valideeritud andmeallikas puudub.")
         ages = [age_minutes(t) for t in [snap.get("generation_time"), snap.get("load_time")] if t is not None]
-        if ages and max(ages) > 120:
-            st.warning(f"{flag} {name}: viimane tegelik vaatlus on üle 2 tunni vana. Kuvatakse viimane edukas tegelik väärtus; sünteetilist täidet ei kasutata.")
+        if ages and max(ages) > 180:
+            st.warning(f"{flag} {name}: allika viimane tegelik vaatlus on üle 3 tunni vana. Vananenud väärtust KPI-na ei kuvata.")
 
 
     market_cols = st.columns(3)
@@ -999,7 +1224,14 @@ def render_dashboard():
         )
 
     # Freshness & source health is a first-class part of the dashboard.
-    with st.expander("🔌 Andmeallikate staatus — roheline / kollane / punane", expanded=False):
+    with st.expander("🔌 Andmeallikate staatus — BalticPulse source-integrity standard", expanded=False):
+        st.markdown(
+            "**🟢 LIVE** = otseühendus ametliku allikaga ja andmed värsked · "
+            "**🟡 SNAPSHOT/MIRROR** = otseühendust Streamlitist ei ole, kuid värske kontrollitud vahendus on olemas · "
+            "**🟠 STALE** = andmed on üle allikapõhise värskuspiiri ja neid KPI-na ei kuvata · "
+            "**🔴 UNAVAILABLE** = värske valideeritud väärtus puudub."
+        )
+        st.caption("Reegel: BalticPulse ei genereeri puuduvaid väärtusi, ei interpoleeri hetkenäitajaid ega esita vananenud väärtust kehtiva hetkeinfona.")
         price_age_min = newest_age_minutes(prices, "time_utc")
         sys_age_min = age_minutes(sys_time)
         storage_age_min = newest_age_minutes(storage_df, "gasDayStart", "date")
@@ -1007,6 +1239,12 @@ def render_dashboard():
         left_status, right_status = st.columns(2)
 
         with left_status:
+            render_health_badge(source_health["Elering prices"])
+            render_health_badge(source_health["Elering system"])
+            render_health_badge(source_health["Day-ahead map snapshot"])
+            render_health_badge(source_health["Futures snapshot"])
+            render_health_badge(source_health["News snapshot"])
+            st.markdown("---")
             price_has_current = current_prices.get("EE") is not None
             source_badge(
                 "Elering hinnad",
@@ -1088,6 +1326,10 @@ def render_dashboard():
                 )
 
         with right_status:
+            for _key in ["EEX NGP TTF", "EEX NGP LVA-EST", "EEX NGP FIN", "EEX NGP LTU", "Brent", "EUA"]:
+                if _key in source_health:
+                    render_health_badge(source_health[_key])
+            st.markdown("---")
             for area, (df_ngp, st_ngp) in ngp_current_results.items():
                 source_badge(
                     st_ngp.source or f"EEX {area} NGP",
@@ -1176,6 +1418,38 @@ def render_dashboard():
                 level=ntc_level,
             )
 
+
+    # Mirror feeds (Volton/BTD): always visibly MIRROR; stale feeds are not shown.
+    for _region, (_rdf, _rstatuses) in list(reserve_results.items()):
+        _rage = newest_age_minutes(_rdf, "time_utc", "time_local")
+        _rok = any(getattr(_st, "ok", False) for _st in _rstatuses)
+        _health = assess_source(
+            f"BTD reservvõimsus {_region} via Volton",
+            has_data=not _rdf.empty,
+            direct_ok=False,
+            observed_at=(pd.to_datetime(_rdf["time_utc"], utc=True, errors="coerce").max() if not _rdf.empty and "time_utc" in _rdf.columns else None),
+            max_age_minutes=180,
+            mode="mirror",
+            detail="Volton public mirror; mitte otse BTD ühendus",
+        )
+        source_health[f"Reserve {_region}"] = _health
+        if not _health.displayable:
+            reserve_results[_region] = (pd.DataFrame(), _rstatuses)
+
+    for _region, (_edf, _estatuses) in list(balancing_energy_results.items()):
+        _health = assess_source(
+            f"Balancing energy {_region} via Volton",
+            has_data=not _edf.empty,
+            direct_ok=False,
+            observed_at=(pd.to_datetime(_edf["time_utc"], utc=True, errors="coerce").max() if not _edf.empty and "time_utc" in _edf.columns else None),
+            max_age_minutes=180,
+            mode="mirror",
+            detail="Volton public mirror; mitte otse BTD ühendus",
+        )
+        source_health[f"Balancing {_region}"] = _health
+        if not _health.displayable:
+            balancing_energy_results[_region] = (pd.DataFrame(), _estatuses)
+
     # ---------- 2. DETAIL TABS ----------
     tab_overview, tab_prices, tab_fundamentals, tab_system, tab_entsoe, tab_news, tab_reserves, tab_gas, tab_quality = st.tabs([
         "📌 Põhivaade", "⚡ Elektrihinnad", "📈 Fundamentaalid", "🏭 Baltikumi süsteem", "🌐 ENTSO-E", "🌍 Energiauudised", "🔄 Reservid", "🔥 Gaasihoidlad", "✅ Andmekvaliteet"
@@ -1202,7 +1476,7 @@ def render_dashboard():
                 snap = baltic_snapshots.get(region, {"production_mw": None, "consumption_mw": None, "renewable_mw": None, "renewable_share": None, "generation_time": None, "load_time": None, "previous_24h": {}, "source": "andmed puuduvad"})
                 rows.append({"Riik": country_meta[region][0] + " " + region, "Tootmine MW": snap["production_mw"], "Tarbimine MW": snap["consumption_mw"], "Taastuv MW": snap["renewable_mw"], "Taastuv %": snap["renewable_share"]})
             st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True, column_config={"Tootmine MW": st.column_config.NumberColumn(format="%.0f"), "Tarbimine MW": st.column_config.NumberColumn(format="%.0f"), "Taastuv MW": st.column_config.NumberColumn(format="%.0f"), "Taastuv %": st.column_config.NumberColumn(format="%.1f%%")})
-            st.caption("EE kogunäidud: Elering actual. LV/LT: ENTSO-E actual. Taastuvtootmine: ENTSO-E A75.")
+            st.caption("EE kogunäidud: Elering actual; Eleringi puudumisel valideeritud ENTSO-E/snapshot fallback. LV/LT: ENTSO-E actual.")
 
         st.markdown("### Balti reservituru hinnapilt — jooksva aasta areng")
         if not reserve_ytd.empty:
@@ -1362,13 +1636,15 @@ def render_dashboard():
         p_updated = pd.to_datetime(futures_snapshot.get("updated_at"), utc=True, errors="coerce") if futures_snapshot else pd.NaT
 
         if pkey.empty:
+            _f_updated, _f_errors = _futures_diag(futures_snapshot, "power")
             st.warning(
-                "Elektrifutuuride snapshot pole veel saadaval. Käivita GitHub Actions → "
-                "Update BalticPulse futures → Run workflow."
+                f"Elektrifutuuride snapshotis pole hinnaseeriat. Snapshot: {_f_updated}. "
+                "Kontrolli GitHub Actions → Update BalticPulse futures."
             )
-            if pmeta.get("errors"):
-                with st.expander("Futuuride diagnostika"):
-                    for err in pmeta.get("errors", []): st.write(f"• {err}")
+            if _f_errors:
+                with st.expander("Elektrifutuuride diagnostika", expanded=True):
+                    for err in _f_errors:
+                        st.write(f"• {err}")
         else:
             if pd.notna(p_updated):
                 st.caption(f"Futuuride snapshot uuendatud: {p_updated.tz_convert(TALLINN).strftime('%d.%m.%Y %H:%M')}")
@@ -1407,7 +1683,7 @@ def render_dashboard():
         st.markdown("## 🏭 Baltikumi elektrisüsteem")
         st.caption("Tootmine, tarbimine, taastuvtootmine ja süsteemivoogude detailvaade.")
         st.markdown("### 🇪🇪🇱🇻🇱🇹 Baltikumi elektrisüsteem — tegelik tootmine, tarbimine ja taastuvad")
-        st.caption("Eesti kogutootmine/tarbimine: Elering actual-only. Läti ja Leedu: ENTSO-E A75 actual generation ja A65 actual total load. Taastuvjaotus kõigis riikides ENTSO-E A75 järgi.")
+        st.caption("Eesti kogutootmine/tarbimine: Elering actual, vajadusel ENTSO-E/snapshot fallback. Läti ja Leedu: ENTSO-E actual. Taastuvjaotus ENTSO-E A75 järgi.")
         ee_tab, lv_tab, lt_tab = st.tabs(["🇪🇪 Eesti", "🇱🇻 Läti", "🇱🇹 Leedu"])
         for region, panel in [("EE", ee_tab), ("LV", lv_tab), ("LT", lt_tab)]:
             with panel:
@@ -1422,7 +1698,13 @@ def render_dashboard():
                 if region == "EE":
                     sys = system_df.copy().sort_values("time_utc") if not system_df.empty else pd.DataFrame()
                     if sys.empty:
-                        st.warning("Eleringi tegelikud tootmise/tarbimise andmed pole hetkel saadaval.")
+                        if snap.get("production_mw") is not None or snap.get("consumption_mw") is not None:
+                            st.info(
+                                f"Eleringi actual aegrida pole hetkel saadaval; KPI-des kasutatakse valideeritud fallback-allikat: "
+                                f"{snap.get('source', 'ENTSO-E / snapshot')}."
+                            )
+                        else:
+                            st.warning("Eesti tegelikud tootmise/tarbimise andmed pole hetkel saadaval.")
                     else:
                         value_cols = [c for c in ["production_mw", "consumption_mw"] if c in sys.columns]
                         if value_cols:
@@ -1538,6 +1820,11 @@ def render_dashboard():
 
         news_rows, news_meta = load_energy_news_snapshot()
         updated_at = pd.to_datetime(news_meta.get("updated_at"), utc=True, errors="coerce")
+        if pd.notna(updated_at) and not is_fresh(updated_at, 90):
+            news_rows = []
+            news_meta = dict(news_meta)
+            news_meta.setdefault("errors", [])
+            news_meta["errors"] = list(news_meta["errors"]) + ["Snapshot on üle 90 minuti vana; vananenud uudisvoogu ei kuvata."]
 
         c1, c2, c3 = st.columns(3)
         c1.metric("Lugusid", len(news_rows))
@@ -1721,13 +2008,15 @@ def render_dashboard():
         gcurve = _future_curve_rows(futures_snapshot, "gas")
         gmeta = futures_snapshot.get("gas", {}) if futures_snapshot else {}
         if gkey.empty:
+            _g_updated, _g_errors = _futures_diag(futures_snapshot, "gas")
             st.warning(
-                "TTF futuuride snapshot pole veel saadaval. Käivita GitHub Actions → "
-                "Update BalticPulse futures → Run workflow."
+                f"TTF futuuride snapshotis pole hinnaseeriat. Snapshot: {_g_updated}. "
+                "Allikas: ICE Endex delayed market data."
             )
-            if gmeta.get("errors"):
-                with st.expander("TTF futuuride diagnostika"):
-                    for err in gmeta.get("errors", []): st.write(f"• {err}")
+            if _g_errors:
+                with st.expander("TTF futuuride diagnostika", expanded=True):
+                    for err in _g_errors:
+                        st.write(f"• {err}")
         else:
             st.dataframe(
                 gkey,
@@ -1901,10 +2190,15 @@ def render_dashboard():
             _bcurve = _future_curve_rows(futures_snapshot, "brent")
             _bmeta = futures_snapshot.get("brent", {}) if futures_snapshot else {}
             if _bkey.empty:
-                st.warning("Brent futuuride snapshot pole veel saadaval. Käivita GitHub Actions → Update BalticPulse futures.")
-                if _bmeta.get("errors"):
-                    with st.expander("Brent futuuride diagnostika"):
-                        for err in _bmeta.get("errors", []): st.write(f"• {err}")
+                _b_updated, _b_errors = _futures_diag(futures_snapshot, "brent")
+                st.warning(
+                    f"Brent futuuride snapshotis pole hinnaseeriat. Snapshot: {_b_updated}. "
+                    "Allikas: ICE Futures Europe delayed market data."
+                )
+                if _b_errors:
+                    with st.expander("Brent futuuride diagnostika", expanded=True):
+                        for err in _b_errors:
+                            st.write(f"• {err}")
             else:
                 st.dataframe(
                     _bkey, hide_index=True, use_container_width=True,

@@ -136,3 +136,20 @@ Allikapoliitika: AST operatiivvaade on AST enda sõnul valideerimata ning Litgri
 - NGP headline metrics use safe `.get(...)` access.
 - Added a critical-variable AST ordering check covering fundamentals, border flows, snapshots, futures and day-ahead data.
 - All Python files compile.
+
+## V16.0.6 — EE system fallback + futures repair
+- EE production/consumption no longer get overwritten with `None` when Elering actual is unavailable.
+- Elering remains primary for Estonia; validated ENTSO-E/direct or GitHub snapshot remains visible as fallback.
+- Futures collector now uses explicit Euronext settlement-price pages and official ICE delayed-data pages.
+- Futures sections preserve their own last successful snapshot independently.
+- Workflow prints `futures.json` diagnostics on every run.
+
+## V16.1.0 — Source Integrity Standard
+BalticPulse now applies one provenance/freshness policy across current indicators:
+- LIVE: direct official-source request succeeded and observation is within the source-specific freshness limit.
+- SNAPSHOT: no direct Streamlit connection; fresh official-source snapshot is used and explicitly labelled.
+- MIRROR: a documented mirror is used; it is always labelled as non-direct.
+- STALE: source data exceed the freshness limit; the value is not shown as a current KPI.
+- UNAVAILABLE: no sufficiently fresh validated value exists.
+- No synthetic current values, silent interpolation, or stale-as-current display.
+Core freshness rules in this build: Elering system 20 min; ENTSO-E actual 180 min; Baltic snapshot 60 min (underlying actual max 180 min); futures 120 min; EU day-ahead snapshot 180 min; news 90 min; reserve/balancing mirror 180 min; AGSI 72 h; Brent 7 days; EUA 10 days.
