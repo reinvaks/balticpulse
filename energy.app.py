@@ -29,7 +29,7 @@ from energy_sources import (
     fetch_eex_eua_auction,
 )
 
-APP_BUILD_VERSION = "16.0.1"
+APP_BUILD_VERSION = "16.0.3"
 
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
@@ -473,6 +473,9 @@ def _future_curve_rows(payload: dict, section: str):
     rows = payload.get(section, {}).get("curve", []) if isinstance(payload, dict) else []
     return pd.DataFrame(rows) if rows else pd.DataFrame()
 
+
+
+
 def render_dashboard():
     futures_snapshot, futures_snapshot_status = load_futures_snapshot()
     eu_da_snapshot, eu_da_status = load_eu_day_ahead_snapshot()
@@ -481,7 +484,7 @@ def render_dashboard():
     c1, c2 = st.columns([4, 1])
     with c1:
         st.title("⚡ BalticPulse")
-        st.caption(f"Build {APP_BUILD_VERSION} • news fix • Baltic KPI dedup • version sync")
+        st.caption(f"DEPLOY CHECK: V16.0.3 • Build {APP_BUILD_VERSION} • news fix • Baltic KPI dedup • version sync")
         st.caption("Balti ja Põhjamaade energiaturu reaalaja olukorrapilt — elekter, võrk, reservid, gaas ja põhifundamentaalid.")
     with c2:
         st.write("")
@@ -694,12 +697,35 @@ def render_dashboard():
     market_cols[2].metric("EE–FI hinnavahe", f"{spread:+.1f} €/MWh" if spread is not None else "—")
 
     flow1, flow2 = st.columns(2)
-    def flow_label(v):
-        if v is None:
-            return "—"
-        return f"{abs(v):.0f} MW " + ("eksport" if v > 0 else "import" if v < 0 else "tasakaalus")
-    flow1.metric("EE–FI füüsiline netovoog", flow_label(latest_border_flows["EE–FI"]), delta=(f"{fmt_age(latest_border_flow_time['EE–FI'])} vana" if latest_border_flow_time["EE–FI"] is not None else None), delta_color="off", help="ENTSO-E A11. Positiivne märk tähendab Eesti netoeksporti; negatiivne Eesti netoimporti.")
-    flow2.metric("EE–LV füüsiline netovoog", flow_label(latest_border_flows["EE–LV"]), delta=(f"{fmt_age(latest_border_flow_time['EE–LV'])} vana" if latest_border_flow_time["EE–LV"] is not None else None), delta_color="off", help="ENTSO-E A11. Positiivne märk tähendab Eesti netoeksporti; negatiivne Eesti netoimporti.")
+
+    _ee_fi_flow = latest_border_flows["EE–FI"]
+    _ee_lv_flow = latest_border_flows["EE–LV"]
+
+    _ee_fi_label = (
+        "—" if _ee_fi_flow is None
+        else f"{abs(float(_ee_fi_flow)):.0f} MW "
+             + ("eksport" if float(_ee_fi_flow) > 0 else "import" if float(_ee_fi_flow) < 0 else "tasakaalus")
+    )
+    _ee_lv_label = (
+        "—" if _ee_lv_flow is None
+        else f"{abs(float(_ee_lv_flow)):.0f} MW "
+             + ("eksport" if float(_ee_lv_flow) > 0 else "import" if float(_ee_lv_flow) < 0 else "tasakaalus")
+    )
+
+    flow1.metric(
+        "EE–FI füüsiline netovoog",
+        _ee_fi_label,
+        delta=(f"{fmt_age(latest_border_flow_time['EE–FI'])} vana" if latest_border_flow_time["EE–FI"] is not None else None),
+        delta_color="off",
+        help="ENTSO-E A11. Positiivne märk tähendab Eesti netoeksporti; negatiivne Eesti netoimporti.",
+    )
+    flow2.metric(
+        "EE–LV füüsiline netovoog",
+        _ee_lv_label,
+        delta=(f"{fmt_age(latest_border_flow_time['EE–LV'])} vana" if latest_border_flow_time["EE–LV"] is not None else None),
+        delta_color="off",
+        help="ENTSO-E A11. Positiivne märk tähendab Eesti netoeksporti; negatiivne Eesti netoimporti.",
+    )
 
     st.markdown("#### Ühenduste võimsus ja kasutus")
     cap_rows = []

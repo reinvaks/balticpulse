@@ -116,3 +116,10 @@ Allikapoliitika: AST operatiivvaade on AST enda sõnul valideerimata ning Litgri
 - Direct ENTSO-E is preferred; GitHub snapshot remains the fallback for missing LV/LT values.
 - EE total production/consumption remain Elering actual-only.
 - UMM remains removed from BalticPulse.
+
+## V16.0.2 runtime-scope hotfix
+- Replaced local `flow_label()` with module-level `_flow_label()` to eliminate the runtime NameError.
+- Added static validation for local helper calls that occur before their definitions.
+- Added a direct-call undefined-name scan for obvious missing helper functions.
+- Verified critical imports (`go`, `px`, `pd`, `st`, `ThreadPoolExecutor`).
+- All Python files compile.
