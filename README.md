@@ -175,3 +175,9 @@ Core freshness rules in this build: Elering system 20 min; ENTSO-E actual 180 mi
 - Labels use a separate Plotly Scattergeo layer over the choropleth.
 - Hover still shows the full country name, exact price and bidding-zone metadata.
 - Multi-zone countries remain explicitly described as BalticPulse country-level arithmetic averages of available bidding-zone daily averages.
+
+## V16.1.4 — explicit source links
+- Every existing Plotly chart and Streamlit dataframe has an adjacent explicit source reference.
+- Source links point to the most specific practical primary data page/API.
+- Snapshot/archive visuals show both the primary source and the local snapshot/archive path.
+- Derived overview/attention visuals list the major underlying source families.
