@@ -123,3 +123,9 @@ Allikapoliitika: AST operatiivvaade on AST enda sõnul valideerimata ning Litgri
 - Added a direct-call undefined-name scan for obvious missing helper functions.
 - Verified critical imports (`go`, `px`, `pd`, `st`, `ThreadPoolExecutor`).
 - All Python files compile.
+
+## V16.0.4 — flow context restored
+- Restored the full ENTSO-E border-flow and day-ahead NTC preparation block from the last known-good V15.9.1 branch.
+- `latest_border_flows`, `latest_border_flow_time`, and `latest_ntc` are all created before any KPI/table uses them.
+- Added AST validation that every `latest_*` variable used inside `render_dashboard()` has an earlier assignment.
+- No synthetic flows or NTC values are introduced.

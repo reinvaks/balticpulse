@@ -29,7 +29,7 @@ from energy_sources import (
     fetch_eex_eua_auction,
 )
 
-APP_BUILD_VERSION = "16.0.3"
+APP_BUILD_VERSION = "16.0.4"
 
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
@@ -484,7 +484,7 @@ def render_dashboard():
     c1, c2 = st.columns([4, 1])
     with c1:
         st.title("⚡ BalticPulse")
-        st.caption(f"DEPLOY CHECK: V16.0.3 • Build {APP_BUILD_VERSION} • news fix • Baltic KPI dedup • version sync")
+        st.caption(f"DEPLOY CHECK: V16.0.4 • Build {APP_BUILD_VERSION} • news fix • Baltic KPI dedup • version sync")
         st.caption("Balti ja Põhjamaade energiaturu reaalaja olukorrapilt — elekter, võrk, reservid, gaas ja põhifundamentaalid.")
     with c2:
         st.write("")
@@ -578,6 +578,37 @@ def render_dashboard():
     # Primary system timestamp comes only from Elering observations.
     _sys_times = [pd.Timestamp(t) for t in [prod_time, cons_time] if t is not None and not pd.isna(t)]
     sys_time = min(_sys_times) if _sys_times else None
+
+    # Latest ENTSO-E cross-border net flows from Estonia's perspective.
+    # Positive = net export from Estonia, negative = net import into Estonia.
+    latest_border_flows: dict[str, float | None] = {"EE–FI": None, "EE–LV": None}
+    latest_border_flow_time: dict[str, pd.Timestamp | None] = {"EE–FI": None, "EE–LV": None}
+    if not entsoe_flows.empty:
+        for border in latest_border_flows:
+            b = entsoe_flows[entsoe_flows["border"] == border].copy()
+            if not b.empty:
+                # Sum directional observations only within the same latest timestamp.
+                latest_t = b["time_utc"].max()
+                bx = b[b["time_utc"] == latest_t]
+                if not bx.empty and is_fresh(latest_t, 120):
+                    latest_border_flows[border] = float(pd.to_numeric(bx["signed_mw"], errors="coerce").sum())
+                    latest_border_flow_time[border] = pd.Timestamp(latest_t)
+
+    # Directional day-ahead transfer capacity matching the current local market interval.
+    latest_ntc: dict[str, dict[str, float | None]] = {
+        "EE–FI": {"EE→FI": None, "FI→EE": None},
+        "EE–LV": {"EE→LV": None, "LV→EE": None},
+    }
+    if not entsoe_ntc.empty:
+        ntc_now = pd.Timestamp(now_local)
+        for border, directions in latest_ntc.items():
+            for direction in directions:
+                x = entsoe_ntc[(entsoe_ntc["border"] == border) & (entsoe_ntc["direction"] == direction)].copy()
+                if not x.empty:
+                    before = x[x["time_local"] <= ntc_now].sort_values("time_local")
+                    row = before.tail(1) if not before.empty else x.sort_values("time_local").head(1)
+                    if not row.empty:
+                        latest_ntc[border][direction] = float(pd.to_numeric(row.iloc[0]["ntc_mw"], errors="coerce"))
 
     # Baltic system values: direct ENTSO-E first, GitHub snapshot second.
     renewable_names = {"Biomass","Geothermal","Hydro Run-of-river and poundage","Hydro Water Reservoir","Marine","Other renewable","Solar","Wind Offshore","Wind Onshore"}
@@ -698,8 +729,8 @@ def render_dashboard():
 
     flow1, flow2 = st.columns(2)
 
-    _ee_fi_flow = latest_border_flows["EE–FI"]
-    _ee_lv_flow = latest_border_flows["EE–LV"]
+    _ee_fi_flow = latest_border_flows.get("EE–FI")
+    _ee_lv_flow = latest_border_flows.get("EE–LV")
 
     _ee_fi_label = (
         "—" if _ee_fi_flow is None
@@ -715,14 +746,14 @@ def render_dashboard():
     flow1.metric(
         "EE–FI füüsiline netovoog",
         _ee_fi_label,
-        delta=(f"{fmt_age(latest_border_flow_time['EE–FI'])} vana" if latest_border_flow_time["EE–FI"] is not None else None),
+        delta=(f"{fmt_age(latest_border_flow_time['EE–FI'])} vana" if latest_border_flow_time.get("EE–FI") is not None else None),
         delta_color="off",
         help="ENTSO-E A11. Positiivne märk tähendab Eesti netoeksporti; negatiivne Eesti netoimporti.",
     )
     flow2.metric(
         "EE–LV füüsiline netovoog",
         _ee_lv_label,
-        delta=(f"{fmt_age(latest_border_flow_time['EE–LV'])} vana" if latest_border_flow_time["EE–LV"] is not None else None),
+        delta=(f"{fmt_age(latest_border_flow_time['EE–LV'])} vana" if latest_border_flow_time.get("EE–LV") is not None else None),
         delta_color="off",
         help="ENTSO-E A11. Positiivne märk tähendab Eesti netoeksporti; negatiivne Eesti netoimporti.",
     )
