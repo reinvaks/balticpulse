@@ -29,7 +29,7 @@ from energy_sources import (
     fetch_eex_eua_auction,
 )
 
-APP_BUILD_VERSION = "16.0.0"
+APP_BUILD_VERSION = "16.0.1"
 
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
@@ -576,10 +576,93 @@ def render_dashboard():
     _sys_times = [pd.Timestamp(t) for t in [prod_time, cons_time] if t is not None and not pd.isna(t)]
     sys_time = min(_sys_times) if _sys_times else None
 
+    # Baltic system values: direct ENTSO-E first, GitHub snapshot second.
+    renewable_names = {"Biomass","Geothermal","Hydro Run-of-river and poundage","Hydro Water Reservoir","Marine","Other renewable","Solar","Wind Offshore","Wind Onshore"}
+
+    def nearest(df, time_col, value_col, target, tolerance="90min"):
+        if df is None or df.empty or time_col not in df or value_col not in df: return None
+        x = df[[time_col,value_col]].dropna().copy()
+        if x.empty: return None
+        x[time_col] = pd.to_datetime(x[time_col], utc=True, errors="coerce")
+        x = x.dropna().sort_values(time_col)
+        if x.empty: return None
+        delta = (x[time_col] - target).abs()
+        i = delta.idxmin()
+        if delta.loc[i] > pd.Timedelta(tolerance): return None
+        return float(x.loc[i,value_col])
+
+    def make_snapshot(region):
+        gdf, gst = entsoe_generation_results.get(region, (pd.DataFrame(), None))
+        ldf, lst = entsoe_load_results.get(region, (pd.DataFrame(), None))
+        out = {"production_mw":None,"consumption_mw":None,"renewable_mw":None,"renewable_share":None,
+               "generation_time":None,"load_time":None,"generation_status":gst,"load_status":lst,
+               "previous_24h":{},"source":"ENTSO-E direct"}
+
+        if not gdf.empty:
+            gx = gdf.dropna(subset=["generation_mw"]).copy()
+            if not gx.empty:
+                gt = gx["time_utc"].max()
+                latest = gx[gx["time_utc"] == gt]
+                total = pd.to_numeric(latest["generation_mw"], errors="coerce").sum(min_count=1)
+                ren = pd.to_numeric(latest[latest["technology"].isin(renewable_names)]["generation_mw"], errors="coerce").sum(min_count=1)
+                out["generation_time"] = pd.Timestamp(gt)
+                out["production_mw"] = float(total) if pd.notna(total) else None
+                out["renewable_mw"] = float(ren) if pd.notna(ren) else None
+                out["renewable_share"] = float(100*ren/total) if pd.notna(total) and total>0 and pd.notna(ren) else None
+                total_ts = gx.groupby("time_utc",as_index=False)["generation_mw"].sum().rename(columns={"generation_mw":"production_mw"})
+                ren_ts = gx[gx["technology"].isin(renewable_names)].groupby("time_utc",as_index=False)["generation_mw"].sum().rename(columns={"generation_mw":"renewable_mw"})
+                merged = total_ts.merge(ren_ts,on="time_utc",how="left")
+                merged["renewable_mw"] = merged["renewable_mw"].fillna(0)
+                merged["renewable_share"] = (merged["renewable_mw"]/merged["production_mw"]*100).where(merged["production_mw"]>0)
+                target = pd.Timestamp(gt)-pd.Timedelta(hours=24)
+                for fld in ["production_mw","renewable_mw","renewable_share"]:
+                    out["previous_24h"][fld] = nearest(merged,"time_utc",fld,target)
+
+        if not ldf.empty:
+            lx = ldf.dropna(subset=["load_mw"]).sort_values("time_utc")
+            if not lx.empty:
+                row = lx.iloc[-1]
+                out["consumption_mw"] = float(row["load_mw"])
+                out["load_time"] = pd.Timestamp(row["time_utc"])
+                out["previous_24h"]["consumption_mw"] = nearest(lx,"time_utc","load_mw",pd.Timestamp(row["time_utc"])-pd.Timedelta(hours=24))
+
+        snap = snapshot_region(baltic_system_snapshot, region)
+        cur = snap.get("current", {})
+        prev = snap.get("previous_24h", {})
+        used = False
+        for fld in ["production_mw","consumption_mw","renewable_mw","renewable_share"]:
+            if out[fld] is None and cur.get(fld) is not None:
+                out[fld] = cur.get(fld); used = True
+            if out["previous_24h"].get(fld) is None and prev.get(fld) is not None:
+                out["previous_24h"][fld] = prev.get(fld)
+        if out["generation_time"] is None and cur.get("generation_time"):
+            out["generation_time"] = pd.to_datetime(cur["generation_time"], utc=True, errors="coerce")
+        if out["load_time"] is None and cur.get("load_time"):
+            out["load_time"] = pd.to_datetime(cur["load_time"], utc=True, errors="coerce")
+        if used: out["source"] = "ENTSO-E GitHub snapshot"
+        return out
+
+    baltic_snapshots = {r: make_snapshot(r) for r in BALTICS}
+
+    # Estonia total production/consumption remain strictly Elering actual.
+    baltic_snapshots["EE"]["production_mw"] = float(prod) if prod is not None else None
+    baltic_snapshots["EE"]["consumption_mw"] = float(cons) if cons is not None else None
+    baltic_snapshots["EE"]["generation_time"] = pd.Timestamp(prod_time) if prod_time is not None else baltic_snapshots["EE"]["generation_time"]
+    baltic_snapshots["EE"]["load_time"] = pd.Timestamp(cons_time) if cons_time is not None else baltic_snapshots["EE"]["load_time"]
+    baltic_snapshots["EE"]["source"] = "Elering actual + ENTSO-E renewables"
+    if not system_df.empty:
+        sx = system_df.copy()
+        sx["time_utc"] = pd.to_datetime(sx["time_utc"], utc=True, errors="coerce")
+        if prod_time is not None:
+            baltic_snapshots["EE"]["previous_24h"]["production_mw"] = nearest(sx,"time_utc","production_mw",pd.Timestamp(prod_time).tz_convert("UTC")-pd.Timedelta(hours=24))
+        if cons_time is not None:
+            baltic_snapshots["EE"]["previous_24h"]["consumption_mw"] = nearest(sx,"time_utc","consumption_mw",pd.Timestamp(cons_time).tz_convert("UTC")-pd.Timedelta(hours=24))
+
+
     country_meta = {"EE": ("🇪🇪", "Eesti"), "LV": ("🇱🇻", "Läti"), "LT": ("🇱🇹", "Leedu")}
     for region in BALTICS:
         flag, name = country_meta[region]
-        snap = baltic_snapshots[region]
+        snap = baltic_snapshots.get(region, {"production_mw": None, "consumption_mw": None, "renewable_mw": None, "renewable_share": None, "generation_time": None, "load_time": None, "previous_24h": {}, "source": "andmed puuduvad"})
         prev = snap.get("previous_24h", {}) or {}
         st.markdown(f"**{flag} {name}**")
         sys_cols = st.columns(4)
@@ -1020,7 +1103,7 @@ def render_dashboard():
             st.markdown("### 🇪🇪🇱🇻🇱🇹 Baltikumi süsteemi hetkeseis")
             rows = []
             for region in BALTICS:
-                snap = baltic_snapshots[region]
+                snap = baltic_snapshots.get(region, {"production_mw": None, "consumption_mw": None, "renewable_mw": None, "renewable_share": None, "generation_time": None, "load_time": None, "previous_24h": {}, "source": "andmed puuduvad"})
                 rows.append({"Riik": country_meta[region][0] + " " + region, "Tootmine MW": snap["production_mw"], "Tarbimine MW": snap["consumption_mw"], "Taastuv MW": snap["renewable_mw"], "Taastuv %": snap["renewable_share"]})
             st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True, column_config={"Tootmine MW": st.column_config.NumberColumn(format="%.0f"), "Tarbimine MW": st.column_config.NumberColumn(format="%.0f"), "Taastuv MW": st.column_config.NumberColumn(format="%.0f"), "Taastuv %": st.column_config.NumberColumn(format="%.1f%%")})
             st.caption("EE kogunäidud: Elering actual. LV/LT: ENTSO-E actual. Taastuvtootmine: ENTSO-E A75.")
@@ -1233,7 +1316,7 @@ def render_dashboard():
         for region, panel in [("EE", ee_tab), ("LV", lv_tab), ("LT", lt_tab)]:
             with panel:
                 flag, name = country_meta[region]
-                snap = baltic_snapshots[region]
+                snap = baltic_snapshots.get(region, {"production_mw": None, "consumption_mw": None, "renewable_mw": None, "renewable_share": None, "generation_time": None, "load_time": None, "previous_24h": {}, "source": "andmed puuduvad"})
                 k = st.columns(4)
                 prev = snap.get("previous_24h", {}) or {}
                 k[0].metric("Tootmine", f"{snap['production_mw']:.0f} MW" if snap['production_mw'] is not None else "—", delta=delta_text(snap.get("production_mw"),prev.get("production_mw")))

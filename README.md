@@ -109,3 +109,10 @@ Allikapoliitika: AST operatiivvaade on AST enda sõnul valideerimata ning Litgri
 - TTF futures use ICE Endex Dutch TTF public delayed-data page.
 - Added ICE Brent Crude Futures curve and M+1/M+3/M+6/M+12 key contracts.
 - Fixed `go.Figure()` runtime NameError by importing `plotly.graph_objects as go`.
+
+## V16.0.1 hotfix
+- Restored the Baltic EE/LV/LT snapshot-construction block accidentally removed during the V16 UMM separation.
+- `baltic_snapshots` is now created before any KPI/detail view uses it.
+- Direct ENTSO-E is preferred; GitHub snapshot remains the fallback for missing LV/LT values.
+- EE total production/consumption remain Elering actual-only.
+- UMM remains removed from BalticPulse.
