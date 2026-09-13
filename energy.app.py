@@ -29,7 +29,7 @@ from energy_sources import (
     fetch_eex_eua_auction,
 )
 
-APP_BUILD_VERSION = "16.0.4"
+APP_BUILD_VERSION = "16.0.5"
 
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
@@ -538,6 +538,45 @@ def render_dashboard():
             balancing_energy_results = {r: f.result() for r, f in energy_futs.items()}
             ngp_current_results = {a: f.result() for a, f in ngp_futs.items()}
 
+    # ---------- NORMALISEERITUD FUNDAMENTAALID ----------
+    # Build all headline values immediately after source fetches, before any UI uses them.
+    ngp_current: dict[str, float | None] = {area: None for area in ["TTF", "LVA-EST", "FIN", "LTU"]}
+    for _area, (_ngp_df, _ngp_status) in ngp_current_results.items():
+        if _ngp_df is None or _ngp_df.empty:
+            continue
+        _ngp_x = _ngp_df.copy()
+        if "delivery_date" in _ngp_x.columns:
+            _ngp_x["delivery_date"] = pd.to_datetime(_ngp_x["delivery_date"], errors="coerce").dt.date
+        if "price_eur_mwh" in _ngp_x.columns:
+            _ngp_x["price_eur_mwh"] = pd.to_numeric(_ngp_x["price_eur_mwh"], errors="coerce")
+            _ngp_x = _ngp_x.dropna(subset=["price_eur_mwh"])
+        if _ngp_x.empty or "price_eur_mwh" not in _ngp_x.columns:
+            continue
+
+        # Prefer the current gas day. If it is absent from an otherwise valid
+        # current D/D+1/D+2 file, use the nearest available delivery day and
+        # preserve the source timestamp/status elsewhere in the UI.
+        if "delivery_date" in _ngp_x.columns:
+            _today = now_local.date()
+            _today_rows = _ngp_x[_ngp_x["delivery_date"] == _today]
+            _row = _today_rows.iloc[-1] if not _today_rows.empty else _ngp_x.sort_values("delivery_date").iloc[0]
+        else:
+            _row = _ngp_x.iloc[-1]
+        ngp_current[_area] = float(_row["price_eur_mwh"])
+
+    brent_latest = None
+    if brent_df is not None and not brent_df.empty and "price_usd_bbl" in brent_df.columns:
+        _brent_vals = pd.to_numeric(brent_df["price_usd_bbl"], errors="coerce").dropna()
+        if not _brent_vals.empty:
+            brent_latest = float(_brent_vals.iloc[-1])
+
+    eua_latest = None
+    if eua_df is not None and not eua_df.empty and "price_eur_tco2" in eua_df.columns:
+        _eua_vals = pd.to_numeric(eua_df["price_eur_tco2"], errors="coerce").dropna()
+        if not _eua_vals.empty:
+            eua_latest = float(_eua_vals.iloc[-1])
+
+
     # ---------- NORMALISEERITUD HETKESEIS ----------
     price_daily = pd.DataFrame()
     current_prices: dict[str, float | None] = {r: None for r in REGIONS}
@@ -787,10 +826,10 @@ def render_dashboard():
 
     st.markdown("#### Turu põhifundamentaalid")
     f1, f2, f3, f4 = st.columns(4)
-    f1.metric("🇳🇱 TTF NGP — D", f"{ngp_current['TTF']:.1f} €/MWh" if ngp_current["TTF"] is not None else "—", help="EEX current NGP; EEX uuendab faili iga 15 minuti järel D/D+1/D+2 jaoks.")
-    f2.metric("🇪🇪🇱🇻 Eesti–Läti gaas (LVA–EST) — D", f"{ngp_current['LVA-EST']:.1f} €/MWh" if ngp_current["LVA-EST"] is not None else "—", help="EEX LVA-EST Neutral Gas Price, current gas day.")
-    f3.metric("🇫🇮 Soome gaas (FIN NGP) — D", f"{ngp_current['FIN']:.1f} €/MWh" if ngp_current["FIN"] is not None else "—", help="EEX FIN Neutral Gas Price, current gas day.")
-    f4.metric("🇱🇹 Leedu gaas (LTU NGP) — D", f"{ngp_current['LTU']:.1f} €/MWh" if ngp_current["LTU"] is not None else "—", help="EEX LTU Neutral Gas Price, current gas day.")
+    f1.metric("🇳🇱 TTF NGP — D", f"{ngp_current['TTF']:.1f} €/MWh" if ngp_current.get("TTF") is not None else "—", help="EEX current NGP; EEX uuendab faili iga 15 minuti järel D/D+1/D+2 jaoks.")
+    f2.metric("🇪🇪🇱🇻 Eesti–Läti gaas (LVA–EST) — D", f"{ngp_current['LVA-EST']:.1f} €/MWh" if ngp_current.get("LVA-EST") is not None else "—", help="EEX LVA-EST Neutral Gas Price, current gas day.")
+    f3.metric("🇫🇮 Soome gaas (FIN NGP) — D", f"{ngp_current['FIN']:.1f} €/MWh" if ngp_current.get("FIN") is not None else "—", help="EEX FIN Neutral Gas Price, current gas day.")
+    f4.metric("🇱🇹 Leedu gaas (LTU NGP) — D", f"{ngp_current['LTU']:.1f} €/MWh" if ngp_current.get("LTU") is not None else "—", help="EEX LTU Neutral Gas Price, current gas day.")
     f5, f6 = st.columns(2)
     f5.metric("🌍 Brent — EIA spot (päevane)", f"{brent_latest:.1f} $/bbl" if brent_latest is not None else "—", help="Ametlik EIA päevane Europe Brent Spot Price FOB. See ei ole intraday reaalaja hind.")
     f6.metric("EUA — EEX oksjon", f"{eua_latest:.2f} €/tCO₂" if eua_latest is not None else "—", help="EEX EUA primaaroksjoni viimane clearing price. See ei ole secondary-market intraday hind.")
@@ -1667,10 +1706,10 @@ def render_dashboard():
         st.caption("Spot-indeksid, ajalooline hinnapilt ja TTF forward curve.")
         st.markdown("#### Gaasihinnad — EEX Neutral Gas Price")
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("🇳🇱 TTF NGP", f"{ngp_current['TTF']:.1f} €/MWh" if ngp_current["TTF"] is not None else "—")
-        c2.metric("🇪🇪🇱🇻 LVA-EST NGP", f"{ngp_current['LVA-EST']:.1f} €/MWh" if ngp_current["LVA-EST"] is not None else "—")
-        c3.metric("🇫🇮 FIN NGP", f"{ngp_current['FIN']:.1f} €/MWh" if ngp_current["FIN"] is not None else "—")
-        c4.metric("🇱🇹 LTU NGP", f"{ngp_current['LTU']:.1f} €/MWh" if ngp_current["LTU"] is not None else "—")
+        c1.metric("🇳🇱 TTF NGP", f"{ngp_current['TTF']:.1f} €/MWh" if ngp_current.get("TTF") is not None else "—")
+        c2.metric("🇪🇪🇱🇻 LVA-EST NGP", f"{ngp_current['LVA-EST']:.1f} €/MWh" if ngp_current.get("LVA-EST") is not None else "—")
+        c3.metric("🇫🇮 FIN NGP", f"{ngp_current['FIN']:.1f} €/MWh" if ngp_current.get("FIN") is not None else "—")
+        c4.metric("🇱🇹 LTU NGP", f"{ngp_current['LTU']:.1f} €/MWh" if ngp_current.get("LTU") is not None else "—")
 
 
         st.markdown("#### 🔥 TTF forward-vaade")

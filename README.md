@@ -129,3 +129,10 @@ Allikapoliitika: AST operatiivvaade on AST enda sõnul valideerimata ning Litgri
 - `latest_border_flows`, `latest_border_flow_time`, and `latest_ntc` are all created before any KPI/table uses them.
 - Added AST validation that every `latest_*` variable used inside `render_dashboard()` has an earlier assignment.
 - No synthetic flows or NTC values are introduced.
+
+## V16.0.5 — fundamentals initialization fix
+- Fixed `NameError: ngp_current is not defined`.
+- `ngp_current`, `brent_latest`, and `eua_latest` are normalized immediately after the concurrent source fetches and before any UI block uses them.
+- NGP headline metrics use safe `.get(...)` access.
+- Added a critical-variable AST ordering check covering fundamentals, border flows, snapshots, futures and day-ahead data.
+- All Python files compile.

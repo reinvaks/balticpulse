@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import requests
 
-BUILD_VERSION = "16.0.4"
+BUILD_VERSION = "16.0.5"
 
 LOG = logging.getLogger(__name__)
 TALLINN = ZoneInfo("Europe/Tallinn")
