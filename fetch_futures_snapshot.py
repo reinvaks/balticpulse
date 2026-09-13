@@ -20,7 +20,8 @@ EURONEXT = {
     "LT_Q": ("VIBQ", "LT EPAD", "quarter"),
     "LT_Y": ("VIBY", "LT EPAD", "year"),
 }
-ICE_URL = "https://www.ice.com/products/27996665/Dutch-TTF-Natural-Gas-Futures/data"
+ICE_TTF_URL = "https://www.ice.com/products/27996665/Dutch-TTF-Natural-Gas-Futures/data?marketId=5927115"
+ICE_BRENT_URL = "https://www.ice.com/products/219/Brent-Crude-Futures/data?marketId=5049381"
 
 MONTHS={m:i for i,m in enumerate(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],1)}
 
@@ -113,20 +114,20 @@ def select_key_power(curve):
                     'settlement':r['settlement'],'open_interest':r.get('open_interest'),'source_product':r['source_product']})
     return rows
 
-def fetch_ice():
-    r=requests.get(ICE_URL,timeout=(5,25),headers=UA); r.raise_for_status()
+def fetch_ice_curve(url, label):
+    r=requests.get(url,timeout=(5,25),headers=UA); r.raise_for_status()
     tables=pd.read_html(StringIO(r.text)); df=find_price_table(tables)
-    if df is None: raise ValueError('ICE TTF: data table not found')
+    if df is None: raise ValueError(f'{label}: data table not found')
     ccol=pick_col(df,['contract']) or df.columns[0]; lastcol=pick_col(df,['last']); timecol=pick_col(df,['time']); volcol=pick_col(df,['volume'])
-    if lastcol is None: raise ValueError(f'ICE TTF: last column not found: {list(df.columns)}')
+    if lastcol is None: raise ValueError(f'{label}: last column not found: {list(df.columns)}')
     rows=[]
     for _,row in df.iterrows():
         contract=str(row[ccol]).strip(); last=num(row[lastcol]); ds=delivery_start(contract)
         if last is None or not ds: continue
         rows.append({'contract':contract,'delivery_start':ds,'last':last,
                      'time':str(row[timecol]) if timecol else '', 'volume':num(row[volcol]) if volcol else None,
-                     'source_url':ICE_URL})
-    if not rows: raise ValueError('ICE TTF: no valid rows')
+                     'source_url':url})
+    if not rows: raise ValueError(f'{label}: no valid rows')
     return rows
 
 def select_key_gas(curve):
@@ -141,6 +142,17 @@ def select_key_gas(curve):
         t=typ(r)
         if t and t not in seen:
             out.append({'horizon':t,'contract':r['contract'],'last':r['last'],'volume':r.get('volume'),'time':r.get('time')}); seen.add(t)
+    return out
+
+def select_key_brent(curve):
+    """Direct monthly ICE Brent contracts: front month and selected forward months."""
+    monthly=sorted([r for r in curve if re.fullmatch(r'[A-Z][a-z]{2}\d{2}', str(r.get('contract','')))], key=lambda x:x['delivery_start'])
+    horizons=[('M+1',0),('M+3',2),('M+6',5),('M+12',11)]
+    out=[]
+    for label,idx in horizons:
+        if idx < len(monthly):
+            r=monthly[idx]
+            out.append({'horizon':label,'contract':r['contract'],'last':r['last'],'volume':r.get('volume'),'time':r.get('time')})
     return out
 
 def main():
@@ -160,12 +172,18 @@ def main():
     power={'curve':power_curve,'key':select_key_power(power_curve),'errors':errors.copy()}
     gas_errors=[]
     try:
-        gas_curve=fetch_ice(); gas={'curve':gas_curve,'key':select_key_gas(gas_curve),'errors':gas_errors}
+        gas_curve=fetch_ice_curve(ICE_TTF_URL,'ICE TTF'); gas={'curve':gas_curve,'key':select_key_gas(gas_curve),'errors':gas_errors,'source_url':ICE_TTF_URL}
     except Exception as e:
-        gas_errors.append(f"ICE TTF: {type(e).__name__}: {e}"); gas={'curve':[],'key':[],'errors':gas_errors}
+        gas_errors.append(f"ICE TTF: {type(e).__name__}: {e}"); gas={'curve':[],'key':[],'errors':gas_errors,'source_url':ICE_TTF_URL}
+    brent_errors=[]
+    try:
+        brent_curve=fetch_ice_curve(ICE_BRENT_URL,'ICE Brent'); brent={'curve':brent_curve,'key':select_key_brent(brent_curve),'errors':brent_errors,'source_url':ICE_BRENT_URL}
+    except Exception as e:
+        brent_errors.append(f"ICE Brent: {type(e).__name__}: {e}"); brent={'curve':[],'key':[],'errors':brent_errors,'source_url':ICE_BRENT_URL}
     if not power['curve'] and previous.get('power',{}).get('curve'): power=previous['power']; power.setdefault('errors',[]).extend(errors)
     if not gas['curve'] and previous.get('gas',{}).get('curve'): gas=previous['gas']; gas.setdefault('errors',[]).extend(gas_errors)
-    payload={'schema_version':1,'updated_at':datetime.now(timezone.utc).isoformat(),'power':power,'gas':gas}
+    if not brent['curve'] and previous.get('brent',{}).get('curve'): brent=previous['brent']; brent.setdefault('errors',[]).extend(brent_errors)
+    payload={'schema_version':2,'updated_at':datetime.now(timezone.utc).isoformat(),'power':power,'gas':gas,'brent':brent}
     OUT.parent.mkdir(parents=True,exist_ok=True); OUT.write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding='utf-8')
-    print(f"power rows={len(power.get('curve',[]))}; gas rows={len(gas.get('curve',[]))}")
+    print(f"power rows={len(power.get('curve',[]))}; gas rows={len(gas.get('curve',[]))}; brent rows={len(brent.get('curve',[]))}")
 if __name__=='__main__': main()

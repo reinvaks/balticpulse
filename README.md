@@ -101,3 +101,11 @@ Allikapoliitika: AST operatiivvaade on AST enda sõnul valideerimata ning Litgri
 - Fundamentals moved immediately after Electricity in navigation.
 - Stronger headings/captions distinguish overview and detail sections.
 - EEX NGP history chart rebuilt as separate daily traces with missing days as NaN and `connectgaps=False`.
+
+## V16.0.0
+- Removed UMM from BalticPulse; UMM Lab is now a separate app.
+- Added ENTSO-E A44 EU day-ahead country maps for today and tomorrow (tomorrow shown after 14:00 Tallinn time).
+- Monthly EE/LV/LT/FI electricity table now groups each month with the same alternating background shade.
+- TTF futures use ICE Endex Dutch TTF public delayed-data page.
+- Added ICE Brent Crude Futures curve and M+1/M+3/M+6/M+12 key contracts.
+- Fixed `go.Figure()` runtime NameError by importing `plotly.graph_objects as go`.

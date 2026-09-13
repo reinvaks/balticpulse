@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 import energy_sources as _energy_sources
@@ -27,9 +28,8 @@ from energy_sources import (
     fetch_eia_brent,
     fetch_eex_eua_auction,
 )
-from umm_client import fetch_umm_messages
 
-APP_BUILD_VERSION = "15.9.1"
+APP_BUILD_VERSION = "16.0.0"
 
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
@@ -312,12 +312,6 @@ def load_reserve_ytd_file():
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=30)
-def load_umm():
-    # Public Nord Pool REST API is polled every dashboard refresh; 30 s cache keeps it near-live.
-    return fetch_umm_messages(limit=200, max_pages=1, retries=2)
-
-
 @st.cache_data(ttl=120)
 def load_energy_news_snapshot():
     path = Path(__file__).resolve().parent / "data" / "energy_news.json"
@@ -401,6 +395,61 @@ def load_eua():
     return fetch_eex_eua_auction()
 
 
+@st.cache_data(ttl=300)
+def load_eu_day_ahead_snapshot():
+    path = Path(__file__).resolve().parent / "data" / "eu_day_ahead_prices.json"
+    if not path.exists():
+        return {}, {"ok": False, "error": "data/eu_day_ahead_prices.json puudub"}
+    try:
+        import json
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        return payload, {"ok": True, "error": None}
+    except Exception as exc:
+        return {}, {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+
+
+def _eu_map_df(payload: dict, date_str: str) -> pd.DataFrame:
+    rows = []
+    day = (payload.get("days", {}) or {}).get(date_str, {}) if isinstance(payload, dict) else {}
+    for row in day.get("countries", []) or []:
+        if row.get("price_eur_mwh") is None:
+            continue
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def _render_eu_price_map(df: pd.DataFrame, title: str):
+    if df.empty:
+        st.info(f"{title}: andmed pole snapshot'is saadaval.")
+        return
+    fig = px.choropleth(
+        df,
+        locations="iso3",
+        color="price_eur_mwh",
+        hover_name="country",
+        hover_data={"iso3": False, "price_eur_mwh": ":.2f", "zones": True},
+        labels={"price_eur_mwh": "€/MWh", "zones": "Hinnapiirkonnad"},
+        scope="europe",
+        title=title,
+    )
+    fig.update_layout(margin={"r":0,"t":45,"l":0,"b":0}, coloraxis_colorbar_title="€/MWh")
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def _shade_month_groups(df: pd.DataFrame):
+    """Same subtle background for all EE/LV/LT/FI rows belonging to one month."""
+    months = list(dict.fromkeys(df["Kuu"].astype(str).tolist()))
+    parity = {m: i % 2 for i, m in enumerate(months)}
+    def row_style(row):
+        bg = "background-color: rgba(120, 120, 120, 0.08)" if parity.get(str(row["Kuu"]), 0) else "background-color: rgba(120, 120, 120, 0.02)"
+        return [bg] * len(row)
+    return df.style.apply(row_style, axis=1).format({
+        "Keskmine €/MWh": "{:.2f}", "Min €/MWh": "{:.2f}", "Max €/MWh": "{:.2f}",
+        "Min aeg": lambda x: x.strftime("%d.%m.%Y %H:%M") if pd.notna(x) else "",
+        "Max aeg": lambda x: x.strftime("%d.%m.%Y %H:%M") if pd.notna(x) else "",
+    })
+
+
 @st.fragment(run_every=60)
 @st.cache_data(ttl=300)
 def load_futures_snapshot():
@@ -426,13 +475,14 @@ def _future_curve_rows(payload: dict, section: str):
 
 def render_dashboard():
     futures_snapshot, futures_snapshot_status = load_futures_snapshot()
+    eu_da_snapshot, eu_da_status = load_eu_day_ahead_snapshot()
 
     # Header
     c1, c2 = st.columns([4, 1])
     with c1:
         st.title("⚡ BalticPulse")
-        st.caption(f"Build {APP_BUILD_VERSION} • UMM live REST • news fix • Baltic KPI dedup • version sync")
-        st.caption("Balti ja Põhjamaade energiaturu reaalaja olukorrapilt — elekter, võrk, reservid, UMM-id, gaas ja põhifundamentaalid.")
+        st.caption(f"Build {APP_BUILD_VERSION} • news fix • Baltic KPI dedup • version sync")
+        st.caption("Balti ja Põhjamaade energiaturu reaalaja olukorrapilt — elekter, võrk, reservid, gaas ja põhifundamentaalid.")
     with c2:
         st.write("")
         if st.button("🔄 Värskenda", use_container_width=True):
@@ -453,7 +503,6 @@ def render_dashboard():
             fut_prices = pool.submit(load_short_prices)
             fut_system = pool.submit(load_system)
             fut_baltic_snapshot = pool.submit(load_baltic_system_snapshot)
-            fut_umm = pool.submit(load_umm)
             fut_storage = pool.submit(load_storage, agsi_key)
             gen_futs = {r: pool.submit(load_entsoe_generation, entsoe_key, r) for r in BALTICS}
             load_futs = {r: pool.submit(load_entsoe_load, entsoe_key, r) for r in BALTICS}
@@ -470,7 +519,6 @@ def render_dashboard():
             prices, price_status = fut_prices.result()
             system_df, system_status = fut_system.result()
             baltic_system_snapshot, baltic_snapshot_status = fut_baltic_snapshot.result()
-            umm_rows, umm_meta = fut_umm.result()
             storage_df, storage_status = fut_storage.result()
             entsoe_generation_results = {r: f.result() for r, f in gen_futs.items()}
             entsoe_load_results = {r: f.result() for r, f in load_futs.items()}
@@ -528,204 +576,6 @@ def render_dashboard():
     _sys_times = [pd.Timestamp(t) for t in [prod_time, cons_time] if t is not None and not pd.isna(t)]
     sys_time = min(_sys_times) if _sys_times else None
 
-    umm_df = pd.DataFrame(umm_rows)
-    active_umm = pd.DataFrame()
-    if not umm_df.empty:
-        for c in ["event_start", "event_end", "publication_time"]:
-            if c in umm_df.columns:
-                umm_df[c] = pd.to_datetime(umm_df[c], utc=True, errors="coerce")
-        # Keep only the latest published revision per message ID for operational status.
-        if "message_id" in umm_df.columns and "publication_time" in umm_df.columns:
-            with_id = umm_df[umm_df["message_id"].astype(str).str.len() > 0].sort_values("publication_time").groupby("message_id", as_index=False).tail(1)
-            without_id = umm_df[umm_df["message_id"].astype(str).str.len() == 0]
-            umm_df = pd.concat([with_id, without_id], ignore_index=True)
-        now_utc_ts = pd.Timestamp.now(tz="UTC")
-        starts = umm_df.get("event_start", pd.Series(pd.NaT, index=umm_df.index, dtype="datetime64[ns, UTC]"))
-        ends = umm_df.get("event_end", pd.Series(pd.NaT, index=umm_df.index, dtype="datetime64[ns, UTC]"))
-        active_mask = (starts.isna() | (starts <= now_utc_ts)) & (ends.isna() | (ends >= now_utc_ts))
-        if "is_outdated" in umm_df.columns:
-            active_mask &= ~umm_df["is_outdated"].fillna(False).astype(bool)
-        active_umm = umm_df[active_mask].copy()
-        if "affected_capacity" in active_umm.columns:
-            active_umm["affected_capacity"] = pd.to_numeric(active_umm["affected_capacity"], errors="coerce")
-
-    newest_umm_time = None
-    umm_age_minutes = None
-    if not umm_df.empty and "publication_time" in umm_df.columns:
-        _pub = umm_df["publication_time"].dropna()
-        if not _pub.empty:
-            newest_umm_time = _pub.max()
-            umm_age_minutes = max(0.0, (pd.Timestamp.now(tz="UTC") - newest_umm_time).total_seconds() / 60.0)
-
-    largest_umm = None
-    if not active_umm.empty and "affected_capacity" in active_umm.columns:
-        cap = active_umm.dropna(subset=["affected_capacity"])
-        cap = cap[cap["affected_capacity"] > 0]
-        if not cap.empty:
-            largest_umm = float(cap["affected_capacity"].max())
-
-    # Latest ENTSO-E cross-border net flows from Estonia's perspective.
-    # Positive = net export from Estonia, negative = net import into Estonia.
-    latest_border_flows: dict[str, float | None] = {"EE–FI": None, "EE–LV": None}
-    latest_border_flow_time: dict[str, pd.Timestamp | None] = {"EE–FI": None, "EE–LV": None}
-    if not entsoe_flows.empty:
-        for border in latest_border_flows:
-            b = entsoe_flows[entsoe_flows["border"] == border].copy()
-            if not b.empty:
-                # Sum directional observations only within the same latest timestamp.
-                latest_t = b["time_utc"].max()
-                bx = b[b["time_utc"] == latest_t]
-                if not bx.empty and is_fresh(latest_t, 120):
-                    latest_border_flows[border] = float(pd.to_numeric(bx["signed_mw"], errors="coerce").sum())
-                    latest_border_flow_time[border] = pd.Timestamp(latest_t)
-
-    # Directional day-ahead transfer capacity matching the current local market interval.
-    latest_ntc: dict[str, dict[str, float | None]] = {
-        "EE–FI": {"EE→FI": None, "FI→EE": None},
-        "EE–LV": {"EE→LV": None, "LV→EE": None},
-    }
-    if not entsoe_ntc.empty:
-        ntc_now = pd.Timestamp(now_local)
-        for border, directions in latest_ntc.items():
-            for direction in directions:
-                x = entsoe_ntc[(entsoe_ntc["border"] == border) & (entsoe_ntc["direction"] == direction)].copy()
-                if not x.empty:
-                    before = x[x["time_local"] <= ntc_now].sort_values("time_local")
-                    row = before.tail(1) if not before.empty else x.sort_values("time_local").head(1)
-                    if not row.empty:
-                        latest_ntc[border][direction] = float(pd.to_numeric(row.iloc[0]["ntc_mw"], errors="coerce"))
-
-    # Baltic system values: direct ENTSO-E first, GitHub snapshot second.
-    renewable_names = {"Biomass","Geothermal","Hydro Run-of-river and poundage","Hydro Water Reservoir","Marine","Other renewable","Solar","Wind Offshore","Wind Onshore"}
-
-    def nearest(df, time_col, value_col, target, tolerance="90min"):
-        if df is None or df.empty or time_col not in df or value_col not in df: return None
-        x = df[[time_col,value_col]].dropna().copy()
-        if x.empty: return None
-        x[time_col] = pd.to_datetime(x[time_col], utc=True, errors="coerce")
-        x = x.dropna().sort_values(time_col)
-        if x.empty: return None
-        delta = (x[time_col] - target).abs()
-        i = delta.idxmin()
-        if delta.loc[i] > pd.Timedelta(tolerance): return None
-        return float(x.loc[i,value_col])
-
-    def make_snapshot(region):
-        gdf, gst = entsoe_generation_results.get(region, (pd.DataFrame(), None))
-        ldf, lst = entsoe_load_results.get(region, (pd.DataFrame(), None))
-        out = {"production_mw":None,"consumption_mw":None,"renewable_mw":None,"renewable_share":None,
-               "generation_time":None,"load_time":None,"generation_status":gst,"load_status":lst,
-               "previous_24h":{},"source":"ENTSO-E direct"}
-
-        if not gdf.empty:
-            gx = gdf.dropna(subset=["generation_mw"]).copy()
-            if not gx.empty:
-                gt = gx["time_utc"].max()
-                latest = gx[gx["time_utc"] == gt]
-                total = pd.to_numeric(latest["generation_mw"], errors="coerce").sum(min_count=1)
-                ren = pd.to_numeric(latest[latest["technology"].isin(renewable_names)]["generation_mw"], errors="coerce").sum(min_count=1)
-                out["generation_time"] = pd.Timestamp(gt)
-                out["production_mw"] = float(total) if pd.notna(total) else None
-                out["renewable_mw"] = float(ren) if pd.notna(ren) else None
-                out["renewable_share"] = float(100*ren/total) if pd.notna(total) and total>0 and pd.notna(ren) else None
-                total_ts = gx.groupby("time_utc",as_index=False)["generation_mw"].sum().rename(columns={"generation_mw":"production_mw"})
-                ren_ts = gx[gx["technology"].isin(renewable_names)].groupby("time_utc",as_index=False)["generation_mw"].sum().rename(columns={"generation_mw":"renewable_mw"})
-                merged = total_ts.merge(ren_ts,on="time_utc",how="left")
-                merged["renewable_mw"] = merged["renewable_mw"].fillna(0)
-                merged["renewable_share"] = (merged["renewable_mw"]/merged["production_mw"]*100).where(merged["production_mw"]>0)
-                target = pd.Timestamp(gt)-pd.Timedelta(hours=24)
-                for fld in ["production_mw","renewable_mw","renewable_share"]:
-                    out["previous_24h"][fld] = nearest(merged,"time_utc",fld,target)
-
-        if not ldf.empty:
-            lx = ldf.dropna(subset=["load_mw"]).sort_values("time_utc")
-            if not lx.empty:
-                row = lx.iloc[-1]
-                out["consumption_mw"] = float(row["load_mw"])
-                out["load_time"] = pd.Timestamp(row["time_utc"])
-                out["previous_24h"]["consumption_mw"] = nearest(lx,"time_utc","load_mw",pd.Timestamp(row["time_utc"])-pd.Timedelta(hours=24))
-
-        snap = snapshot_region(baltic_system_snapshot, region)
-        cur = snap.get("current", {})
-        prev = snap.get("previous_24h", {})
-        used = False
-        for fld in ["production_mw","consumption_mw","renewable_mw","renewable_share"]:
-            if out[fld] is None and cur.get(fld) is not None:
-                out[fld] = cur.get(fld); used = True
-            if out["previous_24h"].get(fld) is None and prev.get(fld) is not None:
-                out["previous_24h"][fld] = prev.get(fld)
-        if out["generation_time"] is None and cur.get("generation_time"):
-            out["generation_time"] = pd.to_datetime(cur["generation_time"], utc=True, errors="coerce")
-        if out["load_time"] is None and cur.get("load_time"):
-            out["load_time"] = pd.to_datetime(cur["load_time"], utc=True, errors="coerce")
-        if used: out["source"] = "ENTSO-E GitHub snapshot"
-        return out
-
-    baltic_snapshots = {r: make_snapshot(r) for r in BALTICS}
-
-    # Estonia total production/consumption remain strictly Elering actual.
-    baltic_snapshots["EE"]["production_mw"] = float(prod) if prod is not None else None
-    baltic_snapshots["EE"]["consumption_mw"] = float(cons) if cons is not None else None
-    baltic_snapshots["EE"]["generation_time"] = pd.Timestamp(prod_time) if prod_time is not None else baltic_snapshots["EE"]["generation_time"]
-    baltic_snapshots["EE"]["load_time"] = pd.Timestamp(cons_time) if cons_time is not None else baltic_snapshots["EE"]["load_time"]
-    baltic_snapshots["EE"]["source"] = "Elering actual + ENTSO-E renewables"
-    if not system_df.empty:
-        sx = system_df.copy()
-        sx["time_utc"] = pd.to_datetime(sx["time_utc"], utc=True, errors="coerce")
-        if prod_time is not None:
-            baltic_snapshots["EE"]["previous_24h"]["production_mw"] = nearest(sx,"time_utc","production_mw",pd.Timestamp(prod_time).tz_convert("UTC")-pd.Timedelta(hours=24))
-        if cons_time is not None:
-            baltic_snapshots["EE"]["previous_24h"]["consumption_mw"] = nearest(sx,"time_utc","consumption_mw",pd.Timestamp(cons_time).tz_convert("UTC")-pd.Timedelta(hours=24))
-
-    # Renewable generation is shown separately from ENTSO-E A75 actual generation by type.
-    # It never replaces the Elering total-production KPI.
-    renewable_generation_mw = None
-    renewable_share = None
-    if not entsoe_generation.empty:
-        gt = entsoe_generation.dropna(subset=["generation_mw"]).copy()
-        if not gt.empty:
-            latest_gt = gt["time_utc"].max()
-            gx = gt[gt["time_utc"] == latest_gt].copy() if is_fresh(latest_gt, 120) else pd.DataFrame()
-            total_gen = pd.to_numeric(gx["generation_mw"], errors="coerce").sum(min_count=1)
-            ren_gen = pd.to_numeric(gx[gx["technology"].isin(renewable_names)]["generation_mw"], errors="coerce").sum(min_count=1)
-            if pd.notna(ren_gen):
-                renewable_generation_mw = float(ren_gen)
-            if pd.notna(total_gen) and total_gen > 0 and pd.notna(ren_gen):
-                renewable_share = float(100 * ren_gen / total_gen)
-
-    # Latest official fundamental reference values. Current EEX NGP files are used for
-    # near-real-time gas KPIs; the 60-day final TTF file remains for chart history only.
-    ngp_current: dict[str, float | None] = {a: None for a in ["TTF", "LVA-EST", "FIN", "LTU"]}
-    ngp_delivery: dict[str, object | None] = {a: None for a in ngp_current}
-    for area, (df_ngp, _st) in ngp_current_results.items():
-        if not df_ngp.empty:
-            today_rows = df_ngp[df_ngp["delivery_date"] == today].dropna(subset=["price_eur_mwh"])
-            row = today_rows.tail(1) if not today_rows.empty else df_ngp.dropna(subset=["price_eur_mwh"]).sort_values("delivery_date").head(1)
-            if not row.empty:
-                ngp_current[area] = float(row.iloc[0]["price_eur_mwh"])
-                ngp_delivery[area] = row.iloc[0]["delivery_date"]
-    ttf_latest = ngp_current["TTF"]
-    ttf_date = ngp_delivery["TTF"]
-
-    brent_latest = None
-    brent_date = None
-    if not brent_df.empty:
-        x = brent_df.dropna(subset=["price_usd_bbl"]).sort_values("date")
-        if not x.empty:
-            brent_latest = float(x.iloc[-1]["price_usd_bbl"])
-            brent_date = x.iloc[-1]["date"]
-
-    eua_latest = None
-    eua_date = None
-    if not eua_df.empty:
-        x = eua_df.dropna(subset=["price_eur_tco2"]).sort_values("date")
-        if not x.empty:
-            eua_latest = float(x.iloc[-1]["price_eur_tco2"])
-            eua_date = x.iloc[-1]["date"]
-
-    # ---------- 1. EXECUTIVE SNAPSHOT ----------
-    st.subheader("Olukord praegu")
-    st.caption("Sama operatiivne vaade kogu Baltikumile. Eesti kogutootmine/tarbimine: Elering actual. Läti ja Leedu: ENTSO-E A75/A65 actual. Taastuvtootmine: ENTSO-E A75.")
     country_meta = {"EE": ("🇪🇪", "Eesti"), "LV": ("🇱🇻", "Läti"), "LT": ("🇱🇹", "Leedu")}
     for region in BALTICS:
         flag, name = country_meta[region]
@@ -1004,13 +854,6 @@ def render_dashboard():
                     warn_after_min=15,
                 ),
             )
-
-            umm_level = "error" if umm_meta.error else ("warning" if not umm_rows else "ok")
-            source_badge(
-                "Nord Pool UMM",
-                detail=umm_meta.error or f"HTTP {umm_meta.status_code or '—'} · {len(umm_rows)} teadet",
-                level=umm_level,
-            )
             _news_items, _news_meta = load_energy_news_snapshot()
             _news_updated = pd.to_datetime(_news_meta.get("updated_at"), utc=True, errors="coerce")
             _news_age = age_minutes(_news_updated) if pd.notna(_news_updated) else None
@@ -1155,8 +998,8 @@ def render_dashboard():
             )
 
     # ---------- 2. DETAIL TABS ----------
-    tab_overview, tab_prices, tab_fundamentals, tab_system, tab_entsoe, tab_umm, tab_news, tab_reserves, tab_gas, tab_quality = st.tabs([
-        "📌 Põhivaade", "⚡ Elektrihinnad", "📈 Fundamentaalid", "🏭 Baltikumi süsteem", "🌐 ENTSO-E", "📣 UMM", "🌍 Energiauudised", "🔄 Reservid", "🔥 Gaasihoidlad", "✅ Andmekvaliteet"
+    tab_overview, tab_prices, tab_fundamentals, tab_system, tab_entsoe, tab_news, tab_reserves, tab_gas, tab_quality = st.tabs([
+        "📌 Põhivaade", "⚡ Elektrihinnad", "📈 Fundamentaalid", "🏭 Baltikumi süsteem", "🌐 ENTSO-E", "🌍 Energiauudised", "🔄 Reservid", "🔥 Gaasihoidlad", "✅ Andmekvaliteet"
     ])
 
     with tab_overview:
@@ -1215,6 +1058,31 @@ def render_dashboard():
             fig = px.line(p, x="time_local", y="price", color="region")
             fig.update_layout(yaxis_title="€/MWh", xaxis_title="Aeg (Europe/Tallinn)")
             st.plotly_chart(fig, use_container_width=True)
+
+        st.divider()
+        st.markdown("### 🗺️ EL päev-ette hinnakaardid")
+        st.caption(
+            "ENTSO-E Transparency Platform A44 päev-ette hinnad. Mitme hinnapiirkonnaga riigi puhul "
+            "värvitakse riik hinnapiirkondade lihtsa aritmeetilise keskmise järgi; see on BalticPulse'i agregatsioon, mitte ametlik riigihind."
+        )
+        _today_str = today.isoformat()
+        _tomorrow_str = tomorrow.isoformat()
+        _map_today = _eu_map_df(eu_da_snapshot, _today_str)
+        _map_tomorrow = _eu_map_df(eu_da_snapshot, _tomorrow_str)
+        _m1, _m2 = st.columns(2)
+        with _m1:
+            _render_eu_price_map(_map_today, f"Täna · {today:%d.%m.%Y}")
+        with _m2:
+            if now_local.hour >= 14:
+                _render_eu_price_map(_map_tomorrow, f"Homme · {tomorrow:%d.%m.%Y}")
+            else:
+                st.info("Homse kaart kuvatakse pärast 14:00 Eesti aja järgi, kui ENTSO-E päev-ette hinnad on avaldatud.")
+        if not eu_da_status.get("ok"):
+            st.warning(f"EL hinnakaardi snapshot: {eu_da_status.get('error')}")
+        elif eu_da_snapshot.get("updated_at"):
+            _map_updated = pd.to_datetime(eu_da_snapshot.get("updated_at"), utc=True, errors="coerce")
+            if pd.notna(_map_updated):
+                st.caption(f"Kaardi snapshot uuendatud {_map_updated.tz_convert(TALLINN):%d.%m.%Y %H:%M}.")
 
         st.divider()
         st.markdown("#### Ajaloolised päev-ette hinnad")
@@ -1288,18 +1156,15 @@ def render_dashboard():
 
         monthly_el = st.session_state.get("electricity_monthly_table", pd.DataFrame())
         if not monthly_el.empty:
+            _monthly_view = monthly_el.copy()
+            _flags = {"EE":"🇪🇪 EE", "LV":"🇱🇻 LV", "LT":"🇱🇹 LT", "FI":"🇫🇮 FI"}
+            _monthly_view["Piirkond"] = _monthly_view["Piirkond"].map(_flags).fillna(_monthly_view["Piirkond"])
             st.dataframe(
-                monthly_el,
+                _shade_month_groups(_monthly_view),
                 hide_index=True,
                 use_container_width=True,
-                column_config={
-                    "Keskmine €/MWh": st.column_config.NumberColumn(format="%.2f"),
-                    "Min €/MWh": st.column_config.NumberColumn(format="%.2f"),
-                    "Max €/MWh": st.column_config.NumberColumn(format="%.2f"),
-                    "Min aeg": st.column_config.DatetimeColumn(format="DD.MM.YYYY HH:mm"),
-                    "Max aeg": st.column_config.DatetimeColumn(format="DD.MM.YYYY HH:mm"),
-                },
             )
+            st.caption("Iga kuu neli rida (EE/LV/LT/FI) on sama taustavarjundiga; järgmine kuu kasutab vahelduvat varjundit.")
 
         st.caption("Allikas: Eleringi avalik NPS API / Nord Pool päev-ette turg.")
 
@@ -1484,72 +1349,6 @@ def render_dashboard():
             st.plotly_chart(fig3, use_container_width=True)
             st.caption("A61 + contract_MarketAgreement.Type=A01. See on päev-ette prognoositud suunaline transfer capacity, mitte intraday jääkvõimsus ega füüsilise voo põhjal arvutatud vaba maht.")
 
-    with tab_umm:
-        st.markdown("### Nord Pool UMM — kiireloomulised turuteated")
-        st.caption(
-            "Allikas on Nord Pooli avalik UMM REST API. BalticPulse küsib API-t uuesti iga minuti järel "
-            "(cache 30 s). Vaikimisi kuvatakse kõige uuemad avaldatud/uuendatud teated esimesena."
-        )
-        if umm_meta.error:
-            st.error(f"Nord Pool UMM API viga: {umm_meta.error}")
-        elif umm_df.empty:
-            st.info("UMM teateid ei leitud.")
-        else:
-            c_fresh, c_count, c_active = st.columns(3)
-            c_fresh.metric(
-                "Uusim UMM",
-                newest_umm_time.tz_convert(TALLINN).strftime("%d.%m %H:%M") if newest_umm_time is not None else "—",
-                delta=f"{umm_age_minutes:.0f} min tagasi" if umm_age_minutes is not None else None,
-                delta_color="off",
-            )
-            c_count.metric("API-st laaditud", f"{len(umm_df)} teadet")
-            c_active.metric("Hetkel aktiivsed", f"{len(active_umm)} teadet")
-
-            if umm_age_minutes is not None and umm_age_minutes > 180:
-                st.warning(
-                    "Nord Pool API vastas, kuid uusim API-s nähtav UMM on üle 3 tunni vana. "
-                    "See võib olla täiesti normaalne vaiksel perioodil; kui Nord Pooli veebis on uuem teade, "
-                    "on tegu API/UI lahknevusega ja seda ei varjata."
-                )
-
-            only_active = st.toggle("Ainult hetkel aktiivsed sündmused", value=False)
-            u = active_umm if only_active else umm_df.copy()
-
-            # Latest publication/version first. The previous build sorted by MW, which made old large
-            # outages look like the newest messages.
-            if "publication_time" in u.columns:
-                u = u.sort_values("publication_time", ascending=False, na_position="last")
-
-            areas = sorted({
-                part.strip()
-                for value in u.get("area", pd.Series(dtype=str)).dropna().astype(str)
-                for part in value.split(",")
-                if part.strip()
-            })
-            area_sel = st.multiselect("Piirkond", areas, default=[])
-            if area_sel and "area" in u.columns:
-                u = u[u["area"].astype(str).apply(lambda x: any(sel in [p.strip() for p in x.split(",")] for sel in area_sel))]
-
-            columns = [c for c in [
-                "publication_time","area","asset_name","market_participant","status","message_type",
-                "affected_capacity","installed_capacity","available_capacity","event_start","event_end",
-                "reason","source_url"
-            ] if c in u.columns]
-            st.dataframe(
-                u[columns], hide_index=True, use_container_width=True,
-                column_config={
-                    "publication_time": st.column_config.DatetimeColumn("Avaldatud/uuendatud", format="DD.MM.YYYY HH:mm"),
-                    "affected_capacity": st.column_config.NumberColumn("Mõjutatud MW", format="%.0f"),
-                    "installed_capacity": st.column_config.NumberColumn("Installeeritud MW", format="%.0f"),
-                    "available_capacity": st.column_config.NumberColumn("Saadaval MW", format="%.0f"),
-                    "source_url": st.column_config.LinkColumn("Nord Pool"),
-                }
-            )
-            st.caption(
-                "Märkus: SignalR push-kanal on Nord Pooli poolt kinnitatud, kuid BalticPulse ei kasuta seda enne, "
-                "kui messageHub sündmuse nimi ja payload-contract on ametlikust arendusdokumentatsioonist kontrollitud. "
-                "Praegune lahendus kasutab valideeritud avalikku /messages REST API-t."
-            )
 
     with tab_news:
         st.markdown("### 🌍 Olulised energiauudised")
@@ -1918,6 +1717,37 @@ def render_dashboard():
             else:
                 st.warning(brent_status.error or "EIA Brent andmed pole saadaval.")
 
+            st.markdown("#### 🛢️ ICE Brent futuurid")
+            _bkey = _future_key_rows(futures_snapshot, "brent")
+            _bcurve = _future_curve_rows(futures_snapshot, "brent")
+            _bmeta = futures_snapshot.get("brent", {}) if futures_snapshot else {}
+            if _bkey.empty:
+                st.warning("Brent futuuride snapshot pole veel saadaval. Käivita GitHub Actions → Update BalticPulse futures.")
+                if _bmeta.get("errors"):
+                    with st.expander("Brent futuuride diagnostika"):
+                        for err in _bmeta.get("errors", []): st.write(f"• {err}")
+            else:
+                st.dataframe(
+                    _bkey, hide_index=True, use_container_width=True,
+                    column_config={
+                        "last": st.column_config.NumberColumn("Viimane $/bbl", format="%.2f"),
+                        "volume": st.column_config.NumberColumn("Volume", format="%.0f"),
+                    },
+                )
+                if not _bcurve.empty:
+                    _bc = _bcurve.copy()
+                    _bc["delivery_start"] = pd.to_datetime(_bc["delivery_start"], errors="coerce")
+                    _bc = _bc.dropna(subset=["delivery_start", "last"]).sort_values("delivery_start")
+                    if not _bc.empty:
+                        _figb = px.line(
+                            _bc, x="delivery_start", y="last", markers=True,
+                            hover_data=[c for c in ["contract", "volume", "time"] if c in _bc.columns],
+                            labels={"delivery_start":"Tarnekuu", "last":"$/bbl"},
+                            title="ICE Brent Crude Futures forward curve",
+                        )
+                        st.plotly_chart(_figb, use_container_width=True)
+                st.caption("Allikas: ICE Futures Europe Brent Crude Futures; turuandmed on viitega.")
+
         with r:
             st.metric("EUA oksjon", f"{eua_latest:.2f} €/tCO₂" if eua_latest is not None else "—")
             if not eua_df.empty:
@@ -1941,7 +1771,6 @@ def render_dashboard():
         st.markdown(
             """
     - **Ei kasutata sünteetilisi varuväärtusi.** API tõrke korral näidatakse puuduvat väärtust või veateadet.
-    - **UMM võimsusi ei liideta automaatselt.** Teated võivad kattuda, olla sama sündmuse versioonid või kirjeldada eri turuobjekte.
     - **Capacity ≠ energy.** Reservi valmisolekutasu (€/MW/h) ja aktiveeritud tasakaalustusenergia hind (€/MWh) on eri näitajad.
     - **Päev-ette hind ≠ lõpptarbija hind.** Maksud, võrgutasud ja müüja marginaal ei kuulu börsihinna sisse.
     - **Värskus on osa andmekvaliteedist.** Spot-hind seotakse täpselt käimasoleva MTU-ga; Eleringi tootmise ja tarbimise põhiväärtust lubatakse kuni 15 min vanusena; vanem väärtus ei ole “praegu” ja seda ei asendata ENTSO-E-ga. ENTSO-E tootmisliikide ning piiriüleste voogude väärtused on eraldi allikad ja nende värskus kuvatakse eraldi.
@@ -1955,7 +1784,7 @@ def render_dashboard():
         )
 
     st.divider()
-    st.caption("BalticPulse · Allikad: Elering, ENTSO-E Transparency Platform, Nord Pool UMM, Baltic Transparency Dashboard/Volton, GIE AGSI+, EEX, U.S. EIA ning kuratoeritud energia-uudisallikad. Põhimõte: parem puuduv number kui kontrollimata number.")
+    st.caption("BalticPulse · Allikad: Elering, ENTSO-E Transparency Platform, Baltic Transparency Dashboard/Volton, GIE AGSI+, EEX, U.S. EIA ning kuratoeritud energia-uudisallikad. Põhimõte: parem puuduv number kui kontrollimata number.")
 
 
 render_dashboard()
