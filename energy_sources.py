@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import requests
 
-BUILD_VERSION = "16.1.4"
+BUILD_VERSION = "16.1.5"
 
 LOG = logging.getLogger(__name__)
 TALLINN = ZoneInfo("Europe/Tallinn")
@@ -754,10 +754,7 @@ def fetch_elering_system(start: datetime, end: datetime) -> tuple[pd.DataFrame, 
             source="Elering system actual production + consumption",
             ok=False,
             fetched_at=_now_iso(),
-            error=(
-                f"production: {prod_status.error or 'no data'}; "
-                f"consumption: {cons_status.error or 'no data'}"
-            ),
+            error=(f"production: {prod_status.error or 'no data'}; " f"consumption: {cons_status.error or 'no data'}"),
         )
 
     if prod_df.empty:
@@ -789,6 +786,7 @@ def fetch_elering_system(start: datetime, end: datetime) -> tuple[pd.DataFrame, 
         ok=True,
         fetched_at=_now_iso(),
         note="; ".join(notes) + "; plan values ignored.",
+        error=None,
     )
     return out, status
 

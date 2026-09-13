@@ -181,3 +181,9 @@ Core freshness rules in this build: Elering system 20 min; ENTSO-E actual 180 mi
 - Source links point to the most specific practical primary data page/API.
 - Snapshot/archive visuals show both the primary source and the local snapshot/archive path.
 - Derived overview/attention visuals list the major underlying source families.
+
+## V16.1.5 — SourceStatus constructor hotfix
+- Fixed Streamlit crash in `fetch_elering_system()` caused by incompatible `SourceStatus(...)` keyword arguments.
+- Audited every `SourceStatus(...)` constructor in `energy_sources.py`.
+- Allowed fields are exactly: source, ok, fetched_at, url, status_code, error, note.
+- Elering fetch failures now return a normal `ok=False` source status instead of raising a TypeError.
