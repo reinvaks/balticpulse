@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import requests
 
-BUILD_VERSION = "16.1.5"
+BUILD_VERSION = "16.1.6"
 
 LOG = logging.getLogger(__name__)
 TALLINN = ZoneInfo("Europe/Tallinn")
@@ -172,7 +172,7 @@ def fetch_eex_ngp_current(area: str = "TTF") -> tuple[pd.DataFrame, SourceStatus
     area = area.upper()
     url = EEX_NGP_CURRENT_URLS.get(area)
     if not url:
-        return pd.DataFrame(), SourceStatus(source=f"EEX NGP {area}", ok=False, fetched_at=_now_iso(), error="Unsupported NGP area")
+        return pd.DataFrame(), SourceStatus(source=f"EEX NGP {area}", ok=False, fetched_at=_now_iso(), url=EEX_NGP_CURRENT_URLS.get(area, ""), error="Unsupported NGP area")
     raw, status = _get_bytes(url)
     status.source = f"EEX NGP {area} current (15-min refresh)"
     if raw is None:
@@ -248,6 +248,7 @@ def fetch_eex_ngp_history(area: str = "TTF") -> tuple[pd.DataFrame, SourceStatus
             source=f"EEX NGP {area} history",
             ok=False,
             fetched_at=_now_iso(),
+            url="",
             error="Unsupported NGP area",
         )
 
@@ -754,6 +755,7 @@ def fetch_elering_system(start: datetime, end: datetime) -> tuple[pd.DataFrame, 
             source="Elering system actual production + consumption",
             ok=False,
             fetched_at=_now_iso(),
+            url=f"{ELERING_BASE}/system/with-plan",
             error=(f"production: {prod_status.error or 'no data'}; " f"consumption: {cons_status.error or 'no data'}"),
         )
 
@@ -785,6 +787,7 @@ def fetch_elering_system(start: datetime, end: datetime) -> tuple[pd.DataFrame, 
         source="Elering system actual production + consumption",
         ok=True,
         fetched_at=_now_iso(),
+        url=f"{ELERING_BASE}/system/with-plan",
         note="; ".join(notes) + "; plan values ignored.",
         error=None,
     )

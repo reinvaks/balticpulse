@@ -187,3 +187,10 @@ Core freshness rules in this build: Elering system 20 min; ENTSO-E actual 180 mi
 - Audited every `SourceStatus(...)` constructor in `energy_sources.py`.
 - Allowed fields are exactly: source, ok, fetched_at, url, status_code, error, note.
 - Elering fetch failures now return a normal `ok=False` source status instead of raising a TypeError.
+
+## V16.1.6 — SourceStatus required-url fix
+- Root cause confirmed at runtime: `SourceStatus.url` is a required constructor argument.
+- Audited every `SourceStatus(...)` call for both unknown and missing required arguments.
+- Every constructor now supplies `url`.
+- Elering system status uses the exact `system/with-plan` endpoint URL.
+- Direct runtime constructor test passed with signature `(source: 'str', ok: 'bool', fetched_at: 'str', url: 'str', status_code: 'int | None' = None, error: 'str | None' = None, note: 'str | None' = None) -> None`.
