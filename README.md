@@ -153,3 +153,12 @@ BalticPulse now applies one provenance/freshness policy across current indicator
 - UNAVAILABLE: no sufficiently fresh validated value exists.
 - No synthetic current values, silent interpolation, or stale-as-current display.
 Core freshness rules in this build: Elering system 20 min; ENTSO-E actual 180 min; Baltic snapshot 60 min (underlying actual max 180 min); futures 120 min; EU day-ahead snapshot 180 min; news 90 min; reserve/balancing mirror 180 min; AGSI 72 h; Brent 7 days; EUA 10 days.
+
+## V16.1.1 — Baltic system history
+- Eesti system graph now has three validated routes: Elering actual, ENTSO-E actual fallback, and persisted official snapshot history.
+- Added common EE/LV/LT period selector: 48h / 1 week / 1 month / 1 year / 5 years.
+- Long history is loaded on demand and never blocks app startup.
+- EE history prefers Elering production/load and uses ENTSO-E A75 for renewable generation; if Elering history is unavailable, ENTSO-E actual remains available as a clearly labelled fallback.
+- LV/LT history uses ENTSO-E A75 generation and A65 actual total load.
+- 1y/5y views are shown as daily actual averages; missing source periods are not interpolated or synthesized.
+- UI shows actual data coverage and source-query errors.
