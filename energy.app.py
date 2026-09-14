@@ -30,7 +30,7 @@ from energy_sources import (
     fetch_eex_eua_auction,
 )
 
-APP_BUILD_VERSION = "16.1.6"
+APP_BUILD_VERSION = "16.1.8"
 
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
@@ -792,17 +792,13 @@ def load_futures_snapshot():
 
 
 def _future_key_rows(payload: dict, section: str):
-    if not _snapshot_is_fresh(payload, 120):
-        return pd.DataFrame()
-    rows = payload.get(section, {}).get("key", []) if isinstance(payload, dict) else []
-    return pd.DataFrame(rows) if rows else pd.DataFrame()
+    rows, _state = _future_rows_market_aware(payload, section, "key")
+    return rows
 
 
 def _future_curve_rows(payload: dict, section: str):
-    if not _snapshot_is_fresh(payload, 120):
-        return pd.DataFrame()
-    rows = payload.get(section, {}).get("curve", []) if isinstance(payload, dict) else []
-    return pd.DataFrame(rows) if rows else pd.DataFrame()
+    rows, _state = _future_rows_market_aware(payload, section, "curve")
+    return rows
 
 
 
@@ -865,6 +861,66 @@ def source_links(*items):
             part += f" — {note}"
         parts.append(part)
     st.markdown("Allikad: " + " · ".join(parts))
+
+
+
+def _is_weekend_market_closed(tz_name: str, now_utc=None) -> bool:
+    now_utc = now_utc or datetime.now(timezone.utc)
+    try:
+        local_now = now_utc.astimezone(ZoneInfo(tz_name))
+    except Exception:
+        local_now = now_utc
+    return local_now.weekday() >= 5
+
+
+def _futures_market_state(section: str, payload: dict, now_utc=None) -> dict:
+    meta = (payload or {}).get(section, {}) if isinstance(payload, dict) else {}
+    tz_name = meta.get("timezone") or {
+        "power": "Europe/Paris",
+        "gas": "Europe/Amsterdam",
+        "brent": "Europe/London",
+    }.get(section, "UTC")
+
+    observed = pd.to_datetime(meta.get("observed_at"), utc=True, errors="coerce")
+    if pd.isna(observed):
+        observed = pd.to_datetime((payload or {}).get("updated_at"), utc=True, errors="coerce")
+
+    return {
+        "closed": _is_weekend_market_closed(tz_name, now_utc=now_utc),
+        "timezone": tz_name,
+        "observed_at": observed,
+    }
+
+
+def _future_rows_market_aware(payload: dict, section: str, kind: str):
+    state = _futures_market_state(section, payload)
+    rows = ((payload or {}).get(section, {}) or {}).get(kind, []) if isinstance(payload, dict) else []
+    if not rows:
+        return pd.DataFrame(), state
+
+    # Closed market: keep last official observed values visible even beyond normal freshness limit.
+    if state["closed"]:
+        return pd.DataFrame(rows), state
+
+    # Open weekday: normal freshness rule remains strict.
+    if not _snapshot_is_fresh(payload, 120):
+        return pd.DataFrame(), state
+
+    return pd.DataFrame(rows), state
+
+
+def _render_futures_market_state(state: dict):
+    observed = state.get("observed_at")
+    observed_txt = "aeg teadmata"
+    if pd.notna(observed):
+        observed_txt = observed.tz_convert(TALLINN).strftime("%d.%m.%Y %H:%M")
+
+    if state.get("closed"):
+        st.info(
+            f"🔒 TURG SULETUD — kuvatakse viimane ametlik turuseis seisuga **{observed_txt}**."
+        )
+    else:
+        st.caption(f"Viimane futuuride turuseis: {observed_txt}.")
 
 
 def render_dashboard():
@@ -1988,6 +2044,7 @@ def render_dashboard():
 
         pkey = _future_key_rows(futures_snapshot, "power")
         pcurve = _future_curve_rows(futures_snapshot, "power")
+        _render_futures_market_state(_futures_market_state("power", futures_snapshot))
         pmeta = futures_snapshot.get("power", {}) if futures_snapshot else {}
         p_updated = pd.to_datetime(futures_snapshot.get("updated_at"), utc=True, errors="coerce") if futures_snapshot else pd.NaT
 
@@ -2571,6 +2628,7 @@ def render_dashboard():
         )
         gkey = _future_key_rows(futures_snapshot, "gas")
         gcurve = _future_curve_rows(futures_snapshot, "gas")
+        _render_futures_market_state(_futures_market_state("gas", futures_snapshot))
         gmeta = futures_snapshot.get("gas", {}) if futures_snapshot else {}
         if gkey.empty:
             _g_updated, _g_errors = _futures_diag(futures_snapshot, "gas")
@@ -2759,6 +2817,7 @@ def render_dashboard():
             st.markdown("#### 🛢️ ICE Brent futuurid")
             _bkey = _future_key_rows(futures_snapshot, "brent")
             _bcurve = _future_curve_rows(futures_snapshot, "brent")
+            _render_futures_market_state(_futures_market_state("brent", futures_snapshot))
             _bmeta = futures_snapshot.get("brent", {}) if futures_snapshot else {}
             if _bkey.empty:
                 _b_updated, _b_errors = _futures_diag(futures_snapshot, "brent")

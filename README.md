@@ -194,3 +194,18 @@ Core freshness rules in this build: Elering system 20 min; ENTSO-E actual 180 mi
 - Every constructor now supplies `url`.
 - Elering system status uses the exact `system/with-plan` endpoint URL.
 - Direct runtime constructor test passed with signature `(source: 'str', ok: 'bool', fetched_at: 'str', url: 'str', status_code: 'int | None' = None, error: 'str | None' = None, note: 'str | None' = None) -> None`.
+
+## V16.1.7 — futures closed-market handling
+- On weekends, futures remain visible using the last official observed market state.
+- A clear `TURG SULETUD` message shows the timestamp of that last state.
+- On weekdays, the 120-minute freshness rule remains strict.
+- Euronext Power, ICE TTF and ICE Brent snapshots now carry market/timezone/observed-at metadata.
+- Exchange holidays and intraday breaks are not guessed yet; weekend closure is the validated automatic rule in this version.
+
+## V16.1.8 — futures browser fallback
+- Root cause: Euronext and ICE quote tables are client-side rendered on GitHub Actions; `requests + pandas.read_html` therefore returned `No tables found`.
+- Futures collector now tries direct HTML first and automatically falls back to headless Chromium via Playwright.
+- Sources remain the official Euronext and ICE product pages.
+- No search-engine, synthetic, or third-party futures prices are used.
+- The workflow installs Chromium and prints the transport used (`direct` or `browser`) for diagnostics.
+- Each market preserves its previous successful official snapshot independently if a later fetch fails.

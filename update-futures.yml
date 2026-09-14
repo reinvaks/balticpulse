@@ -11,6 +11,7 @@ permissions:
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v4
@@ -20,7 +21,9 @@ jobs:
           python-version: "3.12"
 
       - name: Install parser dependencies
-        run: pip install pandas requests lxml html5lib beautifulsoup4
+        run: |
+          pip install pandas requests lxml html5lib beautifulsoup4 playwright
+          python -m playwright install --with-deps chromium
 
       - name: Fetch official futures data
         run: python fetch_futures_snapshot.py
