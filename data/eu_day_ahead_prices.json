@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-18T12:36:32.982458+00:00",
+  "updated_at": "2026-09-18T13:28:55.951545+00:00",
   "method": "A44 day-ahead; country arithmetic mean across available bidding zones",
   "days": {
     "2026-09-18": {
@@ -57,9 +57,9 @@
         {
           "country": "Denmark",
           "iso3": "DNK",
-          "price_eur_mwh": 113.16,
+          "price_eur_mwh": 108.13,
           "zones": "DK1, DK2",
-          "zone_count": 1
+          "zone_count": 2
         },
         {
           "country": "Estonia",
@@ -178,6 +178,13 @@
           "zone_count": 1
         },
         {
+          "country": "Bulgaria",
+          "iso3": "BGR",
+          "price_eur_mwh": 152.69,
+          "zones": "BG",
+          "zone_count": 1
+        },
+        {
           "country": "Germany/Luxembourg",
           "iso3": "DEU",
           "price_eur_mwh": 44.69,
@@ -190,11 +197,16 @@
           "price_eur_mwh": 44.69,
           "zones": "DE-LU",
           "zone_count": 1
+        },
+        {
+          "country": "Spain",
+          "iso3": "ESP",
+          "price_eur_mwh": 112.82,
+          "zones": "ES",
+          "zone_count": 1
         }
       ]
     }
   },
-  "errors": [
-    "DK1: ReadTimeout: HTTPSConnectionPool(host='web-api.tp.entsoe.eu', port=443): Read timed out. (read timeout=25)"
-  ]
+  "errors": []
 }
