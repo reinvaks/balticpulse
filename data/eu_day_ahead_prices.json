@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-18T05:27:35.476881+00:00",
+  "updated_at": "2026-09-18T06:35:58.155355+00:00",
   "method": "A44 day-ahead; country arithmetic mean across available bidding zones",
   "days": {
     "2026-09-18": {
@@ -146,13 +146,6 @@
           "zone_count": 1
         },
         {
-          "country": "Slovakia",
-          "iso3": "SVK",
-          "price_eur_mwh": 175.86,
-          "zones": "SK",
-          "zone_count": 1
-        },
-        {
           "country": "Slovenia",
           "iso3": "SVN",
           "price_eur_mwh": 168.17,
@@ -172,5 +165,7 @@
       "countries": []
     }
   },
-  "errors": []
+  "errors": [
+    "SK: ReadTimeout: HTTPSConnectionPool(host='web-api.tp.entsoe.eu', port=443): Read timed out. (read timeout=25)"
+  ]
 }
