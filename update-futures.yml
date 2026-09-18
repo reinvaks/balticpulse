@@ -48,12 +48,19 @@ jobs:
           with sync_playwright() as p:
               browser = p.chromium.launch(
                   headless=True,
-                  args=["--disable-dev-shm-usage", "--no-sandbox"]
+                  args=[
+                      "--disable-dev-shm-usage",
+                      "--no-sandbox"
+                  ]
               )
+
               page = browser.new_page()
               page.set_content("<h1>BalticPulse</h1>")
+
               assert page.locator("h1").inner_text() == "BalticPulse"
+
               print("Chromium launch OK")
+
               browser.close()
           PY
 
@@ -70,41 +77,75 @@ jobs:
           path = Path("data/futures.json")
 
           if not path.exists():
-              raise SystemExit("data/futures.json was not created")
+              raise SystemExit(
+                  "ERROR: data/futures.json was not created"
+              )
 
-          payload = json.loads(path.read_text(encoding="utf-8"))
+          payload = json.loads(
+              path.read_text(encoding="utf-8")
+          )
 
-          print("updated_at:", payload.get("updated_at"))
+          print(
+              "updated_at:",
+              payload.get("updated_at")
+          )
 
           available = False
 
-          for section in ["power", "gas", "brent"]:
+          for section in [
+              "power",
+              "gas",
+              "brent"
+          ]:
               data = payload.get(section, {}) or {}
+
               curve = data.get("curve", []) or []
               key = data.get("key", []) or []
               errors = data.get("errors", []) or []
 
               print(
-                  f"{section}: curve={len(curve)}, "
-                  f"key={len(key)}, errors={len(errors)}"
+                  f"{section}: "
+                  f"curve={len(curve)}, "
+                  f"key={len(key)}, "
+                  f"errors={len(errors)}"
               )
+
+              if data.get("observed_at"):
+                  print(
+                      f"{section} observed_at: "
+                      f"{data.get('observed_at')}"
+                  )
+
+              if data.get("fallback"):
+                  print(
+                      f"{section} fallback: "
+                      f"{data.get('fallback')}"
+                  )
 
               if curve:
                   available = True
 
-              for error in errors:
-                  print(f"{section} ERROR: {error}")
+              if errors:
+                  for error in errors:
+                      print(
+                          f"{section} ERROR: {error}"
+                      )
 
           if not available:
-              raise SystemExit("No futures market data in snapshot")
+              raise SystemExit(
+                  "ERROR: futures snapshot contains no market data"
+              )
 
           print("Futures snapshot validation OK")
           PY
 
-      - name: Show diagnostics
+      - name: Show futures diagnostics
         if: always()
         run: |
-          echo "===== BalticPulse futures diagnostics ====="
+          echo "========================================"
+          echo "BalticPulse futures diagnostics"
+          echo "========================================"
+
           if [ -f data/futures.json ]; then
             cat data/futures.json
           else
