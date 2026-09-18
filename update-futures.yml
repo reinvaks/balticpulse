@@ -3,46 +3,267 @@ name: Update BalticPulse futures
 on:
   workflow_dispatch:
   schedule:
+    # Käivita kord tunnis, 12 minutit pärast täistundi
     - cron: "12 * * * *"
 
 permissions:
   contents: write
 
+concurrency:
+  group: balticpulse-futures
+  cancel-in-progress: false
+
 jobs:
   update:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      # ------------------------------------------------------------
+      # 1. Repository
+      # ------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v5
+      # ------------------------------------------------------------
+      # 2. Python
+      # ------------------------------------------------------------
+      - name: Set up Python
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+          cache: "pip"
 
-      - name: Install parser dependencies
+      # ------------------------------------------------------------
+      # 3. Python dependencies
+      # Playwright peab olema samas Python keskkonnas,
+      # milles käivitatakse fetch_futures_snapshot.py
+      # ------------------------------------------------------------
+      - name: Install Python dependencies
         run: |
-          pip install pandas requests lxml html5lib beautifulsoup4 playwright
+          python -m pip install --upgrade pip
+          python -m pip install \
+            pandas \
+            requests \
+            lxml \
+            html5lib \
+            beautifulsoup4 \
+            playwright
+
+      # ------------------------------------------------------------
+      # 4. Chromium + Linux dependencies
+      # ------------------------------------------------------------
+      - name: Install Playwright Chromium
+        run: |
           python -m playwright install --with-deps chromium
 
-      - name: Fetch official futures data
-        run: python fetch_futures_snapshot.py
+      # ------------------------------------------------------------
+      # 5. Kontrolli, et Playwright on päriselt kasutatav
+      # ------------------------------------------------------------
+      - name: Verify Playwright installation
+        run: |
+          python --version
+          python -m pip --version
 
-      - name: Show snapshot diagnostics
+          python -c "
+          import sys
+          print('Python executable:', sys.executable)
+
+          import playwright
+          print('Playwright import OK')
+
+          from playwright.sync_api import sync_playwright
+          print('Playwright sync API OK')
+          "
+
+      # ------------------------------------------------------------
+      # 6. Kontrolli Chromiumi käivitumist
+      # See eristab brauseri installiprobleemi börsi veebilehe probleemist
+      # ------------------------------------------------------------
+      - name: Verify Chromium
+        run: |
+          python - <<'PY'
+          from playwright.sync_api import sync_playwright
+
+          with sync_playwright() as p:
+              browser = p.chromium.launch(
+                  headless=True,
+                  args=[
+                      "--disable-dev-shm-usage",
+                      "--no-sandbox",
+                  ],
+              )
+
+              page = browser.new_page()
+              page.set_content(
+                  "<html><body><h1>BalticPulse</h1></body></html>"
+              )
+
+              text = page.locator("h1").inner_text()
+
+              assert text == "BalticPulse"
+
+              print("Chromium launch OK")
+
+              browser.close()
+          PY
+
+      # ------------------------------------------------------------
+      # 7. Futuuride andmete hankimine
+      # fetch_futures_snapshot.py:
+      # requests -> vajadusel Playwright/Chromium fallback
+      # ------------------------------------------------------------
+      - name: Fetch official futures data
+        run: |
+          python fetch_futures_snapshot.py
+
+      # ------------------------------------------------------------
+      # 8. Kontrolli snapshoti olemasolu ja sisu
+      # ------------------------------------------------------------
+      - name: Validate futures snapshot
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("data/futures.json")
+
+          if not path.exists():
+              raise SystemExit(
+                  "ERROR: data/futures.json was not created"
+              )
+
+          payload = json.loads(
+              path.read_text(encoding="utf-8")
+          )
+
+          print(
+              "updated_at:",
+              payload.get("updated_at")
+          )
+
+          for section in [
+              "power",
+              "gas",
+              "brent",
+          ]:
+              data = payload.get(section, {}) or {}
+
+              curve = data.get("curve", []) or []
+              key = data.get("key", []) or []
+              errors = data.get("errors", []) or []
+
+              print(
+                  f"{section}: "
+                  f"curve={len(curve)}, "
+                  f"key={len(key)}, "
+                  f"errors={len(errors)}"
+              )
+
+              if data.get("observed_at"):
+                  print(
+                      f"{section} observed_at:",
+                      data.get("observed_at")
+                  )
+
+              if data.get("fallback"):
+                  print(
+                      f"{section} fallback:",
+                      data.get("fallback")
+                  )
+
+              if errors:
+                  print(
+                      f"{section} errors:"
+                  )
+
+                  for error in errors:
+                      print(
+                          "  -",
+                          error
+                      )
+
+          available = any(
+              (payload.get(section, {}) or {}).get("curve")
+              for section in [
+                  "power",
+                  "gas",
+                  "brent",
+              ]
+          )
+
+          if not available:
+              raise SystemExit(
+                  "ERROR: futures snapshot contains no market data"
+              )
+
+          print(
+              "Futures snapshot validation OK"
+          )
+          PY
+
+      # ------------------------------------------------------------
+      # 9. Diagnostika
+      # Kuvatakse alati, ka siis kui eelnev samm ebaõnnestub
+      # ------------------------------------------------------------
+      - name: Show futures snapshot diagnostics
         if: always()
         run: |
-          echo "---- futures.json ----"
-          test -f data/futures.json && cat data/futures.json || true
+          echo "========================================"
+          echo "BalticPulse futures diagnostics"
+          echo "========================================"
 
+          if [ -f data/futures.json ]; then
+            python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("data/futures.json")
+
+          try:
+              payload = json.loads(
+                  path.read_text(encoding="utf-8")
+              )
+
+              print(
+                  json.dumps(
+                      payload,
+                      ensure_ascii=False,
+                      indent=2,
+                  )
+              )
+
+          except Exception as exc:
+              print(
+                  "Could not read futures.json:",
+                  repr(exc),
+              )
+          PY
+          else
+            echo "data/futures.json does not exist"
+          fi
+
+      # ------------------------------------------------------------
+      # 10. Commit ainult siis, kui fetch + validation õnnestusid
+      # ------------------------------------------------------------
       - name: Commit futures snapshot
         if: success()
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config \
+            user.name \
+            "github-actions[bot]"
+
+          git config \
+            user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add data/futures.json
+
           if git diff --cached --quiet; then
-            echo "No changes"
+            echo "No futures snapshot changes"
           else
-            git commit -m "Update BalticPulse futures"
+            git commit \
+              -m "Update BalticPulse futures"
+
             git push
           fi
