@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-19T12:33:14.843039+00:00",
+  "updated_at": "2026-09-19T13:27:44.861696+00:00",
   "method": "A44 day-ahead; country arithmetic mean across available bidding zones",
   "days": {
     "2026-09-19": {
@@ -132,6 +132,13 @@
           "zone_count": 1
         },
         {
+          "country": "Portugal",
+          "iso3": "PRT",
+          "price_eur_mwh": 135.1,
+          "zones": "PT",
+          "zone_count": 1
+        },
+        {
           "country": "Romania",
           "iso3": "ROU",
           "price_eur_mwh": 162.16,
@@ -229,7 +236,7 @@
         {
           "country": "Spain",
           "iso3": "ESP",
-          "price_eur_mwh": 114.38,
+          "price_eur_mwh": 113.96,
           "zones": "ES",
           "zone_count": 1
         },
@@ -290,6 +297,13 @@
           "zone_count": 1
         },
         {
+          "country": "Portugal",
+          "iso3": "PRT",
+          "price_eur_mwh": 143.18,
+          "zones": "PT",
+          "zone_count": 1
+        },
+        {
           "country": "Romania",
           "iso3": "ROU",
           "price_eur_mwh": 144.95,
@@ -320,7 +334,5 @@
       ]
     }
   },
-  "errors": [
-    "PT: ConnectTimeout: HTTPSConnectionPool(host='web-api.tp.entsoe.eu', port=443): Max retries exceeded with url: /api?securityToken=9d2a4491-8d6c-43e3-902e-404da5088861&documentType=A44&in_Domain=10YPT-REN------W&out_Domain=10YPT-REN------W&periodStart=202609182100&periodEnd=202609202300 (Caused by ConnectTimeoutError(<HTTPSConnection(host='web-api.tp.entsoe.eu', port=443) at 0x7f1a521a0830>, 'Connection to web-api.tp.entsoe.eu timed out. (connect timeout=5)'))"
-  ]
+  "errors": []
 }
