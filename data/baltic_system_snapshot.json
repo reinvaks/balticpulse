@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-21T06:55:05.732829+00:00",
+  "updated_at": "2026-09-21T07:08:16.963125+00:00",
   "source": "ENTSO-E Transparency Platform via GitHub Actions",
   "regions": {
     "EE": {
       "region": "EE",
       "generation_status": {
-        "ok": true,
-        "error": null,
+        "ok": false,
+        "error": "ReadTimeout: HTTPSConnectionPool(host='web-api.tp.entsoe.eu', port=443): Read timed out. (read timeout=30)",
         "note": null,
-        "status_code": 200
+        "status_code": null
       },
       "load_status": {
         "ok": true,
@@ -18,1365 +18,1356 @@
         "status_code": 200
       },
       "current": {
-        "production_mw": 314.90000000000003,
-        "generation_time": "2026-09-21T05:45:00+00:00",
-        "renewable_mw": 191.4,
-        "renewable_share": 60.781200381073354,
-        "consumption_mw": 732.5,
-        "load_time": "2026-09-21T05:45:00+00:00"
+        "production_mw": null,
+        "renewable_mw": null,
+        "renewable_share": null,
+        "consumption_mw": 621.1,
+        "load_time": "2026-09-21T06:45:00+00:00"
       },
       "previous_24h": {
-        "production_mw": 333.5,
-        "generation_time": "2026-09-20T06:00:00+00:00",
-        "renewable_mw": 283.0,
-        "renewable_share": 84.8575712143928,
-        "consumption_mw": 824.7,
-        "load_time": "2026-09-20T06:00:00+00:00"
+        "production_mw": null,
+        "renewable_mw": null,
+        "renewable_share": null,
+        "consumption_mw": 883.0,
+        "load_time": "2026-09-20T07:00:00+00:00"
       },
       "history": [
         {
-          "time_utc": "2026-09-19T06:00:00+00:00",
-          "production_mw": 488.255,
-          "consumption_mw": 770.6,
-          "renewable_mw": 403.855,
-          "renewable_share": 82.71395070198975
-        },
-        {
-          "time_utc": "2026-09-19T06:15:00+00:00",
-          "production_mw": 537.277,
-          "consumption_mw": 804.9,
-          "renewable_mw": 447.777,
-          "renewable_share": 83.34192604559658
-        },
-        {
-          "time_utc": "2026-09-19T06:30:00+00:00",
-          "production_mw": 603.66,
-          "consumption_mw": 793.8,
-          "renewable_mw": 514.1600000000001,
-          "renewable_share": 85.17377331610511
-        },
-        {
-          "time_utc": "2026-09-19T06:45:00+00:00",
-          "production_mw": 620.057,
-          "consumption_mw": 812.2,
-          "renewable_mw": 534.2570000000001,
-          "renewable_share": 86.16256247409513
-        },
-        {
           "time_utc": "2026-09-19T07:00:00+00:00",
-          "production_mw": 689.502,
+          "production_mw": null,
           "consumption_mw": 777.9,
-          "renewable_mw": 606.802,
-          "renewable_share": 88.00583609619697
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T07:15:00+00:00",
-          "production_mw": 682.0559999999999,
+          "production_mw": null,
           "consumption_mw": 817.7,
-          "renewable_mw": 601.0559999999999,
-          "renewable_share": 88.12414229916605
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T07:30:00+00:00",
-          "production_mw": 616.721,
+          "production_mw": null,
           "consumption_mw": 812.2,
-          "renewable_mw": 551.1210000000001,
-          "renewable_share": 89.36309935935375
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T07:45:00+00:00",
-          "production_mw": 582.104,
+          "production_mw": null,
           "consumption_mw": 785.1,
-          "renewable_mw": 496.904,
-          "renewable_share": 85.36344020999684
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T08:00:00+00:00",
-          "production_mw": 605.259,
+          "production_mw": null,
           "consumption_mw": 813.8,
-          "renewable_mw": 520.359,
-          "renewable_share": 85.9729471185063
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T08:15:00+00:00",
-          "production_mw": 607.6750000000001,
+          "production_mw": null,
           "consumption_mw": 838.8,
-          "renewable_mw": 523.7750000000001,
-          "renewable_share": 86.19327765664212
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T08:30:00+00:00",
-          "production_mw": 639.963,
+          "production_mw": null,
           "consumption_mw": 809.7,
-          "renewable_mw": 556.563,
-          "renewable_share": 86.96799658730271
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T08:45:00+00:00",
-          "production_mw": 629.3820000000001,
+          "production_mw": null,
           "consumption_mw": 813.0,
-          "renewable_mw": 562.682,
-          "renewable_share": 89.40230257617789
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T09:00:00+00:00",
-          "production_mw": 661.023,
+          "production_mw": null,
           "consumption_mw": 837.2,
-          "renewable_mw": 582.323,
-          "renewable_share": 88.0942115478584
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T09:15:00+00:00",
-          "production_mw": 580.155,
+          "production_mw": null,
           "consumption_mw": 836.4,
-          "renewable_mw": 552.155,
-          "renewable_share": 95.1737035792159
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T09:30:00+00:00",
-          "production_mw": 624.06,
+          "production_mw": null,
           "consumption_mw": 855.7,
-          "renewable_mw": 546.96,
-          "renewable_share": 87.64541870973946
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T09:45:00+00:00",
-          "production_mw": 622.789,
+          "production_mw": null,
           "consumption_mw": 842.5,
-          "renewable_mw": 542.489,
-          "renewable_share": 87.1063875566203
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T10:00:00+00:00",
-          "production_mw": 663.4580000000001,
+          "production_mw": null,
           "consumption_mw": 740.0,
-          "renewable_mw": 581.558,
-          "renewable_share": 87.65558633704016
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T10:15:00+00:00",
-          "production_mw": 642.1469999999999,
+          "production_mw": null,
           "consumption_mw": 699.3,
-          "renewable_mw": 557.047,
-          "renewable_share": 86.74758271859872
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T10:30:00+00:00",
-          "production_mw": 658.133,
+          "production_mw": null,
           "consumption_mw": 737.5,
-          "renewable_mw": 593.733,
-          "renewable_share": 90.2147438283751
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T10:45:00+00:00",
-          "production_mw": 615.538,
+          "production_mw": null,
           "consumption_mw": 715.5,
-          "renewable_mw": 585.2379999999999,
-          "renewable_share": 95.07747693887298
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T11:00:00+00:00",
-          "production_mw": 663.234,
+          "production_mw": null,
           "consumption_mw": 718.1,
-          "renewable_mw": 593.134,
-          "renewable_share": 89.43057804636071
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T11:15:00+00:00",
-          "production_mw": 677.1780000000001,
+          "production_mw": null,
           "consumption_mw": 718.5,
-          "renewable_mw": 593.578,
-          "renewable_share": 87.6546491469008
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T11:30:00+00:00",
-          "production_mw": 661.704,
+          "production_mw": null,
           "consumption_mw": 729.0,
-          "renewable_mw": 577.704,
-          "renewable_share": 87.30550215806463
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T11:45:00+00:00",
-          "production_mw": 634.0110000000001,
+          "production_mw": null,
           "consumption_mw": 724.2,
-          "renewable_mw": 550.811,
-          "renewable_share": 86.87719929149493
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T12:00:00+00:00",
-          "production_mw": 549.191,
+          "production_mw": null,
           "consumption_mw": 758.1,
-          "renewable_mw": 470.39099999999996,
-          "renewable_share": 85.65162211325385
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T12:15:00+00:00",
-          "production_mw": 601.0409999999999,
+          "production_mw": null,
           "consumption_mw": 722.3,
-          "renewable_mw": 519.1410000000001,
-          "renewable_share": 86.37364173159571
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T12:30:00+00:00",
-          "production_mw": 579.5649999999999,
+          "production_mw": null,
           "consumption_mw": 711.5,
-          "renewable_mw": 501.565,
-          "renewable_share": 86.54163036070157
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T12:45:00+00:00",
-          "production_mw": 520.772,
+          "production_mw": null,
           "consumption_mw": 753.6,
-          "renewable_mw": 441.572,
-          "renewable_share": 84.79180908343767
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T13:00:00+00:00",
-          "production_mw": 499.43399999999997,
+          "production_mw": null,
           "consumption_mw": 780.2,
-          "renewable_mw": 419.834,
-          "renewable_share": 84.06195813661064
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T13:15:00+00:00",
-          "production_mw": 516.884,
+          "production_mw": null,
           "consumption_mw": 771.3,
-          "renewable_mw": 437.084,
-          "renewable_share": 84.56133291028549
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T13:30:00+00:00",
-          "production_mw": 487.191,
+          "production_mw": null,
           "consumption_mw": 784.7,
-          "renewable_mw": 424.891,
-          "renewable_share": 87.2124074541607
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T13:45:00+00:00",
-          "production_mw": 580.85,
+          "production_mw": null,
           "consumption_mw": 785.7,
-          "renewable_mw": 498.95,
-          "renewable_share": 85.89997417577688
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T14:00:00+00:00",
-          "production_mw": 568.7729999999999,
+          "production_mw": null,
           "consumption_mw": 808.1,
-          "renewable_mw": 488.273,
-          "renewable_share": 85.84672619832519
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T14:15:00+00:00",
-          "production_mw": 515.0509999999999,
+          "production_mw": null,
           "consumption_mw": 804.4,
-          "renewable_mw": 430.751,
-          "renewable_share": 83.63268880169149
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T14:30:00+00:00",
-          "production_mw": 503.17199999999997,
+          "production_mw": null,
           "consumption_mw": 791.7,
-          "renewable_mw": 423.87199999999996,
-          "renewable_share": 84.23998155700238
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T14:45:00+00:00",
-          "production_mw": 553.3810000000001,
+          "production_mw": null,
           "consumption_mw": 790.8,
-          "renewable_mw": 476.381,
-          "renewable_share": 86.08553600503087
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T15:00:00+00:00",
-          "production_mw": 525.027,
+          "production_mw": null,
           "consumption_mw": 803.2,
-          "renewable_mw": 460.227,
-          "renewable_share": 87.65777760000914
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T15:15:00+00:00",
-          "production_mw": 573.434,
+          "production_mw": null,
           "consumption_mw": 812.9,
-          "renewable_mw": 488.23400000000004,
-          "renewable_share": 85.14214364687132
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T15:30:00+00:00",
-          "production_mw": 543.616,
+          "production_mw": null,
           "consumption_mw": 819.8,
-          "renewable_mw": 459.616,
-          "renewable_share": 84.54791617612433
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T15:45:00+00:00",
-          "production_mw": 508.623,
+          "production_mw": null,
           "consumption_mw": 817.3,
-          "renewable_mw": 421.123,
-          "renewable_share": 82.796688313348
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T16:00:00+00:00",
-          "production_mw": 573.185,
+          "production_mw": null,
           "consumption_mw": 824.5,
-          "renewable_mw": 484.685,
-          "renewable_share": 84.55995882655688
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T16:15:00+00:00",
-          "production_mw": 582.983,
+          "production_mw": null,
           "consumption_mw": 829.1,
-          "renewable_mw": 492.28299999999996,
-          "renewable_share": 84.44208493215069
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T16:30:00+00:00",
-          "production_mw": 558.165,
+          "production_mw": null,
           "consumption_mw": 834.5,
-          "renewable_mw": 475.265,
-          "renewable_share": 85.14776096673923
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T16:45:00+00:00",
-          "production_mw": 588.1020000000001,
+          "production_mw": null,
           "consumption_mw": 837.4,
-          "renewable_mw": 493.10200000000003,
-          "renewable_share": 83.84633958054894
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T17:00:00+00:00",
-          "production_mw": 587.314,
+          "production_mw": null,
           "consumption_mw": 845.7,
-          "renewable_mw": 508.01399999999995,
-          "renewable_share": 86.49785293727035
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T17:15:00+00:00",
-          "production_mw": 562.454,
+          "production_mw": null,
           "consumption_mw": 851.8,
-          "renewable_mw": 479.354,
-          "renewable_share": 85.22545843749
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T17:30:00+00:00",
-          "production_mw": 576.8,
+          "production_mw": null,
           "consumption_mw": 842.2,
-          "renewable_mw": 494.29999999999995,
-          "renewable_share": 85.69694868238558
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T17:45:00+00:00",
-          "production_mw": 590.375,
+          "production_mw": null,
           "consumption_mw": 853.6,
-          "renewable_mw": 506.27500000000003,
-          "renewable_share": 85.75481685369469
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T18:00:00+00:00",
-          "production_mw": 598.523,
+          "production_mw": null,
           "consumption_mw": 822.8,
-          "renewable_mw": 509.423,
-          "renewable_share": 85.11335403986145
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T18:15:00+00:00",
-          "production_mw": 618.283,
+          "production_mw": null,
           "consumption_mw": 825.7,
-          "renewable_mw": 530.883,
-          "renewable_share": 85.8640784236345
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T18:30:00+00:00",
-          "production_mw": 616.149,
+          "production_mw": null,
           "consumption_mw": 803.9,
-          "renewable_mw": 529.249,
-          "renewable_share": 85.8962685973685
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T18:45:00+00:00",
-          "production_mw": 568.909,
+          "production_mw": null,
           "consumption_mw": 783.5,
-          "renewable_mw": 484.209,
-          "renewable_share": 85.11185444420812
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T19:00:00+00:00",
-          "production_mw": 555.6479999999999,
+          "production_mw": null,
           "consumption_mw": 775.1,
-          "renewable_mw": 472.448,
-          "renewable_share": 85.02649159179913
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T19:15:00+00:00",
-          "production_mw": 523.8539999999999,
+          "production_mw": null,
           "consumption_mw": 772.6,
-          "renewable_mw": 441.554,
-          "renewable_share": 84.28951578111459
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T19:30:00+00:00",
-          "production_mw": 482.82599999999996,
+          "production_mw": null,
           "consumption_mw": 782.9,
-          "renewable_mw": 400.126,
-          "renewable_share": 82.87167633888814
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T19:45:00+00:00",
-          "production_mw": 453.541,
+          "production_mw": null,
           "consumption_mw": 738.4,
-          "renewable_mw": 371.64099999999996,
-          "renewable_share": 81.94209564295178
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T20:00:00+00:00",
-          "production_mw": 471.23199999999997,
+          "production_mw": null,
           "consumption_mw": 727.8,
-          "renewable_mw": 388.632,
-          "renewable_share": 82.47147901670515
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T20:15:00+00:00",
-          "production_mw": 452.55,
+          "production_mw": null,
           "consumption_mw": 719.2,
-          "renewable_mw": 371.45,
-          "renewable_share": 82.07932825102198
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T20:30:00+00:00",
-          "production_mw": 458.132,
+          "production_mw": null,
           "consumption_mw": 700.6,
-          "renewable_mw": 376.632,
-          "renewable_share": 82.21036731771629
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T20:45:00+00:00",
-          "production_mw": 355.766,
+          "production_mw": null,
           "consumption_mw": 686.4,
-          "renewable_mw": 275.966,
-          "renewable_share": 77.56952603677698
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T21:00:00+00:00",
-          "production_mw": 320.40000000000003,
+          "production_mw": null,
           "consumption_mw": 668.8,
-          "renewable_mw": 236.60000000000002,
-          "renewable_share": 73.84519350811486
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T21:15:00+00:00",
-          "production_mw": 346.4,
+          "production_mw": null,
           "consumption_mw": 656.4,
-          "renewable_mw": 262.3,
-          "renewable_share": 75.72170900692842
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T21:30:00+00:00",
-          "production_mw": 335.4,
+          "production_mw": null,
           "consumption_mw": 647.0,
-          "renewable_mw": 252.0,
-          "renewable_share": 75.13416815742397
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T21:45:00+00:00",
-          "production_mw": 309.3,
+          "production_mw": null,
           "consumption_mw": 639.0,
-          "renewable_mw": 221.79999999999998,
-          "renewable_share": 71.71031361138053
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T22:00:00+00:00",
-          "production_mw": 205.0,
+          "production_mw": null,
           "consumption_mw": 678.7,
-          "renewable_mw": 132.1,
-          "renewable_share": 64.4390243902439
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T22:15:00+00:00",
-          "production_mw": 195.2,
+          "production_mw": null,
           "consumption_mw": 672.3,
-          "renewable_mw": 126.5,
-          "renewable_share": 64.80532786885246
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T22:30:00+00:00",
-          "production_mw": 128.9,
+          "production_mw": null,
           "consumption_mw": 661.0,
-          "renewable_mw": 128.7,
-          "renewable_share": 99.84484096198602
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T22:45:00+00:00",
-          "production_mw": 198.39999999999998,
+          "production_mw": null,
           "consumption_mw": 654.4,
-          "renewable_mw": 128.5,
-          "renewable_share": 64.76814516129032
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T23:00:00+00:00",
-          "production_mw": 179.0,
+          "production_mw": null,
           "consumption_mw": 652.5,
-          "renewable_mw": 126.89999999999999,
-          "renewable_share": 70.89385474860335
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T23:15:00+00:00",
-          "production_mw": 196.4,
+          "production_mw": null,
           "consumption_mw": 647.5,
-          "renewable_mw": 125.8,
-          "renewable_share": 64.05295315682281
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T23:30:00+00:00",
-          "production_mw": 169.5,
+          "production_mw": null,
           "consumption_mw": 657.3,
-          "renewable_mw": 117.19999999999999,
-          "renewable_share": 69.14454277286136
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-19T23:45:00+00:00",
-          "production_mw": 187.0,
+          "production_mw": null,
           "consumption_mw": 648.9,
-          "renewable_mw": 117.69999999999999,
-          "renewable_share": 62.94117647058823
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T00:00:00+00:00",
-          "production_mw": 189.6,
+          "production_mw": null,
           "consumption_mw": 640.4,
-          "renewable_mw": 120.4,
-          "renewable_share": 63.50210970464135
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T00:15:00+00:00",
-          "production_mw": 191.6,
+          "production_mw": null,
           "consumption_mw": 645.2,
-          "renewable_mw": 123.0,
-          "renewable_share": 64.19624217118998
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T00:30:00+00:00",
-          "production_mw": 199.3,
+          "production_mw": null,
           "consumption_mw": 638.4,
-          "renewable_mw": 129.0,
-          "renewable_share": 64.72654290015052
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T00:45:00+00:00",
-          "production_mw": 164.9,
+          "production_mw": null,
           "consumption_mw": 644.4,
-          "renewable_mw": 95.4,
-          "renewable_share": 57.85324439053973
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T01:00:00+00:00",
-          "production_mw": 197.8,
+          "production_mw": null,
           "consumption_mw": 637.1,
-          "renewable_mw": 127.3,
-          "renewable_share": 64.35793731041456
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T01:15:00+00:00",
-          "production_mw": 187.5,
+          "production_mw": null,
           "consumption_mw": 635.1,
-          "renewable_mw": 118.0,
-          "renewable_share": 62.93333333333333
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T01:30:00+00:00",
-          "production_mw": 102.3,
+          "production_mw": null,
           "consumption_mw": 641.2,
-          "renewable_mw": 33.8,
-          "renewable_share": 33.04007820136852
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T01:45:00+00:00",
-          "production_mw": 190.5,
+          "production_mw": null,
           "consumption_mw": 643.1,
-          "renewable_mw": 121.7,
-          "renewable_share": 63.884514435695536
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T02:00:00+00:00",
-          "production_mw": 193.3,
+          "production_mw": null,
           "consumption_mw": 656.5,
-          "renewable_mw": 124.7,
-          "renewable_share": 64.5111226073461
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T02:15:00+00:00",
-          "production_mw": 190.3,
+          "production_mw": null,
           "consumption_mw": 631.0,
-          "renewable_mw": 120.9,
-          "renewable_share": 63.53126642143984
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T02:30:00+00:00",
-          "production_mw": 196.60000000000002,
+          "production_mw": null,
           "consumption_mw": 646.4,
-          "renewable_mw": 128.2,
-          "renewable_share": 65.2085452695829
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T02:45:00+00:00",
-          "production_mw": 194.7,
+          "production_mw": null,
           "consumption_mw": 646.1,
-          "renewable_mw": 126.5,
-          "renewable_share": 64.97175141242938
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T03:00:00+00:00",
-          "production_mw": 192.6,
+          "production_mw": null,
           "consumption_mw": 654.3,
-          "renewable_mw": 124.8,
-          "renewable_share": 64.797507788162
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T03:15:00+00:00",
-          "production_mw": 160.2,
+          "production_mw": null,
           "consumption_mw": 661.4,
-          "renewable_mw": 91.8,
-          "renewable_share": 57.30337078651686
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T03:30:00+00:00",
-          "production_mw": 157.7,
+          "production_mw": null,
           "consumption_mw": 666.3,
-          "renewable_mw": 89.8,
-          "renewable_share": 56.94356372859861
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T03:45:00+00:00",
-          "production_mw": 187.8,
+          "production_mw": null,
           "consumption_mw": 667.7,
-          "renewable_mw": 118.9,
-          "renewable_share": 63.312034078807244
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T04:00:00+00:00",
-          "production_mw": 151.6,
+          "production_mw": null,
           "consumption_mw": 672.7,
-          "renewable_mw": 83.5,
-          "renewable_share": 55.07915567282322
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T04:15:00+00:00",
-          "production_mw": 201.3,
+          "production_mw": null,
           "consumption_mw": 681.4,
-          "renewable_mw": 130.7,
-          "renewable_share": 64.92796820665671
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T04:30:00+00:00",
-          "production_mw": 205.2,
+          "production_mw": null,
           "consumption_mw": 698.5,
-          "renewable_mw": 135.7,
-          "renewable_share": 66.13060428849903
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T04:45:00+00:00",
-          "production_mw": 212.60000000000002,
+          "production_mw": null,
           "consumption_mw": 712.8,
-          "renewable_mw": 145.0,
-          "renewable_share": 68.20319849482595
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T05:00:00+00:00",
-          "production_mw": 181.3,
+          "production_mw": null,
           "consumption_mw": 738.7,
-          "renewable_mw": 113.4,
-          "renewable_share": 62.54826254826254
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T05:15:00+00:00",
-          "production_mw": 152.0,
+          "production_mw": null,
           "consumption_mw": 761.5,
-          "renewable_mw": 134.9,
-          "renewable_share": 88.75
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T05:30:00+00:00",
-          "production_mw": 259.2,
+          "production_mw": null,
           "consumption_mw": 779.0,
-          "renewable_mw": 208.5,
-          "renewable_share": 80.43981481481481
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T05:45:00+00:00",
-          "production_mw": 264.6,
+          "production_mw": null,
           "consumption_mw": 803.3,
-          "renewable_mw": 197.39999999999998,
-          "renewable_share": 74.6031746031746
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T06:00:00+00:00",
-          "production_mw": 333.5,
+          "production_mw": null,
           "consumption_mw": 824.7,
-          "renewable_mw": 283.0,
-          "renewable_share": 84.8575712143928
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T06:15:00+00:00",
-          "production_mw": 405.29999999999995,
+          "production_mw": null,
           "consumption_mw": 858.6,
-          "renewable_mw": 336.2,
-          "renewable_share": 82.95090056748089
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T06:30:00+00:00",
-          "production_mw": 382.9,
+          "production_mw": null,
           "consumption_mw": 903.0,
-          "renewable_mw": 365.6,
-          "renewable_share": 95.48184904674851
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T06:45:00+00:00",
-          "production_mw": 481.4,
+          "production_mw": null,
           "consumption_mw": 901.5,
-          "renewable_mw": 410.7,
-          "renewable_share": 85.31366846697134
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T07:00:00+00:00",
-          "production_mw": 513.6,
+          "production_mw": null,
           "consumption_mw": 883.0,
-          "renewable_mw": 442.4,
-          "renewable_share": 86.13707165109034
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T07:15:00+00:00",
-          "production_mw": 510.70000000000005,
+          "production_mw": null,
           "consumption_mw": 916.6,
-          "renewable_mw": 439.8,
-          "renewable_share": 86.1170941844527
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T07:30:00+00:00",
-          "production_mw": 493.5,
+          "production_mw": null,
           "consumption_mw": 929.5,
-          "renewable_mw": 425.8,
-          "renewable_share": 86.28166160081054
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T07:45:00+00:00",
-          "production_mw": 455.79999999999995,
+          "production_mw": null,
           "consumption_mw": 957.4,
-          "renewable_mw": 389.79999999999995,
-          "renewable_share": 85.51996489688459
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T08:00:00+00:00",
-          "production_mw": 444.6,
+          "production_mw": null,
           "consumption_mw": 929.2,
-          "renewable_mw": 378.0,
-          "renewable_share": 85.02024291497975
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T08:15:00+00:00",
-          "production_mw": 447.5,
+          "production_mw": null,
           "consumption_mw": 947.2,
-          "renewable_mw": 379.7,
-          "renewable_share": 84.84916201117318
-        },
-        {
-          "time_utc": "2026-09-20T08:30:00+00:00",
-          "production_mw": 466.5,
-          "consumption_mw": 947.2,
-          "renewable_mw": 398.8,
-          "renewable_share": 85.48767416934619
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T08:45:00+00:00",
-          "production_mw": 491.0,
+          "production_mw": null,
           "consumption_mw": 891.6,
-          "renewable_mw": 423.3,
-          "renewable_share": 86.21181262729124
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T09:00:00+00:00",
-          "production_mw": 540.4,
+          "production_mw": null,
           "consumption_mw": 737.3,
-          "renewable_mw": 473.8,
-          "renewable_share": 87.6757957068838
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T09:15:00+00:00",
-          "production_mw": 609.4,
+          "production_mw": null,
           "consumption_mw": 744.1,
-          "renewable_mw": 542.8,
-          "renewable_share": 89.07121759107318
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T09:30:00+00:00",
-          "production_mw": 671.1999999999999,
+          "production_mw": null,
           "consumption_mw": 739.3,
-          "renewable_mw": 603.9,
-          "renewable_share": 89.97318235995233
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T09:45:00+00:00",
-          "production_mw": 672.6,
+          "production_mw": null,
           "consumption_mw": 742.0,
-          "renewable_mw": 603.7,
-          "renewable_share": 89.75617008623253
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T10:00:00+00:00",
-          "production_mw": 617.5,
+          "production_mw": null,
           "consumption_mw": 767.1,
-          "renewable_mw": 548.7,
-          "renewable_share": 88.85829959514172
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T10:15:00+00:00",
-          "production_mw": 601.4,
+          "production_mw": null,
           "consumption_mw": 742.5,
-          "renewable_mw": 532.8,
-          "renewable_share": 88.59328234120385
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T10:30:00+00:00",
-          "production_mw": 587.2,
+          "production_mw": null,
           "consumption_mw": 728.0,
-          "renewable_mw": 536.9,
-          "renewable_share": 91.43392370572207
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T10:45:00+00:00",
-          "production_mw": 554.4000000000001,
+          "production_mw": null,
           "consumption_mw": 690.8,
-          "renewable_mw": 536.4,
-          "renewable_share": 96.75324675324674
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T11:00:00+00:00",
-          "production_mw": 589.0,
+          "production_mw": null,
           "consumption_mw": 727.1,
-          "renewable_mw": 521.1,
-          "renewable_share": 88.47198641765705
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T11:15:00+00:00",
-          "production_mw": 570.8,
+          "production_mw": null,
           "consumption_mw": 705.3,
-          "renewable_mw": 503.59999999999997,
-          "renewable_share": 88.2270497547302
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T11:30:00+00:00",
-          "production_mw": 559.2,
+          "production_mw": null,
           "consumption_mw": 694.8,
-          "renewable_mw": 493.1,
-          "renewable_share": 88.17954220314735
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T11:45:00+00:00",
-          "production_mw": 580.1,
+          "production_mw": null,
           "consumption_mw": 686.8,
-          "renewable_mw": 511.70000000000005,
-          "renewable_share": 88.20892949491468
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T12:00:00+00:00",
-          "production_mw": 616.6,
+          "production_mw": null,
           "consumption_mw": 734.4,
-          "renewable_mw": 547.8,
-          "renewable_share": 88.84203697697048
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T12:15:00+00:00",
-          "production_mw": 521.9,
+          "production_mw": null,
           "consumption_mw": 736.7,
-          "renewable_mw": 452.9,
-          "renewable_share": 86.77907645142747
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T12:30:00+00:00",
-          "production_mw": 540.4,
+          "production_mw": null,
           "consumption_mw": 739.6,
-          "renewable_mw": 471.0,
-          "renewable_share": 87.15766099185788
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T12:45:00+00:00",
-          "production_mw": 522.9,
+          "production_mw": null,
           "consumption_mw": 764.2,
-          "renewable_mw": 452.7,
-          "renewable_share": 86.57487091222032
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T13:00:00+00:00",
-          "production_mw": 536.8,
+          "production_mw": null,
           "consumption_mw": 756.6,
-          "renewable_mw": 466.8,
-          "renewable_share": 86.9597615499255
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T13:15:00+00:00",
-          "production_mw": 510.3,
+          "production_mw": null,
           "consumption_mw": 783.0,
-          "renewable_mw": 439.9,
-          "renewable_share": 86.20419361160101
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T13:30:00+00:00",
-          "production_mw": 513.0,
+          "production_mw": null,
           "consumption_mw": 712.6,
-          "renewable_mw": 440.5,
-          "renewable_share": 85.86744639376218
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T13:45:00+00:00",
-          "production_mw": 564.5,
+          "production_mw": null,
           "consumption_mw": 801.5,
-          "renewable_mw": 493.0,
-          "renewable_share": 87.33392382639505
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T14:00:00+00:00",
-          "production_mw": 537.6999999999999,
+          "production_mw": null,
           "consumption_mw": 822.5,
-          "renewable_mw": 467.5,
-          "renewable_share": 86.94439278408035
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T14:15:00+00:00",
-          "production_mw": 510.59999999999997,
+          "production_mw": null,
           "consumption_mw": 855.2,
-          "renewable_mw": 441.0,
-          "renewable_share": 86.3689776733255
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T14:30:00+00:00",
-          "production_mw": 573.2,
+          "production_mw": null,
           "consumption_mw": 828.1,
-          "renewable_mw": 503.4,
-          "renewable_share": 87.82274947662246
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T14:45:00+00:00",
-          "production_mw": 525.5999999999999,
+          "production_mw": null,
           "consumption_mw": 844.8,
-          "renewable_mw": 457.4,
-          "renewable_share": 87.02435312024355
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T15:00:00+00:00",
-          "production_mw": 455.8,
+          "production_mw": null,
           "consumption_mw": 866.7,
-          "renewable_mw": 386.2,
-          "renewable_share": 84.73014480035103
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T15:15:00+00:00",
-          "production_mw": 382.8,
+          "production_mw": null,
           "consumption_mw": 826.4,
-          "renewable_mw": 314.5,
-          "renewable_share": 82.15778474399164
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T15:30:00+00:00",
-          "production_mw": 396.2,
+          "production_mw": null,
           "consumption_mw": 786.4,
-          "renewable_mw": 345.1,
-          "renewable_share": 87.10247349823322
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T15:45:00+00:00",
-          "production_mw": 415.6,
+          "production_mw": null,
           "consumption_mw": 830.5,
-          "renewable_mw": 347.3,
-          "renewable_share": 83.56592877767083
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T16:00:00+00:00",
-          "production_mw": 402.79999999999995,
+          "production_mw": null,
           "consumption_mw": 835.7,
-          "renewable_mw": 325.59999999999997,
-          "renewable_share": 80.83416087388282
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T16:15:00+00:00",
-          "production_mw": 369.5,
+          "production_mw": null,
           "consumption_mw": 881.9,
-          "renewable_mw": 300.0,
-          "renewable_share": 81.19079837618403
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T16:30:00+00:00",
-          "production_mw": 360.5,
+          "production_mw": null,
           "consumption_mw": 854.8,
-          "renewable_mw": 293.4,
-          "renewable_share": 81.38696255201108
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T16:45:00+00:00",
-          "production_mw": 348.0,
+          "production_mw": null,
           "consumption_mw": 852.5,
-          "renewable_mw": 280.6,
-          "renewable_share": 80.63218390804599
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T17:00:00+00:00",
-          "production_mw": 336.4,
+          "production_mw": null,
           "consumption_mw": 904.4,
-          "renewable_mw": 268.6,
-          "renewable_share": 79.84542211652796
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T17:15:00+00:00",
-          "production_mw": 295.3,
+          "production_mw": null,
           "consumption_mw": 853.0,
-          "renewable_mw": 277.6,
-          "renewable_share": 94.00609549610566
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T17:30:00+00:00",
-          "production_mw": 330.7,
+          "production_mw": null,
           "consumption_mw": 851.1,
-          "renewable_mw": 276.3,
-          "renewable_share": 83.55004535833082
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T17:45:00+00:00",
-          "production_mw": 322.0,
+          "production_mw": null,
           "consumption_mw": 871.9,
-          "renewable_mw": 271.4,
-          "renewable_share": 84.28571428571428
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T18:00:00+00:00",
-          "production_mw": 340.2,
+          "production_mw": null,
           "consumption_mw": 850.9,
-          "renewable_mw": 274.8,
-          "renewable_share": 80.77601410934744
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T18:15:00+00:00",
-          "production_mw": 322.5,
+          "production_mw": null,
           "consumption_mw": 886.3,
-          "renewable_mw": 256.3,
-          "renewable_share": 79.47286821705427
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T18:30:00+00:00",
-          "production_mw": 347.5,
+          "production_mw": null,
           "consumption_mw": 907.1,
-          "renewable_mw": 281.8,
-          "renewable_share": 81.09352517985612
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T18:45:00+00:00",
-          "production_mw": 349.0,
+          "production_mw": null,
           "consumption_mw": 928.2,
-          "renewable_mw": 283.0,
-          "renewable_share": 81.08882521489971
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T19:00:00+00:00",
-          "production_mw": 422.0,
+          "production_mw": null,
           "consumption_mw": 851.5,
-          "renewable_mw": 354.3,
-          "renewable_share": 83.95734597156398
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T19:15:00+00:00",
-          "production_mw": 432.6,
+          "production_mw": null,
           "consumption_mw": 802.2,
-          "renewable_mw": 364.4,
-          "renewable_share": 84.23485899214054
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T19:30:00+00:00",
-          "production_mw": 414.7,
+          "production_mw": null,
           "consumption_mw": 793.8,
-          "renewable_mw": 348.9,
-          "renewable_share": 84.1331082710393
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T19:45:00+00:00",
-          "production_mw": 311.1,
+          "production_mw": null,
           "consumption_mw": 776.4,
-          "renewable_mw": 244.3,
-          "renewable_share": 78.52780456444873
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T20:00:00+00:00",
-          "production_mw": 288.4,
+          "production_mw": null,
           "consumption_mw": 689.9,
-          "renewable_mw": 221.7,
-          "renewable_share": 76.87239944521498
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T20:15:00+00:00",
-          "production_mw": 260.8,
+          "production_mw": null,
           "consumption_mw": 734.0,
-          "renewable_mw": 243.9,
-          "renewable_share": 93.51993865030674
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T20:30:00+00:00",
-          "production_mw": 297.3,
+          "production_mw": null,
           "consumption_mw": 768.4,
-          "renewable_mw": 230.4,
-          "renewable_share": 77.49747729566094
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T20:45:00+00:00",
-          "production_mw": 95.6,
+          "production_mw": null,
           "consumption_mw": 801.9,
-          "renewable_mw": 27.7,
-          "renewable_share": 28.97489539748954
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T21:00:00+00:00",
-          "production_mw": 254.10000000000002,
+          "production_mw": null,
           "consumption_mw": 793.0,
-          "renewable_mw": 187.4,
-          "renewable_share": 73.75049193231011
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T21:15:00+00:00",
-          "production_mw": 209.10000000000002,
+          "production_mw": null,
           "consumption_mw": 824.0,
-          "renewable_mw": 143.10000000000002,
-          "renewable_share": 68.4361549497848
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T21:30:00+00:00",
-          "production_mw": 214.70000000000002,
+          "production_mw": null,
           "consumption_mw": 746.4,
-          "renewable_mw": 149.0,
-          "renewable_share": 69.39916162086632
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T21:45:00+00:00",
-          "production_mw": 206.9,
+          "production_mw": null,
           "consumption_mw": 742.6,
-          "renewable_mw": 139.8,
-          "renewable_share": 67.56887385210247
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T22:00:00+00:00",
-          "production_mw": 224.7,
+          "production_mw": null,
           "consumption_mw": 636.0,
-          "renewable_mw": 157.6,
-          "renewable_share": 70.13796172674678
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T22:15:00+00:00",
-          "production_mw": 227.6,
+          "production_mw": null,
           "consumption_mw": 600.6,
-          "renewable_mw": 161.39999999999998,
-          "renewable_share": 70.91388400702986
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T22:30:00+00:00",
-          "production_mw": 227.8,
+          "production_mw": null,
           "consumption_mw": 674.4,
-          "renewable_mw": 161.4,
-          "renewable_share": 70.85162423178227
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T22:45:00+00:00",
-          "production_mw": 194.2,
+          "production_mw": null,
           "consumption_mw": 637.1,
-          "renewable_mw": 120.39999999999999,
-          "renewable_share": 61.997940267765195
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T23:00:00+00:00",
-          "production_mw": 221.7,
+          "production_mw": null,
           "consumption_mw": 620.2,
-          "renewable_mw": 139.0,
-          "renewable_share": 62.697338746053234
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T23:15:00+00:00",
-          "production_mw": 238.8,
+          "production_mw": null,
           "consumption_mw": 614.2,
-          "renewable_mw": 158.9,
-          "renewable_share": 66.54103852596315
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T23:30:00+00:00",
-          "production_mw": 211.2,
+          "production_mw": null,
           "consumption_mw": 620.1,
-          "renewable_mw": 130.79999999999998,
-          "renewable_share": 61.93181818181818
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-20T23:45:00+00:00",
-          "production_mw": 166.20000000000002,
+          "production_mw": null,
           "consumption_mw": 635.3,
-          "renewable_mw": 83.7,
-          "renewable_share": 50.3610108303249
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T00:00:00+00:00",
-          "production_mw": 188.1,
+          "production_mw": null,
           "consumption_mw": 671.8,
-          "renewable_mw": 103.7,
-          "renewable_share": 55.130249867091976
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T00:15:00+00:00",
-          "production_mw": 186.10000000000002,
+          "production_mw": null,
           "consumption_mw": 621.3,
-          "renewable_mw": 99.2,
-          "renewable_share": 53.30467490596453
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T00:30:00+00:00",
-          "production_mw": 192.7,
+          "production_mw": null,
           "consumption_mw": 640.5,
-          "renewable_mw": 106.9,
-          "renewable_share": 55.47483134405813
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T00:45:00+00:00",
-          "production_mw": 194.60000000000002,
+          "production_mw": null,
           "consumption_mw": 582.5,
-          "renewable_mw": 108.1,
-          "renewable_share": 55.54984583761561
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T01:00:00+00:00",
-          "production_mw": 194.29999999999998,
+          "production_mw": null,
           "consumption_mw": 700.9,
-          "renewable_mw": 108.5,
-          "renewable_share": 55.841482243952655
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T01:15:00+00:00",
-          "production_mw": 168.5,
+          "production_mw": null,
           "consumption_mw": 666.6,
-          "renewable_mw": 83.7,
-          "renewable_share": 49.67359050445104
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T01:30:00+00:00",
-          "production_mw": 162.4,
+          "production_mw": null,
           "consumption_mw": 643.9,
-          "renewable_mw": 78.1,
-          "renewable_share": 48.0911330049261
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T01:45:00+00:00",
-          "production_mw": 164.5,
+          "production_mw": null,
           "consumption_mw": 691.0,
-          "renewable_mw": 80.6,
-          "renewable_share": 48.99696048632218
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T02:00:00+00:00",
-          "production_mw": 172.4,
+          "production_mw": null,
           "consumption_mw": 752.1,
-          "renewable_mw": 89.6,
-          "renewable_share": 51.972157772621806
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T02:15:00+00:00",
-          "production_mw": 181.0,
+          "production_mw": null,
           "consumption_mw": 686.8,
-          "renewable_mw": 99.0,
-          "renewable_share": 54.69613259668509
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T02:30:00+00:00",
-          "production_mw": 177.6,
+          "production_mw": null,
           "consumption_mw": 695.8,
-          "renewable_mw": 94.80000000000001,
-          "renewable_share": 53.378378378378386
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T02:45:00+00:00",
-          "production_mw": 174.6,
+          "production_mw": null,
           "consumption_mw": 737.7,
-          "renewable_mw": 92.7,
-          "renewable_share": 53.09278350515464
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T03:00:00+00:00",
-          "production_mw": 170.2,
+          "production_mw": null,
           "consumption_mw": 824.2,
-          "renewable_mw": 103.8,
-          "renewable_share": 60.98707403055229
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T03:15:00+00:00",
-          "production_mw": 188.2,
+          "production_mw": null,
           "consumption_mw": 824.6,
-          "renewable_mw": 105.80000000000001,
-          "renewable_share": 56.21679064824655
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T03:30:00+00:00",
-          "production_mw": 183.1,
+          "production_mw": null,
           "consumption_mw": 789.2,
-          "renewable_mw": 102.2,
-          "renewable_share": 55.81649371927908
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T03:45:00+00:00",
-          "production_mw": 173.1,
+          "production_mw": null,
           "consumption_mw": 725.8,
-          "renewable_mw": 104.8,
-          "renewable_share": 60.543038705950316
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T04:00:00+00:00",
-          "production_mw": 187.6,
+          "production_mw": null,
           "consumption_mw": 752.7,
-          "renewable_mw": 103.69999999999999,
-          "renewable_share": 55.27718550106609
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T04:15:00+00:00",
-          "production_mw": 215.3,
+          "production_mw": null,
           "consumption_mw": 719.2,
-          "renewable_mw": 130.6,
-          "renewable_share": 60.65954482117974
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T04:30:00+00:00",
-          "production_mw": 285.1,
+          "production_mw": null,
           "consumption_mw": 712.1,
-          "renewable_mw": 167.2,
-          "renewable_share": 58.64608909154681
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T04:45:00+00:00",
-          "production_mw": 289.0,
+          "production_mw": null,
           "consumption_mw": 732.9,
-          "renewable_mw": 166.5,
-          "renewable_share": 57.61245674740484
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T05:00:00+00:00",
-          "production_mw": 362.4,
+          "production_mw": null,
           "consumption_mw": 722.6,
-          "renewable_mw": 203.3,
-          "renewable_share": 56.098233995585
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T05:15:00+00:00",
-          "production_mw": 277.1,
+          "production_mw": null,
           "consumption_mw": 734.0,
-          "renewable_mw": 201.9,
-          "renewable_share": 72.86178274990978
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T05:30:00+00:00",
-          "production_mw": 336.4,
+          "production_mw": null,
           "consumption_mw": 742.4,
-          "renewable_mw": 214.90000000000003,
-          "renewable_share": 63.882282996432835
+          "renewable_mw": null,
+          "renewable_share": null
         },
         {
           "time_utc": "2026-09-21T05:45:00+00:00",
-          "production_mw": 314.90000000000003,
+          "production_mw": null,
           "consumption_mw": 732.5,
-          "renewable_mw": 191.4,
-          "renewable_share": 60.781200381073354
+          "renewable_mw": null,
+          "renewable_share": null
+        },
+        {
+          "time_utc": "2026-09-21T06:00:00+00:00",
+          "production_mw": null,
+          "consumption_mw": 694.8,
+          "renewable_mw": null,
+          "renewable_share": null
+        },
+        {
+          "time_utc": "2026-09-21T06:15:00+00:00",
+          "production_mw": null,
+          "consumption_mw": 729.9,
+          "renewable_mw": null,
+          "renewable_share": null
+        },
+        {
+          "time_utc": "2026-09-21T06:30:00+00:00",
+          "production_mw": null,
+          "consumption_mw": 625.0,
+          "renewable_mw": null,
+          "renewable_share": null
+        },
+        {
+          "time_utc": "2026-09-21T06:45:00+00:00",
+          "production_mw": null,
+          "consumption_mw": 621.1,
+          "renewable_mw": null,
+          "renewable_share": null
         }
       ]
     },
@@ -1395,35 +1386,28 @@
         "status_code": 200
       },
       "current": {
-        "production_mw": 685.0,
-        "generation_time": "2026-09-21T05:00:00+00:00",
-        "renewable_mw": 641.0,
-        "renewable_share": 93.57664233576642,
-        "consumption_mw": 865.0,
-        "load_time": "2026-09-21T05:00:00+00:00"
+        "production_mw": 800.0,
+        "generation_time": "2026-09-21T06:00:00+00:00",
+        "renewable_mw": 771.0,
+        "renewable_share": 96.375,
+        "consumption_mw": 936.0,
+        "load_time": "2026-09-21T06:00:00+00:00"
       },
       "previous_24h": {
-        "production_mw": 295.0,
-        "generation_time": "2026-09-20T06:00:00+00:00",
-        "renewable_mw": 288.0,
-        "renewable_share": 97.6271186440678,
-        "consumption_mw": 772.0,
-        "load_time": "2026-09-20T06:00:00+00:00"
+        "production_mw": 350.0,
+        "generation_time": "2026-09-20T07:00:00+00:00",
+        "renewable_mw": 344.0,
+        "renewable_share": 98.28571428571429,
+        "consumption_mw": 837.0,
+        "load_time": "2026-09-20T07:00:00+00:00"
       },
       "history": [
         {
-          "time_utc": "2026-09-19T06:00:00+00:00",
-          "production_mw": 352.0,
-          "consumption_mw": 820.0,
-          "renewable_mw": 343.0,
-          "renewable_share": 97.44318181818183
-        },
-        {
           "time_utc": "2026-09-19T07:00:00+00:00",
-          "production_mw": 348.0,
+          "production_mw": 369.0,
           "consumption_mw": 821.0,
-          "renewable_mw": 348.0,
-          "renewable_share": 100.0
+          "renewable_mw": 360.0,
+          "renewable_share": 97.5609756097561
         },
         {
           "time_utc": "2026-09-19T08:00:00+00:00",
@@ -1746,6 +1730,13 @@
           "consumption_mw": 865.0,
           "renewable_mw": 641.0,
           "renewable_share": 93.57664233576642
+        },
+        {
+          "time_utc": "2026-09-21T06:00:00+00:00",
+          "production_mw": 800.0,
+          "consumption_mw": 936.0,
+          "renewable_mw": 771.0,
+          "renewable_share": 96.375
         }
       ]
     },
@@ -1764,56 +1755,28 @@
         "status_code": 200
       },
       "current": {
-        "production_mw": 1255.551506,
-        "generation_time": "2026-09-21T05:45:00+00:00",
-        "renewable_mw": 963.488855,
-        "renewable_share": 76.73829790300933,
-        "consumption_mw": 1562.01152,
-        "load_time": "2026-09-21T05:45:00+00:00"
+        "production_mw": 1180.342726,
+        "generation_time": "2026-09-21T06:30:00+00:00",
+        "renewable_mw": 938.774137,
+        "renewable_share": 79.53402993225205,
+        "consumption_mw": 1549.51158,
+        "load_time": "2026-09-21T06:30:00+00:00"
       },
       "previous_24h": {
-        "production_mw": 1373.182061,
-        "generation_time": "2026-09-20T06:00:00+00:00",
-        "renewable_mw": 1248.738394,
-        "renewable_share": 90.93756971239664,
-        "consumption_mw": 1258.4599,
-        "load_time": "2026-09-20T06:00:00+00:00"
+        "production_mw": 1542.818214,
+        "generation_time": "2026-09-20T07:00:00+00:00",
+        "renewable_mw": 1414.1385030000001,
+        "renewable_share": 91.65943791482877,
+        "consumption_mw": 1334.83196,
+        "load_time": "2026-09-20T07:00:00+00:00"
       },
       "history": [
         {
-          "time_utc": "2026-09-19T06:00:00+00:00",
-          "production_mw": 1690.155523,
-          "consumption_mw": 1445.93076,
-          "renewable_mw": 1579.8692369999999,
-          "renewable_share": 93.47478474618457
-        },
-        {
-          "time_utc": "2026-09-19T06:15:00+00:00",
-          "production_mw": 1765.348531,
-          "consumption_mw": 1434.97851,
-          "renewable_mw": 1632.752474,
-          "renewable_share": 92.4889587142948
-        },
-        {
-          "time_utc": "2026-09-19T06:30:00+00:00",
-          "production_mw": 1823.848183,
-          "consumption_mw": 1476.88279,
-          "renewable_mw": 1678.962857,
-          "renewable_share": 92.05606435061486
-        },
-        {
-          "time_utc": "2026-09-19T06:45:00+00:00",
-          "production_mw": 1830.315335,
-          "consumption_mw": 1524.77036,
-          "renewable_mw": 1670.807316,
-          "renewable_share": 91.28521648975857
-        },
-        {
           "time_utc": "2026-09-19T07:00:00+00:00",
-          "production_mw": 1860.297644,
+          "production_mw": 1877.137644,
           "consumption_mw": 1508.49897,
-          "renewable_mw": 1699.3143890000001,
-          "renewable_share": 91.34637107565999
+          "renewable_mw": 1716.154389,
+          "renewable_share": 91.42400369442488
         },
         {
           "time_utc": "2026-09-19T07:15:00+00:00",
@@ -1824,31 +1787,31 @@
         },
         {
           "time_utc": "2026-09-19T07:30:00+00:00",
-          "production_mw": 1842.6286770000002,
+          "production_mw": 1842.628677,
           "consumption_mw": 1495.00785,
           "renewable_mw": 1660.895939,
-          "renewable_share": 90.13731088263096
+          "renewable_share": 90.13731088263097
         },
         {
           "time_utc": "2026-09-19T07:45:00+00:00",
-          "production_mw": 1792.3306139999997,
+          "production_mw": 1792.330614,
           "consumption_mw": 1485.65028,
           "renewable_mw": 1646.751448,
-          "renewable_share": 91.87766113780168
+          "renewable_share": 91.87766113780167
         },
         {
           "time_utc": "2026-09-19T08:00:00+00:00",
-          "production_mw": 1962.0641130000001,
+          "production_mw": 1962.064113,
           "consumption_mw": 1456.02374,
           "renewable_mw": 1702.578599,
-          "renewable_share": 86.77487079648756
+          "renewable_share": 86.77487079648758
         },
         {
           "time_utc": "2026-09-19T08:15:00+00:00",
-          "production_mw": 1829.573291,
+          "production_mw": 1829.5732910000002,
           "consumption_mw": 1331.81771,
-          "renewable_mw": 1694.8218350000002,
-          "renewable_share": 92.6348150870552
+          "renewable_mw": 1694.821835,
+          "renewable_share": 92.63481508705517
         },
         {
           "time_utc": "2026-09-19T08:30:00+00:00",
@@ -1936,17 +1899,17 @@
         },
         {
           "time_utc": "2026-09-19T11:30:00+00:00",
-          "production_mw": 2373.902652,
+          "production_mw": 2373.9026519999998,
           "consumption_mw": 1221.77519,
           "renewable_mw": 1922.605833,
-          "renewable_share": 80.98924492039365
+          "renewable_share": 80.98924492039366
         },
         {
           "time_utc": "2026-09-19T11:45:00+00:00",
-          "production_mw": 2433.243254,
+          "production_mw": 2433.2432540000004,
           "consumption_mw": 1298.71525,
           "renewable_mw": 1964.230646,
-          "renewable_share": 80.7247957133348
+          "renewable_share": 80.72479571333477
         },
         {
           "time_utc": "2026-09-19T12:00:00+00:00",
@@ -1964,7 +1927,7 @@
         },
         {
           "time_utc": "2026-09-19T12:30:00+00:00",
-          "production_mw": 1874.8051529999998,
+          "production_mw": 1874.805153,
           "consumption_mw": 1184.36096,
           "renewable_mw": 1489.314136,
           "renewable_share": 79.43834235876992
@@ -1978,10 +1941,10 @@
         },
         {
           "time_utc": "2026-09-19T13:00:00+00:00",
-          "production_mw": 1695.401244,
+          "production_mw": 1695.4012440000001,
           "consumption_mw": 1186.71732,
           "renewable_mw": 1565.081463,
-          "renewable_share": 92.31333694833599
+          "renewable_share": 92.31333694833597
         },
         {
           "time_utc": "2026-09-19T13:15:00+00:00",
@@ -2036,8 +1999,8 @@
           "time_utc": "2026-09-19T15:00:00+00:00",
           "production_mw": 1428.4029580000001,
           "consumption_mw": 1427.46795,
-          "renewable_mw": 1274.7971420000001,
-          "renewable_share": 89.24632470552473
+          "renewable_mw": 1274.797142,
+          "renewable_share": 89.24632470552471
         },
         {
           "time_utc": "2026-09-19T15:15:00+00:00",
@@ -2048,10 +2011,10 @@
         },
         {
           "time_utc": "2026-09-19T15:30:00+00:00",
-          "production_mw": 1307.893099,
+          "production_mw": 1307.8930990000001,
           "consumption_mw": 1417.08508,
           "renewable_mw": 1160.41596,
-          "renewable_share": 88.72406780701273
+          "renewable_share": 88.72406780701272
         },
         {
           "time_utc": "2026-09-19T15:45:00+00:00",
@@ -2083,10 +2046,10 @@
         },
         {
           "time_utc": "2026-09-19T16:45:00+00:00",
-          "production_mw": 1483.8050509999998,
+          "production_mw": 1483.805051,
           "consumption_mw": 1460.63906,
           "renewable_mw": 1137.730813,
-          "renewable_share": 76.67656962302658
+          "renewable_share": 76.67656962302657
         },
         {
           "time_utc": "2026-09-19T17:00:00+00:00",
@@ -2181,10 +2144,10 @@
         },
         {
           "time_utc": "2026-09-19T20:15:00+00:00",
-          "production_mw": 1277.5829540000002,
+          "production_mw": 1277.582954,
           "consumption_mw": 1200.54157,
           "renewable_mw": 1150.8248800000001,
-          "renewable_share": 90.07829013347965
+          "renewable_share": 90.07829013347968
         },
         {
           "time_utc": "2026-09-19T20:30:00+00:00",
@@ -2237,10 +2200,10 @@
         },
         {
           "time_utc": "2026-09-19T22:15:00+00:00",
-          "production_mw": 1191.3211050000002,
+          "production_mw": 1191.321105,
           "consumption_mw": 1067.43939,
           "renewable_mw": 1061.400451,
-          "renewable_share": 89.09440507225797
+          "renewable_share": 89.094405072258
         },
         {
           "time_utc": "2026-09-19T22:30:00+00:00",
@@ -2251,17 +2214,17 @@
         },
         {
           "time_utc": "2026-09-19T22:45:00+00:00",
-          "production_mw": 1128.9712559999998,
+          "production_mw": 1128.971256,
           "consumption_mw": 1052.83297,
           "renewable_mw": 994.9354119999999,
-          "renewable_share": 88.12761234728903
+          "renewable_share": 88.12761234728902
         },
         {
           "time_utc": "2026-09-19T23:00:00+00:00",
-          "production_mw": 1105.72454,
+          "production_mw": 1105.7245400000002,
           "consumption_mw": 1049.539,
           "renewable_mw": 1002.5339240000001,
-          "renewable_share": 90.66760189658088
+          "renewable_share": 90.66760189658085
         },
         {
           "time_utc": "2026-09-19T23:15:00+00:00",
@@ -2300,10 +2263,10 @@
         },
         {
           "time_utc": "2026-09-20T00:30:00+00:00",
-          "production_mw": 1003.916666,
+          "production_mw": 1003.9166660000001,
           "consumption_mw": 1024.97663,
           "renewable_mw": 880.681001,
-          "renewable_share": 87.72451248458506
+          "renewable_share": 87.72451248458505
         },
         {
           "time_utc": "2026-09-20T00:45:00+00:00",
@@ -2328,17 +2291,17 @@
         },
         {
           "time_utc": "2026-09-20T01:30:00+00:00",
-          "production_mw": 1046.6724199999999,
+          "production_mw": 1046.67242,
           "consumption_mw": 1015.88983,
           "renewable_mw": 933.319772,
-          "renewable_share": 89.17018870144683
+          "renewable_share": 89.1701887014468
         },
         {
           "time_utc": "2026-09-20T01:45:00+00:00",
-          "production_mw": 1013.362266,
+          "production_mw": 1013.3622660000001,
           "consumption_mw": 1020.19749,
           "renewable_mw": 909.618784,
-          "renewable_share": 89.76244868387472
+          "renewable_share": 89.76244868387471
         },
         {
           "time_utc": "2026-09-20T02:00:00+00:00",
@@ -2463,8 +2426,8 @@
           "time_utc": "2026-09-20T06:15:00+00:00",
           "production_mw": 1505.187272,
           "consumption_mw": 1333.53892,
-          "renewable_mw": 1376.293261,
-          "renewable_share": 91.4366794486155
+          "renewable_mw": 1376.2932609999998,
+          "renewable_share": 91.43667944861548
         },
         {
           "time_utc": "2026-09-20T06:30:00+00:00",
@@ -2475,14 +2438,14 @@
         },
         {
           "time_utc": "2026-09-20T06:45:00+00:00",
-          "production_mw": 1535.45368,
+          "production_mw": 1535.4536799999998,
           "consumption_mw": 1330.28321,
           "renewable_mw": 1393.6922789999999,
-          "renewable_share": 90.76745831889893
+          "renewable_share": 90.76745831889895
         },
         {
           "time_utc": "2026-09-20T07:00:00+00:00",
-          "production_mw": 1542.8182140000001,
+          "production_mw": 1542.818214,
           "consumption_mw": 1334.83196,
           "renewable_mw": 1414.1385030000001,
           "renewable_share": 91.65943791482877
@@ -2519,8 +2482,8 @@
           "time_utc": "2026-09-20T08:15:00+00:00",
           "production_mw": 1985.28153,
           "consumption_mw": 1252.14407,
-          "renewable_mw": 1403.273005,
-          "renewable_share": 70.6838291594845
+          "renewable_mw": 1403.2730049999998,
+          "renewable_share": 70.68382915948449
         },
         {
           "time_utc": "2026-09-20T08:30:00+00:00",
@@ -2531,14 +2494,14 @@
         },
         {
           "time_utc": "2026-09-20T08:45:00+00:00",
-          "production_mw": 1840.4768100000001,
+          "production_mw": 1840.47681,
           "consumption_mw": 1354.43981,
           "renewable_mw": 1305.1100219999998,
-          "renewable_share": 70.91151678243638
+          "renewable_share": 70.9115167824364
         },
         {
           "time_utc": "2026-09-20T09:00:00+00:00",
-          "production_mw": 1896.650403,
+          "production_mw": 1896.6504029999999,
           "consumption_mw": 1399.6399,
           "renewable_mw": 1297.250746,
           "renewable_share": 68.3969351414521
@@ -2552,10 +2515,10 @@
         },
         {
           "time_utc": "2026-09-20T09:30:00+00:00",
-          "production_mw": 2060.186975,
+          "production_mw": 2060.1869749999996,
           "consumption_mw": 1392.04336,
           "renewable_mw": 1471.145938,
-          "renewable_share": 71.40837000971719
+          "renewable_share": 71.4083700097172
         },
         {
           "time_utc": "2026-09-20T09:45:00+00:00",
@@ -2622,14 +2585,14 @@
         },
         {
           "time_utc": "2026-09-20T12:00:00+00:00",
-          "production_mw": 1791.7749079999999,
+          "production_mw": 1791.774908,
           "consumption_mw": 1398.8553,
           "renewable_mw": 1242.971773,
-          "renewable_share": 69.37097776346359
+          "renewable_share": 69.37097776346357
         },
         {
           "time_utc": "2026-09-20T12:15:00+00:00",
-          "production_mw": 1706.7741879999999,
+          "production_mw": 1706.774188,
           "consumption_mw": 1389.63742,
           "renewable_mw": 1157.794617,
           "renewable_share": 67.83525466580352
@@ -2657,16 +2620,16 @@
         },
         {
           "time_utc": "2026-09-20T13:15:00+00:00",
-          "production_mw": 1328.2786569999998,
+          "production_mw": 1328.278657,
           "consumption_mw": 1357.08416,
-          "renewable_mw": 987.3703840000001,
-          "renewable_share": 74.33458173829561
+          "renewable_mw": 987.370384,
+          "renewable_share": 74.3345817382956
         },
         {
           "time_utc": "2026-09-20T13:30:00+00:00",
           "production_mw": 1110.505554,
           "consumption_mw": 1361.81778,
-          "renewable_mw": 951.0211039999999,
+          "renewable_mw": 951.021104,
           "renewable_share": 85.63857250190753
         },
         {
@@ -2694,15 +2657,15 @@
           "time_utc": "2026-09-20T14:30:00+00:00",
           "production_mw": 1145.1490039999999,
           "consumption_mw": 1398.51992,
-          "renewable_mw": 1040.8526669999999,
-          "renewable_share": 90.89233482842029
+          "renewable_mw": 1040.852667,
+          "renewable_share": 90.8923348284203
         },
         {
           "time_utc": "2026-09-20T14:45:00+00:00",
-          "production_mw": 1212.4368809999999,
+          "production_mw": 1212.436881,
           "consumption_mw": 1436.66337,
           "renewable_mw": 1103.669816,
-          "renewable_share": 91.02905341263701
+          "renewable_share": 91.029053412637
         },
         {
           "time_utc": "2026-09-20T15:00:00+00:00",
@@ -2818,24 +2781,24 @@
         },
         {
           "time_utc": "2026-09-20T19:00:00+00:00",
-          "production_mw": 1128.280713,
+          "production_mw": 1128.2807129999999,
           "consumption_mw": 1343.75534,
           "renewable_mw": 931.472,
-          "renewable_share": 82.55675996829699
+          "renewable_share": 82.55675996829702
         },
         {
           "time_utc": "2026-09-20T19:15:00+00:00",
-          "production_mw": 984.3765189999999,
+          "production_mw": 984.376519,
           "consumption_mw": 1311.06063,
           "renewable_mw": 831.290867,
-          "renewable_share": 84.44846569933269
+          "renewable_share": 84.44846569933267
         },
         {
           "time_utc": "2026-09-20T19:30:00+00:00",
-          "production_mw": 997.9198599999999,
+          "production_mw": 997.91986,
           "consumption_mw": 1273.35539,
           "renewable_mw": 865.563184,
-          "renewable_share": 86.73674296851854
+          "renewable_share": 86.73674296851853
         },
         {
           "time_utc": "2026-09-20T19:45:00+00:00",
@@ -2860,7 +2823,7 @@
         },
         {
           "time_utc": "2026-09-20T20:30:00+00:00",
-          "production_mw": 1344.303112,
+          "production_mw": 1344.3031119999998,
           "consumption_mw": 1159.71763,
           "renewable_mw": 1183.841605,
           "renewable_share": 88.06359179208685
@@ -2874,10 +2837,10 @@
         },
         {
           "time_utc": "2026-09-20T21:00:00+00:00",
-          "production_mw": 1443.0695210000001,
+          "production_mw": 1443.069521,
           "consumption_mw": 1130.53792,
           "renewable_mw": 1292.714722,
-          "renewable_share": 89.58090398196414
+          "renewable_share": 89.58090398196416
         },
         {
           "time_utc": "2026-09-20T21:15:00+00:00",
@@ -2888,7 +2851,7 @@
         },
         {
           "time_utc": "2026-09-20T21:30:00+00:00",
-          "production_mw": 1326.766722,
+          "production_mw": 1326.7667219999998,
           "consumption_mw": 1101.14216,
           "renewable_mw": 1097.080485,
           "renewable_share": 82.68827268641729
@@ -2923,10 +2886,10 @@
         },
         {
           "time_utc": "2026-09-20T22:45:00+00:00",
-          "production_mw": 1027.1424319999999,
+          "production_mw": 1027.142432,
           "consumption_mw": 1032.97196,
           "renewable_mw": 882.7186049999999,
-          "renewable_share": 85.93925997986616
+          "renewable_share": 85.93925997986615
         },
         {
           "time_utc": "2026-09-20T23:00:00+00:00",
@@ -2944,17 +2907,17 @@
         },
         {
           "time_utc": "2026-09-20T23:30:00+00:00",
-          "production_mw": 1231.790815,
+          "production_mw": 1231.7908149999998,
           "consumption_mw": 1031.66787,
           "renewable_mw": 1043.6110589999998,
-          "renewable_share": 84.72307524066088
+          "renewable_share": 84.72307524066089
         },
         {
           "time_utc": "2026-09-20T23:45:00+00:00",
-          "production_mw": 1232.8826099999999,
+          "production_mw": 1232.88261,
           "consumption_mw": 1026.70527,
           "renewable_mw": 1045.594323,
-          "renewable_share": 84.80891161243649
+          "renewable_share": 84.80891161243648
         },
         {
           "time_utc": "2026-09-21T00:00:00+00:00",
@@ -2979,7 +2942,7 @@
         },
         {
           "time_utc": "2026-09-21T00:45:00+00:00",
-          "production_mw": 1298.4240389999998,
+          "production_mw": 1298.424039,
           "consumption_mw": 1023.80997,
           "renewable_mw": 1100.9949569999999,
           "renewable_share": 84.7947145100569
@@ -3000,17 +2963,17 @@
         },
         {
           "time_utc": "2026-09-21T01:30:00+00:00",
-          "production_mw": 1191.8364310000002,
+          "production_mw": 1191.836431,
           "consumption_mw": 1029.00379,
           "renewable_mw": 1058.239751,
-          "renewable_share": 88.79068666428438
+          "renewable_share": 88.79068666428441
         },
         {
           "time_utc": "2026-09-21T01:45:00+00:00",
-          "production_mw": 1284.2071290000001,
+          "production_mw": 1284.207129,
           "consumption_mw": 1036.45051,
           "renewable_mw": 1116.467512,
-          "renewable_share": 86.93827395814121
+          "renewable_share": 86.93827395814122
         },
         {
           "time_utc": "2026-09-21T02:00:00+00:00",
@@ -3035,10 +2998,10 @@
         },
         {
           "time_utc": "2026-09-21T02:45:00+00:00",
-          "production_mw": 1256.682212,
+          "production_mw": 1256.6822120000002,
           "consumption_mw": 1172.58051,
           "renewable_mw": 1128.3809430000001,
-          "renewable_share": 89.79047624173742
+          "renewable_share": 89.7904762417374
         },
         {
           "time_utc": "2026-09-21T03:00:00+00:00",
@@ -3049,10 +3012,10 @@
         },
         {
           "time_utc": "2026-09-21T03:15:00+00:00",
-          "production_mw": 1268.170732,
+          "production_mw": 1268.1707319999998,
           "consumption_mw": 1334.21831,
           "renewable_mw": 1127.9144019999999,
-          "renewable_share": 88.94026439335929
+          "renewable_share": 88.9402643933593
         },
         {
           "time_utc": "2026-09-21T03:30:00+00:00",
@@ -3072,8 +3035,8 @@
           "time_utc": "2026-09-21T04:00:00+00:00",
           "production_mw": 1520.8996419999999,
           "consumption_mw": 1476.12216,
-          "renewable_mw": 1071.944265,
-          "renewable_share": 70.48093348160577
+          "renewable_mw": 1071.9442649999999,
+          "renewable_share": 70.48093348160575
         },
         {
           "time_utc": "2026-09-21T04:15:00+00:00",
@@ -3105,10 +3068,10 @@
         },
         {
           "time_utc": "2026-09-21T05:15:00+00:00",
-          "production_mw": 1327.7116139999998,
+          "production_mw": 1327.711614,
           "consumption_mw": 1573.05573,
           "renewable_mw": 1009.815645,
-          "renewable_share": 76.05685107760156
+          "renewable_share": 76.05685107760155
         },
         {
           "time_utc": "2026-09-21T05:30:00+00:00",
@@ -3123,6 +3086,27 @@
           "consumption_mw": 1562.01152,
           "renewable_mw": 963.488855,
           "renewable_share": 76.73829790300933
+        },
+        {
+          "time_utc": "2026-09-21T06:00:00+00:00",
+          "production_mw": 1194.239964,
+          "consumption_mw": 1568.86893,
+          "renewable_mw": 990.9507510000001,
+          "renewable_share": 82.97752385382408
+        },
+        {
+          "time_utc": "2026-09-21T06:15:00+00:00",
+          "production_mw": 1210.788772,
+          "consumption_mw": 1628.50648,
+          "renewable_mw": 1039.355644,
+          "renewable_share": 85.84120269658396
+        },
+        {
+          "time_utc": "2026-09-21T06:30:00+00:00",
+          "production_mw": 1180.342726,
+          "consumption_mw": 1549.51158,
+          "renewable_mw": 938.774137,
+          "renewable_share": 79.53402993225205
         }
       ]
     }
