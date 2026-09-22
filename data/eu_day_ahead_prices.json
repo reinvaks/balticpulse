@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-22T15:34:07.924010+00:00",
+  "updated_at": "2026-09-22T16:35:56.752043+00:00",
   "method": "A44 day-ahead; country arithmetic mean across available bidding zones",
   "days": {
     "2026-09-22": {
@@ -83,6 +83,13 @@
           "zone_count": 1
         },
         {
+          "country": "France",
+          "iso3": "FRA",
+          "price_eur_mwh": 159.12,
+          "zones": "FR",
+          "zone_count": 1
+        },
+        {
           "country": "Greece",
           "iso3": "GRC",
           "price_eur_mwh": 211.76,
@@ -94,6 +101,20 @@
           "iso3": "HUN",
           "price_eur_mwh": 233.9,
           "zones": "HU",
+          "zone_count": 1
+        },
+        {
+          "country": "Latvia",
+          "iso3": "LVA",
+          "price_eur_mwh": 188.62,
+          "zones": "LV",
+          "zone_count": 1
+        },
+        {
+          "country": "Lithuania",
+          "iso3": "LTU",
+          "price_eur_mwh": 188.62,
+          "zones": "LT",
           "zone_count": 1
         },
         {
@@ -227,6 +248,13 @@
           "zone_count": 1
         },
         {
+          "country": "France",
+          "iso3": "FRA",
+          "price_eur_mwh": 151.33,
+          "zones": "FR",
+          "zone_count": 1
+        },
+        {
           "country": "Greece",
           "iso3": "GRC",
           "price_eur_mwh": 201.69,
@@ -238,6 +266,20 @@
           "iso3": "HUN",
           "price_eur_mwh": 198.98,
           "zones": "HU",
+          "zone_count": 1
+        },
+        {
+          "country": "Latvia",
+          "iso3": "LVA",
+          "price_eur_mwh": 179.38,
+          "zones": "LV",
+          "zone_count": 1
+        },
+        {
+          "country": "Lithuania",
+          "iso3": "LTU",
+          "price_eur_mwh": 179.38,
+          "zones": "LT",
           "zone_count": 1
         },
         {
@@ -292,9 +334,5 @@
       ]
     }
   },
-  "errors": [
-    "FR: ReadTimeout: HTTPSConnectionPool(host='web-api.tp.entsoe.eu', port=443): Read timed out. (read timeout=25)",
-    "LV: ReadTimeout: HTTPSConnectionPool(host='web-api.tp.entsoe.eu', port=443): Read timed out. (read timeout=25)",
-    "LT: ReadTimeout: HTTPSConnectionPool(host='web-api.tp.entsoe.eu', port=443): Read timed out. (read timeout=25)"
-  ]
+  "errors": []
 }
