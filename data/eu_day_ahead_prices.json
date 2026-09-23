@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-23T12:35:46.332962+00:00",
+  "updated_at": "2026-09-23T13:31:39.316433+00:00",
   "method": "A44 day-ahead; country arithmetic mean across available bidding zones",
   "days": {
     "2026-09-23": {
@@ -83,6 +83,13 @@
           "zone_count": 1
         },
         {
+          "country": "France",
+          "iso3": "FRA",
+          "price_eur_mwh": 151.33,
+          "zones": "FR",
+          "zone_count": 1
+        },
+        {
           "country": "Greece",
           "iso3": "GRC",
           "price_eur_mwh": 201.69,
@@ -155,9 +162,9 @@
         {
           "country": "Sweden",
           "iso3": "SWE",
-          "price_eur_mwh": 138.75,
+          "price_eur_mwh": 131.58,
           "zones": "SE1, SE2, SE3, SE4",
-          "zone_count": 3
+          "zone_count": 4
         }
       ]
     },
@@ -241,6 +248,13 @@
           "zone_count": 1
         },
         {
+          "country": "France",
+          "iso3": "FRA",
+          "price_eur_mwh": 157.67,
+          "zones": "FR",
+          "zone_count": 1
+        },
+        {
           "country": "Greece",
           "iso3": "GRC",
           "price_eur_mwh": 224.74,
@@ -313,15 +327,12 @@
         {
           "country": "Sweden",
           "iso3": "SWE",
-          "price_eur_mwh": 138.36,
+          "price_eur_mwh": 132.98,
           "zones": "SE1, SE2, SE3, SE4",
-          "zone_count": 3
+          "zone_count": 4
         }
       ]
     }
   },
-  "errors": [
-    "FR: ConnectTimeout: HTTPSConnectionPool(host='web-api.tp.entsoe.eu', port=443): Max retries exceeded with url: /api?securityToken=9d2a4491-8d6c-43e3-902e-404da5088861&documentType=A44&in_Domain=10YFR-RTE------C&out_Domain=10YFR-RTE------C&periodStart=202609222100&periodEnd=202609242300 (Caused by ConnectTimeoutError(<HTTPSConnection(host='web-api.tp.entsoe.eu', port=443) at 0x7f5a60620ce0>, 'Connection to web-api.tp.entsoe.eu timed out. (connect timeout=5)'))",
-    "SE2: ConnectTimeout: HTTPSConnectionPool(host='web-api.tp.entsoe.eu', port=443): Max retries exceeded with url: /api?securityToken=9d2a4491-8d6c-43e3-902e-404da5088861&documentType=A44&in_Domain=10Y1001A1001A45N&out_Domain=10Y1001A1001A45N&periodStart=202609222100&periodEnd=202609242300 (Caused by ConnectTimeoutError(<HTTPSConnection(host='web-api.tp.entsoe.eu', port=443) at 0x7f5a6069fef0>, 'Connection to web-api.tp.entsoe.eu timed out. (connect timeout=5)'))"
-  ]
+  "errors": []
 }
