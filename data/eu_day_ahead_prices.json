@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-23T11:29:31.249552+00:00",
+  "updated_at": "2026-09-23T12:35:46.332962+00:00",
   "method": "A44 day-ahead; country arithmetic mean across available bidding zones",
   "days": {
     "2026-09-23": {
@@ -83,13 +83,6 @@
           "zone_count": 1
         },
         {
-          "country": "France",
-          "iso3": "FRA",
-          "price_eur_mwh": 151.33,
-          "zones": "FR",
-          "zone_count": 1
-        },
-        {
           "country": "Greece",
           "iso3": "GRC",
           "price_eur_mwh": 201.69,
@@ -162,9 +155,9 @@
         {
           "country": "Sweden",
           "iso3": "SWE",
-          "price_eur_mwh": 131.58,
+          "price_eur_mwh": 138.75,
           "zones": "SE1, SE2, SE3, SE4",
-          "zone_count": 4
+          "zone_count": 3
         }
       ]
     },
@@ -173,8 +166,29 @@
         {
           "country": "Austria",
           "iso3": "AUT",
-          "price_eur_mwh": 196.56,
+          "price_eur_mwh": 206.19,
           "zones": "AT",
+          "zone_count": 1
+        },
+        {
+          "country": "Belgium",
+          "iso3": "BEL",
+          "price_eur_mwh": 171.65,
+          "zones": "BE",
+          "zone_count": 1
+        },
+        {
+          "country": "Bulgaria",
+          "iso3": "BGR",
+          "price_eur_mwh": 215.67,
+          "zones": "BG",
+          "zone_count": 1
+        },
+        {
+          "country": "Croatia",
+          "iso3": "HRV",
+          "price_eur_mwh": 212.24,
+          "zones": "HR",
           "zone_count": 1
         },
         {
@@ -187,14 +201,14 @@
         {
           "country": "Germany/Luxembourg",
           "iso3": "DEU",
-          "price_eur_mwh": 131.06,
+          "price_eur_mwh": 134.61,
           "zones": "DE-LU",
           "zone_count": 1
         },
         {
           "country": "Luxembourg",
           "iso3": "LUX",
-          "price_eur_mwh": 131.06,
+          "price_eur_mwh": 134.61,
           "zones": "DE-LU",
           "zone_count": 1
         },
@@ -227,6 +241,20 @@
           "zone_count": 1
         },
         {
+          "country": "Greece",
+          "iso3": "GRC",
+          "price_eur_mwh": 224.74,
+          "zones": "GR",
+          "zone_count": 1
+        },
+        {
+          "country": "Hungary",
+          "iso3": "HUN",
+          "price_eur_mwh": 240.24,
+          "zones": "HU",
+          "zone_count": 1
+        },
+        {
           "country": "Latvia",
           "iso3": "LVA",
           "price_eur_mwh": 169.52,
@@ -241,6 +269,20 @@
           "zone_count": 1
         },
         {
+          "country": "Netherlands",
+          "iso3": "NLD",
+          "price_eur_mwh": 155.59,
+          "zones": "NL",
+          "zone_count": 1
+        },
+        {
+          "country": "Poland",
+          "iso3": "POL",
+          "price_eur_mwh": 175.4,
+          "zones": "PL",
+          "zone_count": 1
+        },
+        {
           "country": "Portugal",
           "iso3": "PRT",
           "price_eur_mwh": 158.73,
@@ -248,14 +290,38 @@
           "zone_count": 1
         },
         {
+          "country": "Romania",
+          "iso3": "ROU",
+          "price_eur_mwh": 232.5,
+          "zones": "RO",
+          "zone_count": 1
+        },
+        {
+          "country": "Slovakia",
+          "iso3": "SVK",
+          "price_eur_mwh": 195.69,
+          "zones": "SK",
+          "zone_count": 1
+        },
+        {
+          "country": "Slovenia",
+          "iso3": "SVN",
+          "price_eur_mwh": 208.02,
+          "zones": "SI",
+          "zone_count": 1
+        },
+        {
           "country": "Sweden",
           "iso3": "SWE",
-          "price_eur_mwh": 132.98,
+          "price_eur_mwh": 138.36,
           "zones": "SE1, SE2, SE3, SE4",
-          "zone_count": 4
+          "zone_count": 3
         }
       ]
     }
   },
-  "errors": []
+  "errors": [
+    "FR: ConnectTimeout: HTTPSConnectionPool(host='web-api.tp.entsoe.eu', port=443): Max retries exceeded with url: /api?securityToken=9d2a4491-8d6c-43e3-902e-404da5088861&documentType=A44&in_Domain=10YFR-RTE------C&out_Domain=10YFR-RTE------C&periodStart=202609222100&periodEnd=202609242300 (Caused by ConnectTimeoutError(<HTTPSConnection(host='web-api.tp.entsoe.eu', port=443) at 0x7f5a60620ce0>, 'Connection to web-api.tp.entsoe.eu timed out. (connect timeout=5)'))",
+    "SE2: ConnectTimeout: HTTPSConnectionPool(host='web-api.tp.entsoe.eu', port=443): Max retries exceeded with url: /api?securityToken=9d2a4491-8d6c-43e3-902e-404da5088861&documentType=A44&in_Domain=10Y1001A1001A45N&out_Domain=10Y1001A1001A45N&periodStart=202609222100&periodEnd=202609242300 (Caused by ConnectTimeoutError(<HTTPSConnection(host='web-api.tp.entsoe.eu', port=443) at 0x7f5a6069fef0>, 'Connection to web-api.tp.entsoe.eu timed out. (connect timeout=5)'))"
+  ]
 }
