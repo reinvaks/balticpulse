@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-24T07:31:22.373658+00:00",
+  "updated_at": "2026-09-24T08:32:46.429174+00:00",
   "method": "A44 day-ahead; country arithmetic mean across available bidding zones",
   "days": {
     "2026-09-24": {
@@ -162,9 +162,9 @@
         {
           "country": "Sweden",
           "iso3": "SWE",
-          "price_eur_mwh": 132.98,
+          "price_eur_mwh": 129.12,
           "zones": "SE1, SE2, SE3, SE4",
-          "zone_count": 4
+          "zone_count": 3
         }
       ]
     },
@@ -172,5 +172,7 @@
       "countries": []
     }
   },
-  "errors": []
+  "errors": [
+    "SE3: ReadTimeout: HTTPSConnectionPool(host='web-api.tp.entsoe.eu', port=443): Read timed out. (read timeout=25)"
+  ]
 }
