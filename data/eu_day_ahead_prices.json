@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-24T12:36:57.385856+00:00",
+  "updated_at": "2026-09-24T13:33:17.901057+00:00",
   "method": "A44 day-ahead; country arithmetic mean across available bidding zones",
   "days": {
     "2026-09-24": {
@@ -57,9 +57,9 @@
         {
           "country": "Denmark",
           "iso3": "DNK",
-          "price_eur_mwh": 143.77,
+          "price_eur_mwh": 150.49,
           "zones": "DK1, DK2",
-          "zone_count": 1
+          "zone_count": 2
         },
         {
           "country": "Estonia",
@@ -173,8 +173,29 @@
         {
           "country": "Austria",
           "iso3": "AUT",
-          "price_eur_mwh": 200.32,
+          "price_eur_mwh": 199.43,
           "zones": "AT",
+          "zone_count": 1
+        },
+        {
+          "country": "Belgium",
+          "iso3": "BEL",
+          "price_eur_mwh": 171.68,
+          "zones": "BE",
+          "zone_count": 1
+        },
+        {
+          "country": "Bulgaria",
+          "iso3": "BGR",
+          "price_eur_mwh": 216.59,
+          "zones": "BG",
+          "zone_count": 1
+        },
+        {
+          "country": "Croatia",
+          "iso3": "HRV",
+          "price_eur_mwh": 205.84,
+          "zones": "HR",
           "zone_count": 1
         },
         {
@@ -187,23 +208,23 @@
         {
           "country": "Germany/Luxembourg",
           "iso3": "DEU",
-          "price_eur_mwh": 182.42,
+          "price_eur_mwh": 179.49,
           "zones": "DE-LU",
           "zone_count": 1
         },
         {
           "country": "Luxembourg",
           "iso3": "LUX",
-          "price_eur_mwh": 182.42,
+          "price_eur_mwh": 179.49,
           "zones": "DE-LU",
           "zone_count": 1
         },
         {
           "country": "Denmark",
           "iso3": "DNK",
-          "price_eur_mwh": 184.07,
+          "price_eur_mwh": 184.12,
           "zones": "DK1, DK2",
-          "zone_count": 1
+          "zone_count": 2
         },
         {
           "country": "Estonia",
@@ -234,6 +255,20 @@
           "zone_count": 1
         },
         {
+          "country": "Greece",
+          "iso3": "GRC",
+          "price_eur_mwh": 213.64,
+          "zones": "GR",
+          "zone_count": 1
+        },
+        {
+          "country": "Hungary",
+          "iso3": "HUN",
+          "price_eur_mwh": 219.62,
+          "zones": "HU",
+          "zone_count": 1
+        },
+        {
           "country": "Latvia",
           "iso3": "LVA",
           "price_eur_mwh": 172.07,
@@ -245,6 +280,34 @@
           "iso3": "LTU",
           "price_eur_mwh": 172.07,
           "zones": "LT",
+          "zone_count": 1
+        },
+        {
+          "country": "Netherlands",
+          "iso3": "NLD",
+          "price_eur_mwh": 167.94,
+          "zones": "NL",
+          "zone_count": 1
+        },
+        {
+          "country": "Poland",
+          "iso3": "POL",
+          "price_eur_mwh": 194.57,
+          "zones": "PL",
+          "zone_count": 1
+        },
+        {
+          "country": "Romania",
+          "iso3": "ROU",
+          "price_eur_mwh": 219.33,
+          "zones": "RO",
+          "zone_count": 1
+        },
+        {
+          "country": "Slovakia",
+          "iso3": "SVK",
+          "price_eur_mwh": 197.86,
+          "zones": "SK",
           "zone_count": 1
         },
         {
@@ -264,7 +327,5 @@
       ]
     }
   },
-  "errors": [
-    "DK2: RuntimeError: HTTP 599: {\"uuAppErrorMap\":{\"uu-gateway-router/connectTimeout\":{\"id\":\"a938652d85c4596d97508b3242ae3098\",\"timestamp\":\"2026-09-24T12:36:06.063Z\",\"type\":\"error\",\"message\":\"Unable to access serv"
-  ]
+  "errors": []
 }
