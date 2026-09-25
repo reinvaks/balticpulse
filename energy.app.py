@@ -32,6 +32,15 @@ APP_BUILD_VERSION = "16.1.9"
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
 BALTICS = ["EE", "LV", "LT"]
+COUNTRY_FLAGS = {"EE": "🇪🇪", "LV": "🇱🇻", "LT": "🇱🇹", "FI": "🇫🇮"}
+
+
+def flag_label(value: str) -> str:
+    """Use flags for country codes in visible labels; keep source identifiers intact."""
+    for separator in ("–", "→"):
+        if separator in value:
+            return separator.join(COUNTRY_FLAGS.get(part, part) for part in value.split(separator))
+    return COUNTRY_FLAGS.get(value, value)
 
 st.set_page_config(page_title="🇪🇪🇱🇻🇱🇹🇫🇮 BalticPulse | Energy Market Dashboard", page_icon="🇪🇪", layout="wide")
 
@@ -1324,12 +1333,12 @@ def render_dashboard():
 
 
     market_cols = st.columns(3)
-    market_cols[0].metric("🇪🇪 EE spot — käimasolev MTU", f"{current_prices['EE']:.1f} €/MWh" if current_prices["EE"] is not None else "—")
-    market_cols[1].metric("🇫🇮 FI spot — käimasolev MTU", f"{current_prices['FI']:.1f} €/MWh" if current_prices["FI"] is not None else "—")
+    market_cols[0].metric("🇪🇪 spot — käimasolev MTU", f"{current_prices['EE']:.1f} €/MWh" if current_prices["EE"] is not None else "—")
+    market_cols[1].metric("🇫🇮 spot — käimasolev MTU", f"{current_prices['FI']:.1f} €/MWh" if current_prices["FI"] is not None else "—")
     spread = None
     if current_prices["EE"] is not None and current_prices["FI"] is not None:
         spread = current_prices["EE"] - current_prices["FI"]
-    market_cols[2].metric("EE–FI hinnavahe", f"{spread:+.1f} €/MWh" if spread is not None else "—")
+    market_cols[2].metric("🇪🇪–🇫🇮 hinnavahe", f"{spread:+.1f} €/MWh" if spread is not None else "—")
 
     flow1, flow2 = st.columns(2)
 
@@ -1348,14 +1357,14 @@ def render_dashboard():
     )
 
     flow1.metric(
-        "EE–FI füüsiline netovoog",
+        "🇪🇪–🇫🇮 füüsiline netovoog",
         _ee_fi_label,
         delta=(f"{fmt_age(latest_border_flow_time['EE–FI'])} vana" if latest_border_flow_time.get("EE–FI") is not None else None),
         delta_color="off",
         help="ENTSO-E A11. Positiivne märk tähendab Eesti netoeksporti; negatiivne Eesti netoimporti.",
     )
     flow2.metric(
-        "EE–LV füüsiline netovoog",
+        "🇪🇪–🇱🇻 füüsiline netovoog",
         _ee_lv_label,
         delta=(f"{fmt_age(latest_border_flow_time['EE–LV'])} vana" if latest_border_flow_time.get("EE–LV") is not None else None),
         delta_color="off",
@@ -1366,9 +1375,9 @@ def render_dashboard():
     flow_rows = []
     for border, flow in latest_border_flows.items():
         flow_rows.append({
-            "Piir": border,
+            "Piir": flag_label(border),
             "Füüsiline netovoog MW": abs(flow) if flow is not None else None,
-            "Voo suund": "EE eksport" if flow is not None and flow > 0 else "EE import" if flow is not None and flow < 0 else "—",
+            "Voo suund": "🇪🇪 eksport" if flow is not None and flow > 0 else "🇪🇪 import" if flow is not None and flow < 0 else "—",
         })
     st.dataframe(pd.DataFrame(flow_rows), hide_index=True, use_container_width=True,
                  column_config={"Füüsiline netovoog MW": st.column_config.NumberColumn(format="%.0f")})
@@ -1397,17 +1406,18 @@ def render_dashboard():
         ph = prices.copy()
         ph = ph[(ph["time_local"].dt.date >= today) & (ph["time_local"].dt.date <= tomorrow)]
         if not ph.empty:
+            ph["flag"] = ph["region"].map(COUNTRY_FLAGS)
             fig_price = px.line(
                 ph,
                 x="time_local",
                 y="price",
-                color="region",
-                labels={"time_local": "Aeg", "price": "€/MWh", "region": "Piirkond"},
-                color_discrete_map={"EE": "#1f77b4", "FI": "#2ca02c", "LV": "#d62728", "LT": "#ff7f0e"},
+                color="flag",
+                labels={"time_local": "Aeg", "price": "€/MWh", "flag": "Piirkond"},
+                color_discrete_map={"🇪🇪": "#1f77b4", "🇫🇮": "#2ca02c", "🇱🇻": "#d62728", "🇱🇹": "#ff7f0e"},
             )
             # Make Estonia visually dominant without changing the underlying data.
             for trace in fig_price.data:
-                if trace.name == "EE":
+                if trace.name == "🇪🇪":
                     trace.update(line={"width": 4})
                     trace.update(fill="tozeroy", fillcolor="rgba(31,119,180,0.08)")
                 else:
@@ -1443,13 +1453,13 @@ def render_dashboard():
             today_ee = ee[ee["time_local"].dt.date == today]
             tomorrow_ee = ee[ee["time_local"].dt.date == tomorrow]
             k1,k2,k3,k4 = st.columns(4)
-            k1.metric("EE hetkehind", f"{current_prices['EE']:.1f} €/MWh" if current_prices["EE"] is not None else "—")
-            k2.metric("EE tänane keskmine", f"{today_ee['price'].mean():.1f} €/MWh" if not today_ee.empty else "—")
+            k1.metric("🇪🇪 hetkehind", f"{current_prices['EE']:.1f} €/MWh" if current_prices["EE"] is not None else "—")
+            k2.metric("🇪🇪 tänane keskmine", f"{today_ee['price'].mean():.1f} €/MWh" if not today_ee.empty else "—")
             if not today_ee.empty:
-                k3.metric("EE tänane min / max", f"{today_ee['price'].min():.1f} / {today_ee['price'].max():.1f} €/MWh")
+                k3.metric("🇪🇪 tänane min / max", f"{today_ee['price'].min():.1f} / {today_ee['price'].max():.1f} €/MWh")
             else:
-                k3.metric("EE tänane min / max", "—")
-            k4.metric("EE homne keskmine", f"{tomorrow_ee['price'].mean():.1f} €/MWh" if not tomorrow_ee.empty else "Pole veel avaldatud")
+                k3.metric("🇪🇪 tänane min / max", "—")
+            k4.metric("🇪🇪 homne keskmine", f"{tomorrow_ee['price'].mean():.1f} €/MWh" if not tomorrow_ee.empty else "Pole veel avaldatud")
         else:
             st.info("Eleringi hinnaliides ei tagastanud tänase ega homse päeva avaldatud hindu.")
     else:
@@ -1464,7 +1474,7 @@ def render_dashboard():
 
     if spread is not None and abs(spread) >= 50:
         level = "🔴 Kõrge" if abs(spread) >= 100 else "🟠 Tähelepanu"
-        add_alert(level, "EE–FI hinnavahe", f"Hetke hinnavahe {spread:+.1f} €/MWh (reegel: |spread| ≥ 50 €/MWh).")
+        add_alert(level, "🇪🇪–🇫🇮 hinnavahe", f"Hetke hinnavahe {spread:+.1f} €/MWh (reegel: |spread| ≥ 50 €/MWh).")
 
     # GIE AGSI+: alert on low fill or a fast 7-day percentage-point decline, without seasonal forecasting.
     if not storage_df.empty and "scope" in storage_df.columns and "full" in storage_df.columns:
@@ -1480,12 +1490,12 @@ def render_dashboard():
                 continue
             latest_fill = float(g.iloc[-1]["full"])
             if latest_fill < 30:
-                add_alert("🟠 Tähelepanu", f"{scope} gaasihoidlad", f"Täituvus on {latest_fill:.1f}% (heuristiline reegel: < 30%).")
+                add_alert("🟠 Tähelepanu", f"{flag_label(scope)} gaasihoidlad", f"Täituvus on {latest_fill:.1f}% (heuristiline reegel: < 30%).")
             if len(g) >= 8:
                 seven_days_ago = float(g.iloc[-8]["full"])
                 drop_pp = seven_days_ago - latest_fill
                 if drop_pp >= 5:
-                    add_alert("🟠 Tähelepanu", f"{scope} gaasihoidlad", f"Täituvus langes ~7 päevaga {drop_pp:.1f} protsendipunkti (reegel: ≥ 5 pp).")
+                    add_alert("🟠 Tähelepanu", f"{flag_label(scope)} gaasihoidlad", f"Täituvus langes ~7 päevaga {drop_pp:.1f} protsendipunkti (reegel: ≥ 5 pp).")
 
     st.markdown("#### ⚠️ Tähelepanu vajavad näitajad")
     if attention:
@@ -1496,7 +1506,7 @@ def render_dashboard():
         source_links(("elering_prices", "price heuristics"), ("gie_agsi", "storage"))
     else:
         st.success("Ükski seadistatud operatiivne tähelepanureegel ei ole praegu käivitunud.")
-    st.caption("Tähelepanureeglid on läbipaistvad heuristikad olukorrapildi kiirendamiseks, mitte ametlikud häirepiirid ega prognoosid. Lävendid: |EE–FI spread| 50/100 €/MWh; gaasihoidlad <30% või ~7 päeva langus ≥5 pp.")
+    st.caption("Tähelepanureeglid on läbipaistvad heuristikad olukorrapildi kiirendamiseks, mitte ametlikud häirepiirid ega prognoosid. Lävendid: |🇪🇪–🇫🇮 hinnavahe| 50/100 €/MWh; gaasihoidlad <30% või ~7 päeva langus ≥5 pp.")
 
     # Daily market table near top: decision-useful and compact.
     st.markdown("#### Tänane ja homne päev-ette hinnapilt")
@@ -1505,7 +1515,7 @@ def render_dashboard():
     else:
         rows = []
         for region in REGIONS:
-            row = {"Piirkond": region}
+            row = {"Piirkond": flag_label(region)}
             for d, label in [(today, "Täna €/MWh"), (tomorrow, "Homme €/MWh")]:
                 x = price_daily[(price_daily["region"] == region) & (price_daily["local_date"] == d)]
                 row[label] = float(x.iloc[0]["mean"]) if not x.empty else None
@@ -1590,7 +1600,7 @@ def render_dashboard():
                 l_age = newest_age_minutes(ldf, "time_local")
 
                 source_badge(
-                    f"{region} ENTSO-E tootmine",
+                    f"{flag_label(region)} ENTSO-E tootmine",
                     detail=status_detail(
                         gst,
                         age_text=(fmt_age(gdf["time_local"].max()) if not gdf.empty and "time_local" in gdf else None),
@@ -1598,7 +1608,7 @@ def render_dashboard():
                     level=status_level(gst, has_data=not gdf.empty, age_min=g_age, warn_after_min=120),
                 )
                 source_badge(
-                    f"{region} ENTSO-E tarbimine",
+                    f"{flag_label(region)} ENTSO-E tarbimine",
                     detail=status_detail(
                         lst,
                         age_text=(fmt_age(ldf["time_local"].max()) if not ldf.empty and "time_local" in ldf else None),
@@ -1658,7 +1668,7 @@ def render_dashboard():
             flow_ok = sum(1 for stx in entsoe_flow_statuses if stx.ok)
             flow_level = "error" if flow_ok == 0 else ("warning" if flow_ok < len(entsoe_flow_statuses) or entsoe_flows.empty else "ok")
             source_badge(
-                "ENTSO-E EE füüsilised vood",
+                "ENTSO-E 🇪🇪 füüsilised vood",
                 detail=f"{flow_ok}/{len(entsoe_flow_statuses)} päringut OK",
                 level=flow_level,
             )
@@ -1681,12 +1691,13 @@ def render_dashboard():
         st.caption("Kiirvaade olulisematele elektri-, süsteemi- ja gaasinäitajatele.")
         left, right = st.columns(2)
         with left:
-            st.markdown("### 🇪🇪 EE / 🇱🇻 LV / 🇱🇹 LT / 🇫🇮 FI spot-hinnad")
+            st.markdown("### 🇪🇪 / 🇱🇻 / 🇱🇹 / 🇫🇮 spot-hinnad")
             if prices.empty:
                 st.warning("Eleringi hinnad pole hetkel saadaval.")
             else:
                 p = prices[prices["time_local"].dt.date >= today]
-                fig = px.line(p, x="time_local", y="price", color="region", labels={"price":"€/MWh","time_local":"Aeg","region":"Piirkond"})
+                p = p.assign(flag=p["region"].map(COUNTRY_FLAGS))
+                fig = px.line(p, x="time_local", y="price", color="flag", labels={"price":"€/MWh","time_local":"Aeg","flag":"Piirkond"})
                 fig.add_vline(x=now_local, line_dash="dash")
                 st.plotly_chart(fig, use_container_width=True)
                 source_link("elering_prices")
@@ -1696,23 +1707,24 @@ def render_dashboard():
             rows = []
             for region in BALTICS:
                 snap = baltic_snapshots.get(region, {"production_mw": None, "consumption_mw": None, "renewable_mw": None, "renewable_share": None, "generation_time": None, "load_time": None, "previous_24h": {}, "source": "andmed puuduvad"})
-                rows.append({"Riik": country_meta[region][0] + " " + region, "Tootmine MW": snap["production_mw"], "Tarbimine MW": snap["consumption_mw"], "Taastuv MW": snap["renewable_mw"], "Taastuv %": snap["renewable_share"]})
+                rows.append({"Riik": flag_label(region), "Tootmine MW": snap["production_mw"], "Tarbimine MW": snap["consumption_mw"], "Taastuv MW": snap["renewable_mw"], "Taastuv %": snap["renewable_share"]})
             st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True, column_config={"Tootmine MW": st.column_config.NumberColumn(format="%.0f"), "Tarbimine MW": st.column_config.NumberColumn(format="%.0f"), "Taastuv MW": st.column_config.NumberColumn(format="%.0f"), "Taastuv %": st.column_config.NumberColumn(format="%.1f%%")})
             source_links(("elering_system", "EE primary"), ("entsoe_tp", "LV/LT and EE renewables/fallback"), ("baltic_snapshot", "fallback only"))
-            st.caption("EE kogunäidud: Elering actual; Eleringi puudumisel valideeritud ENTSO-E/snapshot fallback. LV/LT: ENTSO-E actual.")
+            st.caption("🇪🇪 kogunäidud: Elering actual; Eleringi puudumisel valideeritud ENTSO-E/snapshot fallback. 🇱🇻/🇱🇹: ENTSO-E actual.")
 
     with tab_prices:
         st.markdown("## ⚡ Elektriturg")
         st.caption("Päeva-ette hinnad, ajalugu, kuustatistika ja elektri forward-vaade.")
         st.markdown("### Regionaalsed päeva-ette hinnad")
-        st.caption("EE/LV/LT/FI Nord Pool päev-ette hinnad Eleringi avalikust NPS API-st.")
+        st.caption("🇪🇪/🇱🇻/🇱🇹/🇫🇮 Nord Pool päev-ette hinnad Eleringi avalikust NPS API-st.")
 
         if prices.empty:
             st.error(price_status.error or "Andmed pole saadaval")
         else:
-            selected = st.multiselect("Piirkonnad", REGIONS, default=REGIONS, key="price_live_regions")
+            selected = st.multiselect("Piirkonnad", REGIONS, default=REGIONS, key="price_live_regions", format_func=flag_label)
             p = prices[prices["region"].isin(selected)]
-            fig = px.line(p, x="time_local", y="price", color="region")
+            p = p.assign(flag=p["region"].map(COUNTRY_FLAGS))
+            fig = px.line(p, x="time_local", y="price", color="flag", labels={"flag": "Piirkond"})
             fig.update_layout(yaxis_title="€/MWh", xaxis_title="Aeg (Europe/Tallinn)")
             st.plotly_chart(fig, use_container_width=True)
             source_link("elering_prices")
@@ -1752,7 +1764,7 @@ def render_dashboard():
             key="electricity_history_period",
         )
         hist_regions = st.multiselect(
-            "Ajaloo piirkonnad", REGIONS, default=REGIONS, key="price_history_regions"
+            "Ajaloo piirkonnad", REGIONS, default=REGIONS, key="price_history_regions", format_func=flag_label
         )
 
         with st.spinner(f"Laadin perioodi „{price_period}“ (juba laaditud andmed avanevad vahemälust)..."):
@@ -1771,16 +1783,16 @@ def render_dashboard():
                     for day, d in g.groupby("day"):
                         denom = d["duration_h"].sum()
                         avg = (d["price"] * d["duration_h"]).sum() / denom if denom > 0 else d["price"].mean()
-                        rows.append({"date": pd.Timestamp(day), "region": region, "price": avg})
+                        rows.append({"date": pd.Timestamp(day), "flag": flag_label(region), "price": avg})
                 chart_df = pd.DataFrame(rows)
                 fig = px.line(
-                    chart_df, x="date", y="price", color="region",
-                    labels={"date":"Kuupäev","price":"Päeva keskmine €/MWh","region":"Piirkond"},
+                    chart_df, x="date", y="price", color="flag",
+                    labels={"date":"Kuupäev","price":"Päeva keskmine €/MWh","flag":"Piirkond"},
                 )
             else:
                 fig = px.line(
-                    h, x="time_local", y="price", color="region",
-                    labels={"time_local":"Aeg","price":"€/MWh","region":"Piirkond"},
+                    h.assign(flag=h["region"].map(COUNTRY_FLAGS)), x="time_local", y="price", color="flag",
+                    labels={"time_local":"Aeg","price":"€/MWh","flag":"Piirkond"},
                 )
 
             st.plotly_chart(fig, use_container_width=True)
@@ -1807,15 +1819,14 @@ def render_dashboard():
         monthly_el = st.session_state.get("electricity_monthly_table", pd.DataFrame())
         if not monthly_el.empty:
             _monthly_view = monthly_el.copy()
-            _flags = {"EE":"🇪🇪 EE", "LV":"🇱🇻 LV", "LT":"🇱🇹 LT", "FI":"🇫🇮 FI"}
-            _monthly_view["Piirkond"] = _monthly_view["Piirkond"].map(_flags).fillna(_monthly_view["Piirkond"])
+            _monthly_view["Piirkond"] = _monthly_view["Piirkond"].map(COUNTRY_FLAGS).fillna(_monthly_view["Piirkond"])
             st.dataframe(
                 _shade_month_groups(_monthly_view),
                 hide_index=True,
                 use_container_width=True,
             )
             source_link("elering_prices", note="12-month monthly statistics")
-            st.caption("Iga kuu neli rida (EE/LV/LT/FI) on sama taustavarjundiga; järgmine kuu kasutab vahelduvat varjundit.")
+            st.caption("Iga kuu neli rida (🇪🇪/🇱🇻/🇱🇹/🇫🇮) on sama taustavarjundiga; järgmine kuu kasutab vahelduvat varjundit.")
 
         st.caption("Allikas: Eleringi avalik NPS API / Nord Pool päev-ette turg.")
 
@@ -1824,7 +1835,7 @@ def render_dashboard():
         st.markdown("#### ⚡ Elektri forward-vaade")
         st.caption(
             "Euronext Nord Pool Power Futures. Nordic SYS on süsteemihinna futuur; "
-            "FI implied = SYS + Helsinki EPAD; LT implied = SYS + Vilnius EPAD. "
+            "🇫🇮 implied = SYS + Helsinki EPAD; 🇱🇹 implied = SYS + Vilnius EPAD. "
             "Kuvatakse viimase eduka GitHub snapshot'i settlement-hinnad."
         )
 
@@ -1864,15 +1875,17 @@ def render_dashboard():
                     sorted(pcurve["series"].dropna().unique().tolist()),
                     default=[x for x in ["Nordic SYS", "FI implied", "LT implied"] if x in set(pcurve["series"])],
                     key="power_future_curve_series",
+                    format_func=lambda value: value.replace("FI implied", "🇫🇮 implied").replace("LT implied", "🇱🇹 implied"),
                 )
                 pc = pcurve[pcurve["series"].isin(curve_sel)].copy()
                 if not pc.empty:
                     pc["delivery_start"] = pd.to_datetime(pc["delivery_start"], errors="coerce")
+                    pc["series_label"] = pc["series"].str.replace("FI implied", "🇫🇮 implied", regex=False).str.replace("LT implied", "🇱🇹 implied", regex=False)
                     fig = px.line(
                         pc.sort_values("delivery_start"), x="delivery_start", y="settlement",
-                        color="series", markers=True,
+                        color="series_label", markers=True,
                         hover_data=[c for c in ["delivery", "open_interest", "source_product"] if c in pc.columns],
-                        labels={"delivery_start":"Tarneperioodi algus", "settlement":"€/MWh", "series":"Forward"},
+                        labels={"delivery_start":"Tarneperioodi algus", "settlement":"€/MWh", "series_label":"Forward"},
                         title="Elektri forward curve",
                     )
                     st.plotly_chart(fig, use_container_width=True)
@@ -1903,8 +1916,8 @@ def render_dashboard():
 
         st.markdown("### 🇪🇪🇱🇻🇱🇹 Tegelik süsteemipilt")
         st.caption(
-            "EE: Elering actual on primaarne, ENTSO-E actual on fallback/taastuvtootmise allikas. "
-            "LV/LT: ENTSO-E A75 actual generation ja A65 actual total load. "
+            "🇪🇪: Elering actual on primaarne, ENTSO-E actual on fallback/taastuvtootmise allikas. "
+            "🇱🇻/🇱🇹: ENTSO-E A75 actual generation ja A65 actual total load. "
             "Puuduvaid perioode ei interpoleerita."
         )
 
@@ -2002,7 +2015,7 @@ def render_dashboard():
                             st.caption("Graafikul: " + ", ".join(_shown_series))
 
                         source_badge(
-                            "Elering / ENTSO-E EE",
+                            "Elering / ENTSO-E 🇪🇪",
                             level="ok" if not chart.empty else "error",
                             detail=snap.get("source", "allikas puudub"),
                         )
@@ -2048,7 +2061,7 @@ def render_dashboard():
                             source_links(("entsoe_tp", "A75 generation + A65 load"), ("baltic_snapshot", "fallback only"))
 
                         source_badge(
-                            f"ENTSO-E {region}",
+                            f"ENTSO-E {flag_label(region)}",
                             level="ok" if not chart.empty else "error",
                             detail=(gst.error if gst is not None and not gst.ok else "A75 generation + A65 load"),
                         )
@@ -2139,8 +2152,8 @@ def render_dashboard():
                             row = gx.sort_values("time_utc").tail(1).iloc[0]
                             latest_rows.append(
                                 {
-                                    "Piir": border,
-                                    "Suund": direction,
+                                    "Piir": flag_label(border),
+                                    "Suund": flag_label(direction),
                                     "Voog MW": row["flow_mw"],
                                     "Vaatlus": row["time_local"],
                                 }
@@ -2194,13 +2207,16 @@ def render_dashboard():
         else:
             f = entsoe_flows.copy()
             # Directional series are shown explicitly; signed_mw is only used for Estonia-centric net view.
-            fig = px.line(f, x="time_local", y="flow_mw", color="direction", facet_row="border",
-                          labels={"time_local": "Aeg", "flow_mw": "MW", "direction": "Suund"})
+            f["direction_label"] = f["direction"].map(flag_label)
+            f["border_label"] = f["border"].map(flag_label)
+            fig = px.line(f, x="time_local", y="flow_mw", color="direction_label", facet_row="border_label",
+                          labels={"time_local": "Aeg", "flow_mw": "MW", "direction_label": "Suund", "border_label": "Piir"})
             st.plotly_chart(fig, use_container_width=True)
             source_link("entsoe_tp", note="A11 directional physical flows")
             net = f.groupby(["time_utc", "time_local", "border"], as_index=False)["signed_mw"].sum()
-            fig2 = px.line(net, x="time_local", y="signed_mw", color="border",
-                           labels={"time_local": "Aeg", "signed_mw": "Eesti netoeksport (+) / netoimport (−), MW", "border": "Piir"})
+            net["border_label"] = net["border"].map(flag_label)
+            fig2 = px.line(net, x="time_local", y="signed_mw", color="border_label",
+                           labels={"time_local": "Aeg", "signed_mw": "Eesti netoeksport (+) / netoimport (−), MW", "border_label": "Piir"})
             fig2.add_hline(y=0, line_dash="dash")
             st.plotly_chart(fig2, use_container_width=True)
             source_link("entsoe_tp", note="A11 flows aggregated to Estonia net view")
