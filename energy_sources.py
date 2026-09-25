@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import logging
 import re
 import time
@@ -13,7 +14,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import requests
 
-BUILD_VERSION = "16.1.8"
+BUILD_VERSION = "16.1.9"
 
 LOG = logging.getLogger(__name__)
 TALLINN = ZoneInfo("Europe/Tallinn")
@@ -893,8 +894,13 @@ def fetch_gas_storage(agsi_key: str | None) -> tuple[pd.DataFrame, SourceStatus]
         ("EU", {"type": "eu", "size": 30, "reverse": "true"}),
         ("LV", {"country": "LV", "size": 30, "reverse": "true"}),
     ]
-    for label, params in queries:
-        payload, status = _get_json(url, params=params, headers={"x-key": agsi_key})
+    # The EU and Latvia calls are independent; fetch them in parallel.
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(
+            lambda query: (query[0], _get_json(url, params=query[1], headers={"x-key": agsi_key})),
+            queries,
+        ))
+    for label, (payload, status) in results:
         status.source = f"GIE AGSI+ {label}"
         statuses.append(status)
         if not status.ok or not isinstance(payload, dict):
