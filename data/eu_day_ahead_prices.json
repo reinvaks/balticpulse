@@ -1,17 +1,10 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-25T06:36:47.349575+00:00",
+  "updated_at": "2026-09-25T07:31:57.936594+00:00",
   "method": "A44 day-ahead; country arithmetic mean across available bidding zones",
   "days": {
     "2026-09-25": {
       "countries": [
-        {
-          "country": "Austria",
-          "iso3": "AUT",
-          "price_eur_mwh": 199.43,
-          "zones": "AT",
-          "zone_count": 1
-        },
         {
           "country": "Belgium",
           "iso3": "BEL",
@@ -172,5 +165,7 @@
       "countries": []
     }
   },
-  "errors": []
+  "errors": [
+    "AT: ReadTimeout: HTTPSConnectionPool(host='web-api.tp.entsoe.eu', port=443): Read timed out. (read timeout=25)"
+  ]
 }
