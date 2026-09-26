@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-26T16:30:34.841336+00:00",
+  "updated_at": "2026-09-26T17:30:48.805452+00:00",
   "method": "A44 day-ahead; country arithmetic mean across available bidding zones",
   "days": {
     "2026-09-26": {
@@ -38,13 +38,6 @@
           "iso3": "CZE",
           "price_eur_mwh": 148.8,
           "zones": "CZ",
-          "zone_count": 1
-        },
-        {
-          "country": "Germany/Luxembourg",
-          "iso3": "DEU",
-          "price_eur_mwh": 149.78,
-          "zones": "DE-LU",
           "zone_count": 1
         },
         {
@@ -94,13 +87,6 @@
           "iso3": "GRC",
           "price_eur_mwh": 158.26,
           "zones": "GR",
-          "zone_count": 1
-        },
-        {
-          "country": "Hungary",
-          "iso3": "HUN",
-          "price_eur_mwh": 162.91,
-          "zones": "HU",
           "zone_count": 1
         },
         {
@@ -162,9 +148,9 @@
         {
           "country": "Sweden",
           "iso3": "SWE",
-          "price_eur_mwh": 48.87,
+          "price_eur_mwh": 54.21,
           "zones": "SE1, SE2, SE3, SE4",
-          "zone_count": 4
+          "zone_count": 2
         }
       ]
     },
@@ -203,13 +189,6 @@
           "iso3": "CZE",
           "price_eur_mwh": 104.01,
           "zones": "CZ",
-          "zone_count": 1
-        },
-        {
-          "country": "Germany/Luxembourg",
-          "iso3": "DEU",
-          "price_eur_mwh": 115.37,
-          "zones": "DE-LU",
           "zone_count": 1
         },
         {
@@ -259,13 +238,6 @@
           "iso3": "GRC",
           "price_eur_mwh": 129.81,
           "zones": "GR",
-          "zone_count": 1
-        },
-        {
-          "country": "Hungary",
-          "iso3": "HUN",
-          "price_eur_mwh": 117.61,
-          "zones": "HU",
           "zone_count": 1
         },
         {
@@ -327,12 +299,17 @@
         {
           "country": "Sweden",
           "iso3": "SWE",
-          "price_eur_mwh": 53.23,
+          "price_eur_mwh": 61.94,
           "zones": "SE1, SE2, SE3, SE4",
-          "zone_count": 4
+          "zone_count": 2
         }
       ]
     }
   },
-  "errors": []
+  "errors": [
+    "DE-LU: ReadTimeout: HTTPSConnectionPool(host='web-api.tp.entsoe.eu', port=443): Read timed out. (read timeout=25)",
+    "HU: ReadTimeout: HTTPSConnectionPool(host='web-api.tp.entsoe.eu', port=443): Read timed out. (read timeout=25)",
+    "SE1: ReadTimeout: HTTPSConnectionPool(host='web-api.tp.entsoe.eu', port=443): Read timed out. (read timeout=25)",
+    "SE3: ReadTimeout: HTTPSConnectionPool(host='web-api.tp.entsoe.eu', port=443): Read timed out. (read timeout=25)"
+  ]
 }
