@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-27T06:35:44.705432+00:00",
+  "updated_at": "2026-09-27T07:29:41.829443+00:00",
   "method": "A44 day-ahead; country arithmetic mean across available bidding zones",
   "days": {
     "2026-09-27": {
@@ -38,6 +38,13 @@
           "iso3": "CZE",
           "price_eur_mwh": 104.01,
           "zones": "CZ",
+          "zone_count": 1
+        },
+        {
+          "country": "Germany/Luxembourg",
+          "iso3": "DEU",
+          "price_eur_mwh": 115.37,
+          "zones": "DE-LU",
           "zone_count": 1
         },
         {
@@ -171,6 +178,13 @@
           "zone_count": 1
         },
         {
+          "country": "Germany/Luxembourg",
+          "iso3": "DEU",
+          "price_eur_mwh": 198.46,
+          "zones": "DE-LU",
+          "zone_count": 1
+        },
+        {
           "country": "Luxembourg",
           "iso3": "LUX",
           "price_eur_mwh": 198.46,
@@ -180,7 +194,5 @@
       ]
     }
   },
-  "errors": [
-    "DE-LU: ConnectTimeout: HTTPSConnectionPool(host='web-api.tp.entsoe.eu', port=443): Max retries exceeded with url: /api?securityToken=9d2a4491-8d6c-43e3-902e-404da5088861&documentType=A44&in_Domain=10Y1001A1001A82H&out_Domain=10Y1001A1001A82H&periodStart=202609262100&periodEnd=202609282300 (Caused by ConnectTimeoutError(<HTTPSConnection(host='web-api.tp.entsoe.eu', port=443) at 0x7fb69d701400>, 'Connection to web-api.tp.entsoe.eu timed out. (connect timeout=5)'))"
-  ]
+  "errors": []
 }
