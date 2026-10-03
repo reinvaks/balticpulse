@@ -1,17 +1,10 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-03T13:26:28.415881+00:00",
+  "updated_at": "2026-10-03T18:03:38.041020+00:00",
   "method": "A44 day-ahead; country arithmetic mean across available bidding zones",
   "days": {
     "2026-10-03": {
       "countries": [
-        {
-          "country": "Austria",
-          "iso3": "AUT",
-          "price_eur_mwh": 151.53,
-          "zones": "AT",
-          "zone_count": 1
-        },
         {
           "country": "Belgium",
           "iso3": "BEL",
@@ -171,13 +164,6 @@
     "2026-10-04": {
       "countries": [
         {
-          "country": "Austria",
-          "iso3": "AUT",
-          "price_eur_mwh": 156.81,
-          "zones": "AT",
-          "zone_count": 1
-        },
-        {
           "country": "Belgium",
           "iso3": "BEL",
           "price_eur_mwh": 169.33,
@@ -192,6 +178,13 @@
           "zone_count": 1
         },
         {
+          "country": "Croatia",
+          "iso3": "HRV",
+          "price_eur_mwh": 159.99,
+          "zones": "HR",
+          "zone_count": 1
+        },
+        {
           "country": "Czechia",
           "iso3": "CZE",
           "price_eur_mwh": 156.48,
@@ -201,14 +194,14 @@
         {
           "country": "Germany/Luxembourg",
           "iso3": "DEU",
-          "price_eur_mwh": 156.91,
+          "price_eur_mwh": 162.68,
           "zones": "DE-LU",
           "zone_count": 1
         },
         {
           "country": "Luxembourg",
           "iso3": "LUX",
-          "price_eur_mwh": 156.91,
+          "price_eur_mwh": 162.68,
           "zones": "DE-LU",
           "zone_count": 1
         },
@@ -248,6 +241,20 @@
           "zone_count": 1
         },
         {
+          "country": "Greece",
+          "iso3": "GRC",
+          "price_eur_mwh": 134.99,
+          "zones": "GR",
+          "zone_count": 1
+        },
+        {
+          "country": "Hungary",
+          "iso3": "HUN",
+          "price_eur_mwh": 160.88,
+          "zones": "HU",
+          "zone_count": 1
+        },
+        {
           "country": "Latvia",
           "iso3": "LVA",
           "price_eur_mwh": 33.98,
@@ -262,10 +269,31 @@
           "zone_count": 1
         },
         {
+          "country": "Netherlands",
+          "iso3": "NLD",
+          "price_eur_mwh": 169.2,
+          "zones": "NL",
+          "zone_count": 1
+        },
+        {
           "country": "Poland",
           "iso3": "POL",
           "price_eur_mwh": 142.78,
           "zones": "PL",
+          "zone_count": 1
+        },
+        {
+          "country": "Romania",
+          "iso3": "ROU",
+          "price_eur_mwh": 160.97,
+          "zones": "RO",
+          "zone_count": 1
+        },
+        {
+          "country": "Slovakia",
+          "iso3": "SVK",
+          "price_eur_mwh": 161.71,
+          "zones": "SK",
           "zone_count": 1
         },
         {
@@ -285,5 +313,7 @@
       ]
     }
   },
-  "errors": []
+  "errors": [
+    "AT: ReadTimeout: HTTPSConnectionPool(host='web-api.tp.entsoe.eu', port=443): Read timed out. (read timeout=25)"
+  ]
 }
