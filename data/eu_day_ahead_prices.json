@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-13T07:49:22.091775+00:00",
+  "updated_at": "2026-10-13T16:06:31.806317+00:00",
   "method": "A44 day-ahead; country arithmetic mean across available bidding zones",
   "days": {
     "2026-10-13": {
@@ -62,9 +62,16 @@
           "zone_count": 2
         },
         {
+          "country": "Estonia",
+          "iso3": "EST",
+          "price_eur_mwh": 150.12,
+          "zones": "EE",
+          "zone_count": 1
+        },
+        {
           "country": "Spain",
           "iso3": "ESP",
-          "price_eur_mwh": 176.95,
+          "price_eur_mwh": 175.4,
           "zones": "ES",
           "zone_count": 1
         },
@@ -155,7 +162,113 @@
       ]
     },
     "2026-10-14": {
-      "countries": []
+      "countries": [
+        {
+          "country": "Austria",
+          "iso3": "AUT",
+          "price_eur_mwh": 219.74,
+          "zones": "AT",
+          "zone_count": 1
+        },
+        {
+          "country": "Belgium",
+          "iso3": "BEL",
+          "price_eur_mwh": 196.76,
+          "zones": "BE",
+          "zone_count": 1
+        },
+        {
+          "country": "Bulgaria",
+          "iso3": "BGR",
+          "price_eur_mwh": 214.5,
+          "zones": "BG",
+          "zone_count": 1
+        },
+        {
+          "country": "Czechia",
+          "iso3": "CZE",
+          "price_eur_mwh": 162.07,
+          "zones": "CZ",
+          "zone_count": 1
+        },
+        {
+          "country": "Germany/Luxembourg",
+          "iso3": "DEU",
+          "price_eur_mwh": 174.03,
+          "zones": "DE-LU",
+          "zone_count": 1
+        },
+        {
+          "country": "Luxembourg",
+          "iso3": "LUX",
+          "price_eur_mwh": 174.03,
+          "zones": "DE-LU",
+          "zone_count": 1
+        },
+        {
+          "country": "Denmark",
+          "iso3": "DNK",
+          "price_eur_mwh": 161.31,
+          "zones": "DK1, DK2",
+          "zone_count": 2
+        },
+        {
+          "country": "Estonia",
+          "iso3": "EST",
+          "price_eur_mwh": 86.98,
+          "zones": "EE",
+          "zone_count": 1
+        },
+        {
+          "country": "Spain",
+          "iso3": "ESP",
+          "price_eur_mwh": 196.46,
+          "zones": "ES",
+          "zone_count": 1
+        },
+        {
+          "country": "Finland",
+          "iso3": "FIN",
+          "price_eur_mwh": 29.19,
+          "zones": "FI",
+          "zone_count": 1
+        },
+        {
+          "country": "France",
+          "iso3": "FRA",
+          "price_eur_mwh": 189.98,
+          "zones": "FR",
+          "zone_count": 1
+        },
+        {
+          "country": "Poland",
+          "iso3": "POL",
+          "price_eur_mwh": 137.07,
+          "zones": "PL",
+          "zone_count": 1
+        },
+        {
+          "country": "Portugal",
+          "iso3": "PRT",
+          "price_eur_mwh": 192.05,
+          "zones": "PT",
+          "zone_count": 1
+        },
+        {
+          "country": "Slovenia",
+          "iso3": "SVN",
+          "price_eur_mwh": 221.34,
+          "zones": "SI",
+          "zone_count": 1
+        },
+        {
+          "country": "Sweden",
+          "iso3": "SWE",
+          "price_eur_mwh": 64.79,
+          "zones": "SE1, SE2, SE3, SE4",
+          "zone_count": 4
+        }
+      ]
     }
   },
   "errors": []
