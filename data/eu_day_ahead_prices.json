@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-15T04:47:24.291250+00:00",
+  "updated_at": "2026-10-15T10:01:19.476729+00:00",
   "method": "A44 day-ahead; country arithmetic mean across available bidding zones",
   "days": {
     "2026-10-15": {
@@ -71,7 +71,7 @@
         {
           "country": "Spain",
           "iso3": "ESP",
-          "price_eur_mwh": 196.64,
+          "price_eur_mwh": 193.22,
           "zones": "ES",
           "zone_count": 1
         },
@@ -169,7 +169,29 @@
       ]
     },
     "2026-10-16": {
-      "countries": []
+      "countries": [
+        {
+          "country": "Austria",
+          "iso3": "AUT",
+          "price_eur_mwh": 227.75,
+          "zones": "AT",
+          "zone_count": 1
+        },
+        {
+          "country": "Germany/Luxembourg",
+          "iso3": "DEU",
+          "price_eur_mwh": 202.75,
+          "zones": "DE-LU",
+          "zone_count": 1
+        },
+        {
+          "country": "Luxembourg",
+          "iso3": "LUX",
+          "price_eur_mwh": 202.75,
+          "zones": "DE-LU",
+          "zone_count": 1
+        }
+      ]
     }
   },
   "errors": []
