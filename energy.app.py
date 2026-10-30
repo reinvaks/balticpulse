@@ -639,8 +639,8 @@ EU_PRICE_LABEL_POINTS = {
 }
 
 def _eu_map_df(payload: dict, date_str: str) -> pd.DataFrame:
-    if not _snapshot_is_fresh(payload, 180):
-        return pd.DataFrame()
+    # A44 day-ahead prices belong to a delivery date. An hourly snapshot job
+    # running late does not invalidate prices already published for that date.
     rows = []
     day = (payload.get("days", {}) or {}).get(date_str, {}) if isinstance(payload, dict) else {}
     for row in day.get("countries", []) or []:
@@ -779,6 +779,29 @@ def load_futures_snapshot():
 
 def _future_key_rows(payload: dict, section: str):
     rows, _state = _future_rows_market_aware(payload, section, "key")
+    if section == "power":
+        # Existing snapshots may still label the current month as M+1.
+        # Derive the displayed next periods from the validated forward curve.
+        curve, _ = _future_rows_market_aware(payload, section, "curve")
+        if not curve.empty:
+            today = datetime.now(TALLINN).date()
+            starts = {
+                "month": f"{today.year}-{today.month:02d}-01",
+                "quarter": f"{today.year}-{((today.month - 1) // 3) * 3 + 1:02d}-01",
+                "year": f"{today.year}-01-01",
+            }
+            selected = []
+            for series in ("Nordic SYS", "FI implied", "LT implied"):
+                for horizon, tenor in (("M+1", "month"), ("Q+1", "quarter"), ("Y+1", "year")):
+                    candidates = curve[(curve["series"] == series) & (curve["tenor"] == tenor) &
+                                       (curve["delivery_start"] > starts[tenor])].sort_values("delivery_start")
+                    if not candidates.empty:
+                        item = candidates.iloc[0]
+                        selected.append({"series": series, "horizon": horizon,
+                                         "delivery": item["delivery"], "settlement": item["settlement"],
+                                         "open_interest": item.get("open_interest"),
+                                         "source_product": item["source_product"]})
+            return pd.DataFrame(selected)
     return rows
 
 
@@ -866,13 +889,20 @@ def _futures_market_state(section: str, payload: dict, now_utc=None) -> dict:
     }.get(section, "UTC")
 
     observed = pd.to_datetime(meta.get("observed_at"), utc=True, errors="coerce")
-    if pd.isna(observed):
+    if pd.isna(observed) and not meta.get("fallback"):
         observed = pd.to_datetime((payload or {}).get("updated_at"), utc=True, errors="coerce")
+
+    now = pd.Timestamp(now_utc or datetime.now(timezone.utc))
+    if now.tzinfo is None:
+        now = now.tz_localize("UTC")
+    age_hours = (now.tz_convert("UTC") - observed).total_seconds() / 3600 if pd.notna(observed) else None
 
     return {
         "closed": _is_weekend_market_closed(tz_name, now_utc=now_utc),
         "timezone": tz_name,
         "observed_at": observed,
+        "age_hours": age_hours,
+        "fallback": bool(meta.get("fallback")),
     }
 
 
@@ -882,12 +912,9 @@ def _future_rows_market_aware(payload: dict, section: str, kind: str):
     if not rows:
         return pd.DataFrame(), state
 
-    # Closed market: keep last official observed values visible even beyond normal freshness limit.
-    if state["closed"]:
-        return pd.DataFrame(rows), state
-
-    # Open weekday: normal freshness rule remains strict.
-    if not _snapshot_is_fresh(payload, 120):
+    # Settlement/last prices remain useful after an irregular scheduled update,
+    # but never show a snapshot older than one week as a current forward curve.
+    if state["age_hours"] is None or state["age_hours"] > 7 * 24:
         return pd.DataFrame(), state
 
     return pd.DataFrame(rows), state
@@ -899,12 +926,16 @@ def _render_futures_market_state(state: dict):
     if pd.notna(observed):
         observed_txt = observed.tz_convert(TALLINN).strftime("%d.%m.%Y %H:%M")
 
-    if state.get("closed"):
+    if state.get("age_hours") is None:
+        st.warning("Futuuride viimase õnnestunud kogumise aeg on teadmata.")
+    elif state["age_hours"] > 36 or state.get("fallback"):
+        st.warning(f"Futuuride andmed koguti viimati **{observed_txt}**; värsket turuseisu ei ole kinnitatud.")
+    elif state.get("closed"):
         st.info(
-            f"🔒 TURG SULETUD — kuvatakse viimane ametlik turuseis seisuga **{observed_txt}**."
+            f"🔒 TURG SULETUD — kuvatakse viimati kogutud börsiandmed seisuga **{observed_txt}**."
         )
     else:
-        st.caption(f"Viimane futuuride turuseis: {observed_txt}.")
+        st.caption(f"Börsiandmed viimati kogutud: {observed_txt} (viitega turuandmed).")
 
 
 @st.fragment(run_every=60)
@@ -1086,13 +1117,17 @@ def render_dashboard():
     eua_latest = mask_source(eua_latest, source_health["EUA"])
 
     # Snapshot-based sources are explicitly NOT direct connections.
-    _fut_updated = _snapshot_updated_at(futures_snapshot)
+    _fut_observed = [
+        pd.to_datetime((futures_snapshot.get(k, {}) or {}).get("observed_at"), utc=True, errors="coerce")
+        for k in ("power", "gas", "brent")
+    ] if isinstance(futures_snapshot, dict) else []
+    _fut_observed = [ts for ts in _fut_observed if pd.notna(ts)]
     source_health["Futures snapshot"] = assess_source(
         "Futuurid (Euronext/ICE)",
         has_data=bool(futures_snapshot and any((futures_snapshot.get(k, {}) or {}).get("curve") for k in ("power","gas","brent"))),
         direct_ok=False,
-        observed_at=_fut_updated,
-        max_age_minutes=120,
+        observed_at=max(_fut_observed) if _fut_observed else None,
+        max_age_minutes=36 * 60,
         mode="snapshot",
         detail="GitHub Actions snapshot; Streamlitil puudub otseühendus börsiga",
     )
@@ -1103,7 +1138,7 @@ def render_dashboard():
         has_data=bool((eu_da_snapshot or {}).get("days")),
         direct_ok=False,
         observed_at=_map_updated,
-        max_age_minutes=180,
+        max_age_minutes=24 * 60,
         mode="snapshot",
         detail="GitHub Actions A44 snapshot; Streamlitil puudub otseühendus ENTSO-E kaardipäringuga",
     )
@@ -1848,7 +1883,7 @@ def render_dashboard():
         if pkey.empty:
             _f_updated, _f_errors = _futures_diag(futures_snapshot, "power")
             st.warning(
-                f"Elektrifutuuride snapshotis pole hinnaseeriat. Snapshot: {_f_updated}. "
+                f"Elektrifutuuride viimase nädala hinnaseeriat pole saadaval. Snapshot: {_f_updated}. "
                 "Kontrolli GitHub Actions → Update BalticPulse futures."
             )
             if _f_errors:
@@ -2291,7 +2326,7 @@ def render_dashboard():
         if gkey.empty:
             _g_updated, _g_errors = _futures_diag(futures_snapshot, "gas")
             st.warning(
-                f"TTF futuuride snapshotis pole hinnaseeriat. Snapshot: {_g_updated}. "
+                f"TTF futuuride viimase nädala hinnaseeriat pole saadaval. Snapshot: {_g_updated}. "
                 "Allikas: ICE Endex delayed market data."
             )
             if _g_errors:
@@ -2480,7 +2515,7 @@ def render_dashboard():
             if _bkey.empty:
                 _b_updated, _b_errors = _futures_diag(futures_snapshot, "brent")
                 st.warning(
-                    f"Brent futuuride snapshotis pole hinnaseeriat. Snapshot: {_b_updated}. "
+                    f"Brent futuuride viimase nädala hinnaseeriat pole saadaval. Snapshot: {_b_updated}. "
                     "Allikas: ICE Futures Europe delayed market data."
                 )
                 if _b_errors:

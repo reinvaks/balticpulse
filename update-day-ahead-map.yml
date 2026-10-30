@@ -1,23 +1,36 @@
 name: Update EU day-ahead price maps
+
 on:
   workflow_dispatch:
   schedule:
     - cron: "20 * * * *"
+
 permissions:
   contents: write
+
+concurrency:
+  group: balticpulse-dayahead-map
+  cancel-in-progress: false
+
 jobs:
   update:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install requests
+
+      - name: Install dependencies
+        run: pip install requests
+
       - name: Fetch ENTSO-E A44 day-ahead prices
         env:
           ENTSOE_API_KEY: ${{ secrets.ENTSOE_API_KEY }}
         run: python fetch_entsoe_day_ahead_map.py
+
       - name: Commit map snapshot
         run: |
           git config user.name "github-actions[bot]"
@@ -27,5 +40,17 @@ jobs:
             echo "No changes"
           else
             git commit -m "Update EU day-ahead price maps"
-            git push
+            # Other scheduled jobs also write to main. Rebase and retry races.
+            for attempt in 1 2 3 4 5 6; do
+              git fetch origin main
+              git rebase origin/main
+              if git push origin HEAD:main; then
+                echo "Day-ahead map snapshot published (attempt ${attempt})"
+                exit 0
+              fi
+              echo "Push raced with another workflow (attempt ${attempt}); retrying"
+              sleep 3
+            done
+            echo "Failed to publish day-ahead map after 6 attempts" >&2
+            exit 1
           fi

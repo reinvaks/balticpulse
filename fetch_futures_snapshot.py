@@ -302,13 +302,19 @@ def implied(sys_rows, epad_rows, name):
     return out
 
 
-def select_key_power(curve):
+def select_key_power(curve, as_of=None):
+    # M+1/Q+1/Y+1 mean the next delivery period, never the current one.
+    today = as_of or datetime.now(timezone.utc).date()
+    month_start = f"{today.year}-{today.month:02d}-01"
+    quarter_start = f"{today.year}-{((today.month - 1) // 3) * 3 + 1:02d}-01"
+    year_start = f"{today.year}-01-01"
+    cutoffs = {"month": month_start, "quarter": quarter_start, "year": year_start}
     rows = []
     for series in ["Nordic SYS", "FI implied", "LT implied"]:
         sub = [r for r in curve if r["series"] == series]
         for label, tenor in [("M+1", "month"), ("Q+1", "quarter"), ("Y+1", "year")]:
             candidates = sorted(
-                [r for r in sub if r["tenor"] == tenor],
+                [r for r in sub if r["tenor"] == tenor and r["delivery_start"] > cutoffs[tenor]],
                 key=lambda x: x["delivery_start"],
             )
             if candidates:
