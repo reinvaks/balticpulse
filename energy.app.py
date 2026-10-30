@@ -156,7 +156,7 @@ def render_health_badge(health: SourceHealth) -> None:
 
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=900)
 def load_short_prices():
     now = datetime.now(timezone.utc)
     return fetch_elering_prices(now - timedelta(days=1), now + timedelta(days=2))
@@ -510,12 +510,12 @@ def _aggregate_system_history(chart: pd.DataFrame, period_label: str) -> pd.Data
     return x
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=900)
 def load_system():
     now = datetime.now(timezone.utc)
     return fetch_elering_system(now - timedelta(hours=48), now + timedelta(hours=2))
 
-@st.cache_data(ttl=120)
+@st.cache_data(ttl=900)
 def load_baltic_system_snapshot():
     path = Path(__file__).resolve().parent / "data" / "baltic_system_snapshot.json"
     if not path.exists():
@@ -550,35 +550,35 @@ def snapshot_history_df(data, region):
     return df.dropna(subset=["time_utc"]).sort_values("time_utc")
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=900)
 def load_storage(key: str):
     return fetch_gas_storage(key)
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=900)
 def load_entsoe_generation(key: str, region: str = "EE"):
     now = datetime.now(timezone.utc)
     return fetch_entsoe_generation_by_type(key, now - timedelta(hours=36), now + timedelta(hours=1), region)
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=900)
 def load_entsoe_flows(key: str):
     now = datetime.now(timezone.utc)
     return fetch_entsoe_estonia_flows(key, now - timedelta(hours=36), now + timedelta(hours=1))
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=900)
 def load_entsoe_baltic_flows(key: str):
     now = datetime.now(timezone.utc)
     return fetch_entsoe_baltic_flows(key, now - timedelta(hours=36), now + timedelta(hours=1))
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=900)
 def load_entsoe_load(key: str, region: str = "EE"):
     now = datetime.now(timezone.utc)
     return fetch_entsoe_actual_load(key, now - timedelta(hours=36), now + timedelta(hours=1), region)
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=900)
 def load_ngp_current(area: str):
     return fetch_eex_ngp_current(area)
 
@@ -598,7 +598,7 @@ def load_eua():
     return fetch_eex_eua_auction()
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=900)
 def load_eu_day_ahead_snapshot():
     path = Path(__file__).resolve().parent / "data" / "eu_day_ahead_prices.json"
     if not path.exists():
@@ -764,7 +764,7 @@ def _shade_month_groups(df: pd.DataFrame):
     })
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=900)
 def load_futures_snapshot():
     path = Path(__file__).resolve().parent / "data" / "futures.json"
     if not path.exists():
@@ -801,7 +801,7 @@ def _future_key_rows(payload: dict, section: str):
                                          "delivery": item["delivery"], "settlement": item["settlement"],
                                          "open_interest": item.get("open_interest"),
                                          "source_product": item["source_product"]})
-            return pd.DataFrame(selected)
+            return pd.DataFrame(selected) if selected else rows
     return rows
 
 
@@ -912,11 +912,8 @@ def _future_rows_market_aware(payload: dict, section: str, kind: str):
     if not rows:
         return pd.DataFrame(), state
 
-    # Settlement/last prices remain useful after an irregular scheduled update,
-    # but never show a snapshot older than one week as a current forward curve.
-    if state["age_hours"] is None or state["age_hours"] > 7 * 24:
-        return pd.DataFrame(), state
-
+    # Retain the last known exchange data even during market closures or API
+    # failures. The observation timestamp and warning remain visible above it.
     return pd.DataFrame(rows), state
 
 
@@ -926,19 +923,19 @@ def _render_futures_market_state(state: dict):
     if pd.notna(observed):
         observed_txt = observed.tz_convert(TALLINN).strftime("%d.%m.%Y %H:%M")
 
-    if state.get("age_hours") is None:
-        st.warning("Futuuride viimase õnnestunud kogumise aeg on teadmata.")
-    elif state["age_hours"] > 36 or state.get("fallback"):
-        st.warning(f"Futuuride andmed koguti viimati **{observed_txt}**; värsket turuseisu ei ole kinnitatud.")
-    elif state.get("closed"):
+    if state.get("closed"):
         st.info(
-            f"🔒 TURG SULETUD — kuvatakse viimati kogutud börsiandmed seisuga **{observed_txt}**."
+            f"🔒 TURG SULETUD — kuvatakse viimane kättesaadav börsiinfo, kogutud **{observed_txt}**."
         )
+    elif state.get("age_hours") is None:
+        st.warning("Viimase kättesaadava futuurihinna kogumise aeg on teadmata; uut hinda ei ole kinnitatud.")
+    elif state["age_hours"] > 36 or state.get("fallback"):
+        st.warning(f"Värsket futuuriinfot ei ole saadud. Kuvatakse viimane kättesaadav hind, kogutud **{observed_txt}**.")
     else:
         st.caption(f"Börsiandmed viimati kogutud: {observed_txt} (viitega turuandmed).")
 
 
-@st.fragment(run_every=60)
+@st.fragment(run_every=900)
 def render_dashboard():
     futures_snapshot, futures_snapshot_status = load_futures_snapshot()
     eu_da_snapshot, eu_da_status = load_eu_day_ahead_snapshot()
@@ -957,7 +954,7 @@ def render_dashboard():
     now_local = datetime.now(TALLINN)
     today = now_local.date()
     tomorrow = today + timedelta(days=1)
-    st.caption(f"Vaate aeg: **{now_local:%d.%m.%Y %H:%M:%S}** Europe/Tallinn · automaatne värskendus iga minut; hoidlaandmete korduspäring kuni iga 5 minuti järel")
+    st.caption(f"Vaate aeg: **{now_local:%d.%m.%Y %H:%M:%S}** Europe/Tallinn · automaatne värskendus iga 15 minuti järel; korduspäringud mitte tihedamalt kui 15 minuti järel")
 
     with st.spinner("Laadin operatiivandmeid..."):
         entsoe_key = secret("ENTSOE_API_KEY")
@@ -1093,7 +1090,7 @@ def render_dashboard():
     _brent_recent = brent_spot_is_recent(_brent_obs, today)
     source_health["Brent"] = assess_source(
         "U.S. EIA Brent spot",
-        has_data=brent_latest is not None and _brent_recent,
+        has_data=brent_latest is not None,
         direct_ok=bool(getattr(brent_status, "ok", False)),
         observed_at=_brent_obs,
         max_age_minutes=4 * 24 * 60,
@@ -1101,7 +1098,8 @@ def render_dashboard():
         checked_at=getattr(brent_status, "fetched_at", None),
         detail=getattr(brent_status, "error", None) or ("viimane EIA spot-hind on aegunud" if not _brent_recent else ""),
     )
-    brent_latest = mask_source(brent_latest, source_health["Brent"])
+    # A daily EIA observation can remain the last published spot price while
+    # the source is closed or delayed. Show it only as a dated historical value.
 
     _eua_obs = eua_df["date"].max() if not eua_df.empty and "date" in eua_df.columns else None
     source_health["EUA"] = assess_source(
@@ -1424,11 +1422,22 @@ def render_dashboard():
     f2.metric("🇪🇪🇱🇻 Eesti–Läti gaas (LVA–EST) — D", f"{ngp_current['LVA-EST']:.1f} €/MWh" if ngp_current.get("LVA-EST") is not None else "—", help="EEX LVA-EST Neutral Gas Price, current gas day.")
     f3.metric("🇫🇮 Soome gaas (FIN NGP) — D", f"{ngp_current['FIN']:.1f} €/MWh" if ngp_current.get("FIN") is not None else "—", help="EEX FIN Neutral Gas Price, current gas day.")
     f4.metric("🇱🇹 Leedu gaas (LTU NGP) — D", f"{ngp_current['LTU']:.1f} €/MWh" if ngp_current.get("LTU") is not None else "—", help="EEX LTU Neutral Gas Price, current gas day.")
-    f5, f6 = st.columns(2)
-    f5.metric("🌍 Brent — EIA spot (päevane)", f"{brent_latest:.1f} $/bbl" if brent_latest is not None else "—", help="Viimane kuni kahe tööpäeva vanune EIA päevahind. Intraday hinda näitab eraldi ICE futuur.")
+    f5, f6, f7 = st.columns(3)
+    f5.metric("🌍 Brent — viimane EIA spot", f"{brent_latest:.1f} $/bbl" if brent_latest is not None else "—", help="EIA viimane avaldatud päevahind; kuupäev ja värskus on näidatud allpool. ICE futuur on eraldi instrument.")
     st.caption(f"Brent spot vaatlus: {pd.Timestamp(_brent_obs).strftime('%d.%m.%Y') if pd.notna(_brent_obs) else 'puudub'} · "
-               + ("päevane EIA hind" if brent_latest is not None else "aegunud või avaldamata; hinda ei kuvata"))
+               + ("viimane avaldatud päevahind" if _brent_recent else "vanem päevahind; ei ole tänane turuhind" if brent_latest is not None else "hind puudub"))
     f6.metric("EUA — EEX oksjon", f"{eua_latest:.2f} €/tCO₂" if eua_latest is not None else "—", help="EEX EUA primaaroksjoni viimane clearing price. See ei ole secondary-market intraday hind.")
+    _brent_future = _future_key_rows(futures_snapshot, "brent")
+    _front_brent = _brent_future.iloc[0] if not _brent_future.empty else None
+    f7.metric("🛢️ ICE Brent futuur — viimane", f"{float(_front_brent['last']):.2f} $/bbl" if _front_brent is not None and pd.notna(_front_brent.get('last')) else "—",
+              help=f"Leping: {_front_brent['contract'] if _front_brent is not None else 'puudub'}. Viimane edukas börsiandmete kogumine: {futures_snapshot.get('brent', {}).get('observed_at') or 'aeg teadmata'}.")
+    _brent_future_state = _futures_market_state("brent", futures_snapshot)
+    _brent_future_time = _brent_future_state["observed_at"]
+    st.caption("ICE Brent futuur: " + (
+        f"viimane kogumine {_brent_future_time.tz_convert(TALLINN):%d.%m.%Y %H:%M} · "
+        + ("turg suletud · " if _brent_future_state["closed"] else "")
+        + "viitega börsiandmed, mitte hetkehind"
+        if pd.notna(_brent_future_time) else "kogumise aeg puudub"))
     st.caption("Operatiivne gaas: EEX NGP current files. Brent on EIA päevane spot-seeria ja EUA EEX primaaroksjoni hind.")
 
 
@@ -1572,7 +1581,7 @@ def render_dashboard():
         st.markdown(
             "**🟢 LIVE** = otseühendus ametliku allikaga ja andmed värsked · "
             "**🟡 SNAPSHOT/MIRROR** = otseühendust Streamlitist ei ole, kuid värske kontrollitud vahendus on olemas · "
-            "**🟠 STALE** = andmed on üle allikapõhise värskuspiiri ja neid KPI-na ei kuvata · "
+            "**🟠 STALE** = andmed on üle allikapõhise värskuspiiri; viimane börsi- või Brent hind kuvatakse ainult koos kogumis- või vaatlusajaga · "
             "**🔴 UNAVAILABLE** = värske valideeritud väärtus puudub."
         )
         st.caption("Reegel: BalticPulse ei genereeri puuduvaid väärtusi, ei interpoleeri hetkenäitajaid ega esita vananenud väärtust kehtiva hetkeinfona.")
@@ -1718,7 +1727,7 @@ def render_dashboard():
 
     # ---------- 2. DETAIL TABS ----------
     tab_overview, tab_prices, tab_fundamentals, tab_system, tab_entsoe, tab_gas, tab_quality = st.tabs([
-        "📌 Põhivaade", "⚡ Elektrihinnad", "📈 Fundamentaalid", "🏭 Baltikumi süsteem", "🌐 ENTSO-E", "🔥 Gaasihoidlad", "✅ Andmekvaliteet"
+        "📌 Põhivaade", "⚡ Elektrihinnad", "📈 Fundamentaalid", "🏭 Baltikumi süsteem", "🌐 ENTSO-E", "🔥 Gaas ja toorained", "✅ Andmekvaliteet"
     ])
 
     with tab_overview:
@@ -1883,7 +1892,7 @@ def render_dashboard():
         if pkey.empty:
             _f_updated, _f_errors = _futures_diag(futures_snapshot, "power")
             st.warning(
-                f"Elektrifutuuride viimase nädala hinnaseeriat pole saadaval. Snapshot: {_f_updated}. "
+                f"Elektrifutuuride viimast hinnaseeriat pole saadaval. Snapshot: {_f_updated}. "
                 "Kontrolli GitHub Actions → Update BalticPulse futures."
             )
             if _f_errors:
@@ -2258,7 +2267,7 @@ def render_dashboard():
             st.caption("Netovoo märk on defineeritud Eesti vaates: + = eksport Eestist, − = import Eestisse. Alusread jäävad eraldi suunaga nähtavaks.")
 
     with tab_gas:
-        st.markdown("## 🔥 Gaasihoidlad")
+        st.markdown("## 🔥 Gaas ja toorained")
         st.caption("EL ja Inčukalnsi täituvus ning gaasivarude operatiivne seis.")
         st.markdown("### EL ja Läti gaasihoidlad — GIE AGSI+")
         st.caption("AGSI+ avaldab eelmise gaasipäeva lõpu seisu iga päev. BalticPulse kontrollib uut kirjet iga 5 minuti järel; intraday hoidlanäit puudub.")
@@ -2326,7 +2335,7 @@ def render_dashboard():
         if gkey.empty:
             _g_updated, _g_errors = _futures_diag(futures_snapshot, "gas")
             st.warning(
-                f"TTF futuuride viimase nädala hinnaseeriat pole saadaval. Snapshot: {_g_updated}. "
+                f"TTF futuuride viimast hinnaseeriat pole saadaval. Snapshot: {_g_updated}. "
                 "Allikas: ICE Endex delayed market data."
             )
             if _g_errors:
@@ -2493,9 +2502,9 @@ def render_dashboard():
         l, r = st.columns(2)
 
         with l:
-            st.metric("🌍 Brent spot (EIA päevahind)", f"{brent_latest:.1f} $/bbl" if brent_latest is not None else "—")
+            st.metric("🌍 Brent spot (EIA viimane päevahind)", f"{brent_latest:.1f} $/bbl" if brent_latest is not None else "—")
             st.caption(f"Viimane vaatlus: {pd.Timestamp(_brent_obs).strftime('%d.%m.%Y') if pd.notna(_brent_obs) else 'puudub'}. "
-                       + ("" if brent_latest is not None else "Värsket päevahinda ei ole; allolevat ajaloolist graafikut ei kuvata."))
+                       + ("Vanem avaldatud hind — ära käsitle seda tänase hinnana." if brent_latest is not None and not _brent_recent else ""))
             if brent_latest is not None and not brent_df.empty:
                 fig = px.line(
                     brent_df.tail(180), x="date", y="price_usd_bbl",
@@ -2505,7 +2514,7 @@ def render_dashboard():
                 st.plotly_chart(fig, use_container_width=True)
                 source_link("eia_brent")
             else:
-                st.warning(brent_status.error or "Värsket EIA Brent spot-hinda pole saadaval. ICE futuur on allpool eraldi.")
+                st.warning(brent_status.error or "EIA Brent spot-hinna andmed puuduvad. ICE futuur on allpool eraldi.")
 
             st.markdown("#### 🛢️ ICE Brent futuurid")
             _bkey = _future_key_rows(futures_snapshot, "brent")
@@ -2515,7 +2524,7 @@ def render_dashboard():
             if _bkey.empty:
                 _b_updated, _b_errors = _futures_diag(futures_snapshot, "brent")
                 st.warning(
-                    f"Brent futuuride viimase nädala hinnaseeriat pole saadaval. Snapshot: {_b_updated}. "
+                    f"Brent futuuride viimast hinnaseeriat pole saadaval. Snapshot: {_b_updated}. "
                     "Allikas: ICE Futures Europe delayed market data."
                 )
                 if _b_errors:

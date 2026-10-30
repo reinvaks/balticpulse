@@ -3,7 +3,7 @@ name: Update BalticPulse futures
 on:
   workflow_dispatch:
   schedule:
-    - cron: "12 * * * *"
+    - cron: "7,22,37,52 * * * *"
 
 permissions:
   contents: write
@@ -142,13 +142,7 @@ jobs:
       - name: Show futures diagnostics
         if: always()
         run: |
-          echo "========================================"
-          echo "BalticPulse futures diagnostics"
-          echo "========================================"
-
-          if [ -f data/futures.json ]; then
-            cat data/futures.json
-          else
+          if [ ! -f data/futures.json ]; then
             echo "data/futures.json does not exist"
           fi
 
@@ -164,5 +158,18 @@ jobs:
             echo "No futures snapshot changes"
           else
             git commit -m "Update BalticPulse futures"
-            git push
+            # Other scheduled workflows also commit to main. Incorporate their
+            # changes and retry if one wins the race before this push.
+            for attempt in 1 2 3 4 5 6; do
+              git fetch origin main
+              git rebase origin/main
+              if git push origin HEAD:main; then
+                echo "Futures snapshot published (attempt ${attempt})"
+                exit 0
+              fi
+              echo "Push raced with another workflow (attempt ${attempt}); retrying"
+              sleep 3
+            done
+            echo "Failed to publish futures snapshot after 6 attempts" >&2
+            exit 1
           fi

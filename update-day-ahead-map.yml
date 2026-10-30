@@ -3,7 +3,7 @@ name: Update EU day-ahead price maps
 on:
   workflow_dispatch:
   schedule:
-    - cron: "20 * * * *"
+    - cron: "2,17,32,47 * * * *"
 
 permissions:
   contents: write
