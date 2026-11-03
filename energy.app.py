@@ -10,6 +10,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+from inspect import signature
 from policy_view import render_policy
 import energy_sources as _energy_sources
 from data_quality import SourceHealth, assess as assess_source, mask as mask_source, human_age as dq_human_age
@@ -1727,9 +1728,9 @@ def render_dashboard():
             )
 
     # ---------- 2. DETAIL TABS ----------
-    tab_overview, tab_prices, tab_fundamentals, tab_system, tab_entsoe, tab_gas, tab_quality, tab_policy = st.tabs([
-        "📌 Põhivaade", "⚡ Elektrihinnad", "📈 Fundamentaalid", "🏭 Baltikumi süsteem", "🌐 ENTSO-E", "🔥 Gaas ja toorained", "✅ Andmekvaliteet", "Energiapoliitika"
-    ])
+    tab_overview, tab_prices, tab_policy, tab_fundamentals, tab_system, tab_entsoe, tab_gas, tab_quality = st.tabs([
+        "📌 Põhivaade", "⚡ Elektrihinnad", "Mõjutatud võimsused", "📈 Fundamentaalid", "🏭 Baltikumi süsteem", "🌐 ENTSO-E", "🔥 Gaas ja toorained", "✅ Andmekvaliteet"
+    ], **({"on_change": "rerun"} if "on_change" in signature(st.tabs).parameters else {}))
 
     with tab_overview:
         st.markdown("## 📌 Üldine armatuurlaud")
@@ -2576,7 +2577,8 @@ def render_dashboard():
 
 
     with tab_policy:
-        render_policy(prices, entsoe_key, today)
+        if getattr(tab_policy, "open", None) is not False:
+            render_policy(entsoe_key, today)
 
     with tab_quality:
         st.markdown("### Andmekvaliteedi ja ulatuse reeglid")
