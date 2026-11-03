@@ -10,6 +10,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+from policy_view import render_policy
 import energy_sources as _energy_sources
 from data_quality import SourceHealth, assess as assess_source, mask as mask_source, human_age as dq_human_age
 from energy_sources import (
@@ -1726,8 +1727,8 @@ def render_dashboard():
             )
 
     # ---------- 2. DETAIL TABS ----------
-    tab_overview, tab_prices, tab_fundamentals, tab_system, tab_entsoe, tab_gas, tab_quality = st.tabs([
-        "📌 Põhivaade", "⚡ Elektrihinnad", "📈 Fundamentaalid", "🏭 Baltikumi süsteem", "🌐 ENTSO-E", "🔥 Gaas ja toorained", "✅ Andmekvaliteet"
+    tab_overview, tab_prices, tab_fundamentals, tab_system, tab_entsoe, tab_gas, tab_quality, tab_policy = st.tabs([
+        "📌 Põhivaade", "⚡ Elektrihinnad", "📈 Fundamentaalid", "🏭 Baltikumi süsteem", "🌐 ENTSO-E", "🔥 Gaas ja toorained", "✅ Andmekvaliteet", "Energiapoliitika"
     ])
 
     with tab_overview:
@@ -2573,6 +2574,9 @@ def render_dashboard():
             "Pikemat gaasiajalugu ei konstrueerita avaliku allika 60 päeva piirist väljapoole."
         )
 
+
+    with tab_policy:
+        render_policy(prices, entsoe_key, today)
 
     with tab_quality:
         st.markdown("### Andmekvaliteedi ja ulatuse reeglid")
