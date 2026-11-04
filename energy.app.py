@@ -937,6 +937,36 @@ def _render_futures_market_state(state: dict):
         st.caption(f"Börsiandmed viimati kogutud: {observed_txt} (viitega turuandmed).")
 
 
+@st.cache_data(ttl=86400, show_spinner=False)
+def load_comparison_capacity(region, year, _token, from_region=None):
+    """Load a dated reference: annual actual peak load or year-ahead transfer capacity."""
+    start = pd.Timestamp(year=year, month=1, day=1, tz="Europe/Brussels").tz_convert("UTC")
+    end = pd.Timestamp(year=year+1, month=1, day=1, tz="Europe/Brussels").tz_convert("UTC")
+    params = {"periodStart": start.strftime("%Y%m%d%H%M"), "periodEnd": end.strftime("%Y%m%d%H%M")}
+    if from_region:
+        params.update({"documentType": "A61", "contract_MarketAgreement.Type": "A04",
+                       "out_Domain": _energy_sources.ENTSOE_DOMAINS[from_region],
+                       "in_Domain": _energy_sources.ENTSOE_DOMAINS[region]})
+    else:
+        params.update({"documentType": "A65", "processType": "A16",
+                       "outBiddingZone_Domain": _energy_sources.ENTSOE_DOMAINS[region]})
+    xml, _ = _energy_sources._entsoe_get_xml(_token, params, retries=1)
+    if not xml:
+        return None
+    frame = _energy_sources._parse_entsoe_timeseries(xml, value_name="reference_mw")
+    if frame.empty:
+        return None
+    values = pd.to_numeric(frame.loc[(frame.time_utc >= start) & (frame.time_utc < end), "reference_mw"], errors="coerce")
+    values = values[values >= 0]
+    return float(values.max()) if not values.empty else None
+
+
+def mw_with_reference(value, reference):
+    actual = f"{value:.0f}" if value is not None else "—"
+    maximum = f"{reference:.0f}" if reference is not None else "—"
+    return f"{actual} MW ({maximum} MW)"
+
+
 def parse_installed_capacity(xml_text, reference):
     """Read installed net capacity at the annual reporting date (ENTSO-E A68)."""
     import math
@@ -1410,6 +1440,13 @@ def render_dashboard():
         capacity_jobs = {r: pool.submit(load_installed_capacity, r, today.year, entsoe_key) for r in BALTICS}
         installed_capacities = {r: job.result() for r, job in capacity_jobs.items()}
 
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        peak_jobs = {r: pool.submit(load_comparison_capacity, r, today.year-1, entsoe_key) for r in BALTICS}
+        border_jobs = {direction: pool.submit(load_comparison_capacity, direction[1], today.year, entsoe_key, direction[0])
+                       for direction in [("EE", "LV"), ("LV", "EE")]}
+        demand_peaks = {r: job.result() for r, job in peak_jobs.items()}
+        transfer_references = {direction: job.result() for direction, job in border_jobs.items()}
+
     country_meta = {"EE": ("🇪🇪", "Eesti"), "LV": ("🇱🇻", "Läti"), "LT": ("🇱🇹", "Leedu")}
     for region in BALTICS:
         flag, name = country_meta[region]
@@ -1420,9 +1457,10 @@ def render_dashboard():
         sys_cols[0].metric(f"{flag} Tootmine", f"{snap['production_mw']:.0f} MW" if snap['production_mw'] is not None else "—",
                            delta=delta_text(snap.get("production_mw"),prev.get("production_mw")),
                            help=f"Allikas: {snap.get('source')}. Võrdlus sama ajaga 24 tundi tagasi.")
-        sys_cols[1].metric(f"{flag} Tarbimine", f"{snap['consumption_mw']:.0f} MW" if snap['consumption_mw'] is not None else "—",
+        sys_cols[1].metric(f"{flag} Tarbimine", mw_with_reference(snap["consumption_mw"], demand_peaks.get(region)),
                            delta=delta_text(snap.get("consumption_mw"),prev.get("consumption_mw")),
                            help=f"Allikas: {snap.get('source')}. Võrdlus sama ajaga 24 tundi tagasi.")
+        sys_cols[1].caption(f"Sulgudes {today.year-1}. a avaldatud tarbimistipp · ENTSO-E")
         sys_cols[2].metric(f"{flag} Taastuvtootmine", f"{snap['renewable_mw']:.0f} MW" if snap['renewable_mw'] is not None else "—",
                            delta=delta_text(snap.get("renewable_mw"),prev.get("renewable_mw")),
                            help="ENTSO-E A75; vajadusel viimane edukas GitHub Actionsi snapshot.")
@@ -1483,27 +1521,32 @@ def render_dashboard():
              + ("eksport" if float(_ee_lv_flow) > 0 else "import" if float(_ee_lv_flow) < 0 else "tasakaalus")
     )
 
+    _lv_direction = ("EE", "LV") if _ee_lv_flow is not None and _ee_lv_flow > 0 else ("LV", "EE")
+    _lv_reference = transfer_references.get(_lv_direction)
     flow1.metric(
         "🇪🇪–🇫🇮 füüsiline netovoog",
-        _ee_fi_label,
+        _ee_fi_label + " (1000 MW)",
         delta=(f"{fmt_age(latest_border_flow_time['EE–FI'])} vana" if latest_border_flow_time.get("EE–FI") is not None else None),
         delta_color="off",
         help="ENTSO-E A11. Positiivne märk tähendab Eesti netoeksporti; negatiivne Eesti netoimporti.",
     )
     flow2.metric(
         "🇪🇪–🇱🇻 füüsiline netovoog",
-        _ee_lv_label,
+        _ee_lv_label + " (" + (f"{_lv_reference:.0f} MW" if _lv_reference is not None else "— MW") + ")",
         delta=(f"{fmt_age(latest_border_flow_time['EE–LV'])} vana" if latest_border_flow_time.get("EE–LV") is not None else None),
         delta_color="off",
         help="ENTSO-E A11. Positiivne märk tähendab Eesti netoeksporti; negatiivne Eesti netoimporti.",
     )
 
+    st.caption(f"Sulgudes EE–FI nimivõimsus 1000 MW (EstLink 1 + 2); EE–LV näitab voo suuna {today.year}. a aastaplaanis avaldatud suurimat ülekandevõimsust. Päevane turuvõimsus võib olla väiksem.")
+    st.markdown("[EstLinki nimivõimsus](https://www.elering.ee/estlink-2) · [ENTSO-E võimsusandmed](https://transparency.entsoe.eu/)")
     st.markdown("#### Piiriülesed füüsilised vood")
     flow_rows = []
     for border, flow in latest_border_flows.items():
         flow_rows.append({
             "Piir": flag_label(border),
             "Füüsiline netovoog MW": abs(flow) if flow is not None else None,
+            "Võrdlusvõimsus MW": 1000 if border == "EE–FI" else transfer_references.get(("EE", "LV") if flow is not None and flow > 0 else ("LV", "EE")),
             "Voo suund": "🇪🇪 eksport" if flow is not None and flow > 0 else "🇪🇪 import" if flow is not None and flow < 0 else "—",
         })
     st.dataframe(pd.DataFrame(flow_rows), hide_index=True, use_container_width=True,

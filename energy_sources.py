@@ -190,7 +190,12 @@ def fetch_eex_ngp_current(area: str = "TTF") -> tuple[pd.DataFrame, SourceStatus
         date_candidates = []
         for col in df.columns:
             lc = str(col).lower()
-            parsed = pd.to_datetime(df[col], errors="coerce", dayfirst=False)
+            if "gasday" in lc.replace(" ", ""):
+                parsed = pd.to_datetime(df[col].astype(str).str.strip(), format="%d/%m/%Y", errors="coerce")
+            elif any(k in lc for k in ("date", "day", "deliver")):
+                parsed = pd.to_datetime(df[col], errors="coerce", dayfirst=True)
+            else:
+                continue
             score = 0
             if "gas" in lc and ("day" in lc or "date" in lc): score += 4
             if "deliver" in lc: score += 4
@@ -224,6 +229,10 @@ def fetch_eex_ngp_current(area: str = "TTF") -> tuple[pd.DataFrame, SourceStatus
 
         out = pd.DataFrame({"delivery_date": dates.dt.date, "price_eur_mwh": prices}).dropna()
         out = out[(out["price_eur_mwh"] > -500) & (out["price_eur_mwh"] < 1000)]
+        volume_col = next((c for c in df.columns if "volume" in c.lower()), None)
+        if volume_col:
+            volumes = pd.to_numeric(df[volume_col].astype(str).str.replace(",", ".", regex=False), errors="coerce")
+            out = out.loc[~((out["price_eur_mwh"] == 0) & (volumes.reindex(out.index) == 0))]
         out = out.drop_duplicates("delivery_date", keep="last").sort_values("delivery_date")
         if out.empty:
             raise ValueError("No current NGP rows parsed")
