@@ -937,6 +937,76 @@ def _render_futures_market_state(state: dict):
         st.caption(f"Börsiandmed viimati kogutud: {observed_txt} (viitega turuandmed).")
 
 
+def parse_installed_capacity(xml_text, reference):
+    """Read installed net capacity at the annual reporting date (ENTSO-E A68)."""
+    import math
+    import xml.etree.ElementTree as ET
+
+    values = {}
+    root = ET.fromstring(xml_text)
+    for series in root.findall(".//{*}TimeSeries"):
+        code = series.findtext(".//{*}psrType")
+        if code not in ("B16", "B18", "B19"):
+            continue
+        unit = series.findtext("{*}quantity_Measure_Unit.name")
+        if unit not in (None, "MAW"):
+            continue
+        for period in series.findall("{*}Period"):
+            start = pd.to_datetime(period.findtext("{*}timeInterval/{*}start"), utc=True, errors="coerce")
+            end = pd.to_datetime(period.findtext("{*}timeInterval/{*}end"), utc=True, errors="coerce")
+            if pd.isna(start) or pd.isna(end) or not start <= reference < end:
+                continue
+            for point in period.findall("{*}Point"):
+                quantity = pd.to_numeric(point.findtext("{*}quantity"), errors="coerce")
+                if point.findtext("{*}position") == "1" and math.isfinite(quantity) and quantity >= 0:
+                    values.setdefault(code, set()).add(float(quantity))
+    # Conflicting series must not be added together or silently selected.
+    wind = [next(iter(values[c])) for c in ("B18", "B19") if c in values and len(values[c]) == 1]
+    conflict = any(len(values.get(c, set())) > 1 for c in ("B18", "B19"))
+    return {
+        "Tuul": sum(wind) if wind and not conflict else None,
+        "Päike": next(iter(values["B16"])) if len(values.get("B16", set())) == 1 else None,
+    }
+
+
+@st.cache_data(ttl=900, show_spinner=False)
+def load_installed_capacity(region, year, _token):
+    import xml.etree.ElementTree as ET
+
+    start = pd.Timestamp(year=year, month=1, day=1, tz="Europe/Brussels").tz_convert("UTC")
+    xml, status = _energy_sources._entsoe_get_xml(_token, {
+        "documentType": "A68", "processType": "A33",
+        "in_Domain": _energy_sources.ENTSOE_DOMAINS[region],
+        "periodStart": start.strftime("%Y%m%d%H%M"),
+        "periodEnd": (start + pd.Timedelta(days=1)).strftime("%Y%m%d%H%M"),
+    }, retries=1)
+    if not xml:
+        return {"Tuul": None, "Päike": None}
+    try:
+        return parse_installed_capacity(xml, start)
+    except (ET.ParseError, TypeError, ValueError):
+        return {"Tuul": None, "Päike": None}
+
+
+def latest_weather_generation(frame, technologies, now):
+    """Only sum contemporaneous, unambiguous observations. Missing data is not zero."""
+    if frame.empty:
+        return None, None
+    selected = frame[frame["technology"].isin(technologies)].copy()
+    selected["time_utc"] = pd.to_datetime(selected["time_utc"], utc=True, errors="coerce")
+    selected["generation_mw"] = pd.to_numeric(selected["generation_mw"], errors="coerce")
+    selected = selected.dropna(subset=["time_utc", "generation_mw"])
+    selected = selected[(selected["time_utc"] <= now) & (selected["generation_mw"] >= 0)]
+    if selected.empty:
+        return None, None
+    grouped = selected.groupby(["time_utc", "technology"])["generation_mw"]
+    series = grouped.first().where(grouped.nunique() == 1).unstack().dropna()
+    series = series[series.index >= now - pd.Timedelta(hours=3)]
+    if series.empty:
+        return None, None
+    return float(series.iloc[-1].sum()), series.index[-1]
+
+
 @st.fragment(run_every=900)
 def render_dashboard():
     futures_snapshot, futures_snapshot_status = load_futures_snapshot()
@@ -1336,6 +1406,10 @@ def render_dashboard():
             baltic_snapshots["EE"]["previous_24h"]["consumption_mw"] = nearest(sx,"time_utc","consumption_mw",pd.Timestamp(cons_time).tz_convert("UTC")-pd.Timedelta(hours=24))
 
 
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        capacity_jobs = {r: pool.submit(load_installed_capacity, r, today.year, entsoe_key) for r in BALTICS}
+        installed_capacities = {r: job.result() for r, job in capacity_jobs.items()}
+
     country_meta = {"EE": ("🇪🇪", "Eesti"), "LV": ("🇱🇻", "Läti"), "LT": ("🇱🇹", "Leedu")}
     for region in BALTICS:
         flag, name = country_meta[region]
@@ -1355,6 +1429,24 @@ def render_dashboard():
         sys_cols[3].metric(f"{flag} Taastuvate osakaal", f"{snap['renewable_share']:.1f}%" if snap['renewable_share'] is not None else "—",
                            delta=delta_text(snap.get("renewable_share"),prev.get("renewable_share")),
                            help="Suhteline muutus võrreldes sama ajaga 24 tundi tagasi.")
+        weather_cols = st.columns(2)
+        generation_frame = entsoe_generation_results.get(region, (pd.DataFrame(), None))[0]
+        for column, label, technologies in (
+            (weather_cols[0], "Tuul", ("Wind Onshore", "Wind Offshore")),
+            (weather_cols[1], "Päike", ("Solar",)),
+        ):
+            actual_mw, observed_at = latest_weather_generation(
+                generation_frame, technologies, pd.Timestamp.now(tz="UTC"))
+            installed_mw = installed_capacities[region].get(label)
+            current_text = f"{actual_mw:.0f}" if actual_mw is not None else "—"
+            installed_text = f"{installed_mw:.0f}" if installed_mw is not None else "—"
+            column.metric(f"{flag} {label}", f"{current_text} MW ({installed_text} MW)",
+                          help=f"Tegelik tootmine; sulgudes installeeritud netovõimsus. "
+                               f"Allikas ENTSO-E: tegelik A75, installeeritud A68, {today.year}. aasta alguse seis.")
+            observed_text = observed_at.tz_convert(TALLINN).strftime("%d.%m %H:%M") if observed_at is not None else "andmed puuduvad"
+            column.caption(f"Toodang {observed_text} · installeeritud 01.01.{today.year}")
+        st.caption("Sulgudes installeeritud netovõimsus (ENTSO-E aastaseis). — tähendab, et vastav andmeallikas ei andnud väärtust.")
+
         _mode = snap.get("connection_mode", "LIVE" if "Elering" in str(snap.get("source")) else "UNAVAILABLE")
         if _mode == "SNAPSHOT":
             st.warning(f"{flag} {name}: otseühendus puudub — kasutatakse värsket ametliku ENTSO-E GitHub snapshot'i. Allikas: {snap.get('source')}.")
