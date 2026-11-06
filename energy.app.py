@@ -34,6 +34,7 @@ APP_BUILD_VERSION = "16.1.9"
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
 BALTICS = ["EE", "LV", "LT"]
+DASHBOARD_REGIONS = [*BALTICS, "FI"]
 COUNTRY_FLAGS = {"EE": "🇪🇪", "LV": "🇱🇻", "LT": "🇱🇹", "FI": "🇫🇮"}
 
 
@@ -938,18 +939,14 @@ def _render_futures_market_state(state: dict):
 
 
 @st.cache_data(ttl=86400, show_spinner=False)
-def load_comparison_capacity(region, year, _token, from_region=None):
-    """Load a dated reference: annual actual peak load or year-ahead transfer capacity."""
+def load_comparison_capacity(region, year, _token, from_region):
+    """Load year-ahead directional transfer capacity; never a demand record."""
     start = pd.Timestamp(year=year, month=1, day=1, tz="Europe/Brussels").tz_convert("UTC")
     end = pd.Timestamp(year=year+1, month=1, day=1, tz="Europe/Brussels").tz_convert("UTC")
     params = {"periodStart": start.strftime("%Y%m%d%H%M"), "periodEnd": end.strftime("%Y%m%d%H%M")}
-    if from_region:
-        params.update({"documentType": "A61", "contract_MarketAgreement.Type": "A04",
-                       "out_Domain": _energy_sources.ENTSOE_DOMAINS[from_region],
-                       "in_Domain": _energy_sources.ENTSOE_DOMAINS[region]})
-    else:
-        params.update({"documentType": "A65", "processType": "A16",
-                       "outBiddingZone_Domain": _energy_sources.ENTSOE_DOMAINS[region]})
+    params.update({"documentType": "A61", "contract_MarketAgreement.Type": "A04",
+                   "out_Domain": _energy_sources.ENTSOE_DOMAINS[from_region],
+                   "in_Domain": _energy_sources.ENTSOE_DOMAINS[region]})
     xml, _ = _energy_sources._entsoe_get_xml(_token, params, retries=1)
     if not xml:
         return None
@@ -959,6 +956,61 @@ def load_comparison_capacity(region, year, _token, from_region=None):
     values = pd.to_numeric(frame.loc[(frame.time_utc >= start) & (frame.time_utc < end), "reference_mw"], errors="coerce")
     values = values[values >= 0]
     return float(values.max()) if not values.empty else None
+
+
+# Source records reviewed on 2026-11-06; not automatically re-verified on page load.
+DEMAND_RECORDS = {
+    "EE": {
+        "mw": 1723, "date": "05.02.2026", "time": "10.25",
+        "source": "Elering",
+        "url": "https://www.elering.ee/elektri-tarbimine-ja-tootmine",
+        "note": "Eleringi avaldatud kõigi aegade tarbimisrekord; sisaldab hajatootmist.",
+        "checked": "06.11.2026",
+    },
+    "LT": {
+        "mw": 3153, "date": "18.04.1989", "time": None,
+        "source": "ENTSO-E, 2014, lk 45",
+        "url": "https://eepublicdownloads.entsoe.eu/clean-documents/Publications/Statistics/YSAR/entsoe_ys_ar_2014_web.pdf#page=45",
+        "label": "Ajalooline hetketipp",
+        "note": "ENTSO-E 2014. aasta aruandes avaldatud ajalooline hetketipp: 3153 MW, 18.04.1989. "
+                "Litgrid avaldas 02.02.2026 kohta 15 minuti keskmise tarbimise rekordi 2648 MW. "
+                "Mõõtmisperiood ja ajalooline ulatus erinevad; neid rekordeid ei saa samastada. "
+                "Arhiiviväärtus ei ole jooksvalt kontrollitud kõigi aegade maksimum.",
+        "checked": "06.11.2026",
+    },
+    "LV": {
+        "mw": 1997, "date": "21.12.1988", "time": None,
+        "source": "ENTSO-E, 2014, lk 45",
+        "url": "https://eepublicdownloads.entsoe.eu/clean-documents/Publications/Statistics/YSAR/entsoe_ys_ar_2014_web.pdf#page=45",
+        "label": "Ajalooline hetketipp",
+        "note": "ENTSO-E 2014. aasta aruande ajalooliste hetketippude tabel: 1997 MW, 21.12.1988. "
+                "IAEA 2007. aasta Balti energiauuring (lk 48) nimetab 1980. aastate lõpu tipuks 2059 MW, "
+                "kuid ei anna täpset kuupäeva. Arvude erinevuse põhjus on kinnitamata. "
+                "Sulgudes on dateeritud ENTSO-E arhiiviväärtus, mitte vaidlusteta kinnitatud kõigi aegade maksimum.",
+        "checked": "06.11.2026",
+    },
+    "FI": {
+        "mw": 15553, "date": "08.01.2026", "time": "17.00–17.15",
+        "source": "Fingrid",
+        "url": "https://www.fingrid.fi/sahkomarkkinainformaatio/kulutus-ja-tuotanto/",
+        "note": "Fingridi avaldatud tarbimisrekord, 15 minuti keskmine võimsus. "
+                "Tarbimine = tootmine + import − eksport.",
+        "checked": "06.11.2026",
+    },
+}
+
+
+def demand_record_display(value, region):
+    """Return current MW and a dated, explicitly sourced historical record."""
+    record = DEMAND_RECORDS.get(region, {})
+    actual = f"{value:.0f} MW" if value is not None else "— MW"
+    if record.get("mw") is None or not record.get("date"):
+        return f"{actual} (rekord kinnitamata)", "Tarbimisrekord ja kuupäev: kinnitamata."
+    caption = f"{record.get('label', 'Tarbimisrekord')}: {record['date']}"
+    if record.get("time"):
+        caption += f" kell {record['time']} (kohalik aeg)"
+    caption += f" · [{record['source']}]({record['url']}) · kontrollitud {record['checked']}"
+    return f"{actual} ({record['mw']:.0f} MW)", caption
 
 
 def mw_with_reference(value, reference):
@@ -1068,8 +1120,8 @@ def render_dashboard():
             fut_system = pool.submit(load_system)
             fut_baltic_snapshot = pool.submit(load_baltic_system_snapshot)
             fut_storage = pool.submit(load_storage, agsi_key)
-            gen_futs = {r: pool.submit(load_entsoe_generation, entsoe_key, r) for r in BALTICS}
-            load_futs = {r: pool.submit(load_entsoe_load, entsoe_key, r) for r in BALTICS}
+            gen_futs = {r: pool.submit(load_entsoe_generation, entsoe_key, r) for r in DASHBOARD_REGIONS}
+            load_futs = {r: pool.submit(load_entsoe_load, entsoe_key, r) for r in DASHBOARD_REGIONS}
             fut_flows = pool.submit(load_entsoe_flows, entsoe_key)
             fut_baltic_flows = pool.submit(load_entsoe_baltic_flows, entsoe_key)
             fut_ttf_hist = pool.submit(load_ttf)
@@ -1399,7 +1451,7 @@ def render_dashboard():
             out["connection_mode"] = "UNAVAILABLE"
         return out
 
-    baltic_snapshots = {r: make_snapshot(r) for r in BALTICS}
+    baltic_snapshots = {r: make_snapshot(r) for r in DASHBOARD_REGIONS}
 
     # Estonia: Elering actual is primary. If Elering is temporarily unavailable,
     # retain validated ENTSO-E / GitHub snapshot values instead of overwriting them with None.
@@ -1437,18 +1489,16 @@ def render_dashboard():
 
 
     with ThreadPoolExecutor(max_workers=3) as pool:
-        capacity_jobs = {r: pool.submit(load_installed_capacity, r, today.year, entsoe_key) for r in BALTICS}
+        capacity_jobs = {r: pool.submit(load_installed_capacity, r, today.year, entsoe_key) for r in DASHBOARD_REGIONS}
         installed_capacities = {r: job.result() for r, job in capacity_jobs.items()}
 
-    with ThreadPoolExecutor(max_workers=5) as pool:
-        peak_jobs = {r: pool.submit(load_comparison_capacity, r, today.year-1, entsoe_key) for r in BALTICS}
+    with ThreadPoolExecutor(max_workers=2) as pool:
         border_jobs = {direction: pool.submit(load_comparison_capacity, direction[1], today.year, entsoe_key, direction[0])
                        for direction in [("EE", "LV"), ("LV", "EE")]}
-        demand_peaks = {r: job.result() for r, job in peak_jobs.items()}
         transfer_references = {direction: job.result() for direction, job in border_jobs.items()}
 
-    country_meta = {"EE": ("🇪🇪", "Eesti"), "LV": ("🇱🇻", "Läti"), "LT": ("🇱🇹", "Leedu")}
-    for region in BALTICS:
+    country_meta = {"EE": ("🇪🇪", "Eesti"), "LV": ("🇱🇻", "Läti"), "LT": ("🇱🇹", "Leedu"), "FI": ("🇫🇮", "Soome")}
+    for region in DASHBOARD_REGIONS:
         flag, name = country_meta[region]
         snap = baltic_snapshots.get(region, {"production_mw": None, "consumption_mw": None, "renewable_mw": None, "renewable_share": None, "generation_time": None, "load_time": None, "previous_24h": {}, "source": "andmed puuduvad"})
         prev = snap.get("previous_24h", {}) or {}
@@ -1457,10 +1507,16 @@ def render_dashboard():
         sys_cols[0].metric(f"{flag} Tootmine", f"{snap['production_mw']:.0f} MW" if snap['production_mw'] is not None else "—",
                            delta=delta_text(snap.get("production_mw"),prev.get("production_mw")),
                            help=f"Allikas: {snap.get('source')}. Võrdlus sama ajaga 24 tundi tagasi.")
-        sys_cols[1].metric(f"{flag} Tarbimine", mw_with_reference(snap["consumption_mw"], demand_peaks.get(region)),
+        demand_value, demand_caption = demand_record_display(snap["consumption_mw"], region)
+        sys_cols[1].metric(f"{flag} Tarbimine", demand_value,
                            delta=delta_text(snap.get("consumption_mw"),prev.get("consumption_mw")),
                            help=f"Allikas: {snap.get('source')}. Võrdlus sama ajaga 24 tundi tagasi.")
-        sys_cols[1].caption(f"Sulgudes {today.year-1}. a avaldatud tarbimistipp · ENTSO-E")
+        sys_cols[1].caption(demand_caption)
+        with sys_cols[1].expander("Tarbimisrekordi selgitus"):
+            st.caption(DEMAND_RECORDS.get(region, {}).get("note", "Rekord kinnitamata."))
+            if region == "LV":
+                st.caption("Täiendav allikas: [IAEA, 2007, lk 48](https://www-pub.iaea.org/MTCD/Publications/PDF/te_1541_web.pdf). "
+                           "Erinevuse ja võrreldava kõigi aegade rekordi kinnitamiseks on vajalik AST-i selgitus.")
         sys_cols[2].metric(f"{flag} Taastuvtootmine", f"{snap['renewable_mw']:.0f} MW" if snap['renewable_mw'] is not None else "—",
                            delta=delta_text(snap.get("renewable_mw"),prev.get("renewable_mw")),
                            help="ENTSO-E A75; vajadusel viimane edukas GitHub Actionsi snapshot.")
@@ -1774,7 +1830,7 @@ def render_dashboard():
                 ),
             )
 
-            for region in ["EE", "LV", "LT"]:
+            for region in DASHBOARD_REGIONS:
                 gdf, gst = entsoe_generation_results[region]
                 ldf, lst = entsoe_load_results[region]
                 g_age = newest_age_minutes(gdf, "time_local")

@@ -9,7 +9,7 @@ import pandas as pd
 from energy_sources import fetch_entsoe_generation_by_type, fetch_entsoe_actual_load
 
 OUT = Path("data/baltic_system_snapshot.json")
-BALTICS = ["EE", "LV", "LT"]
+REGIONS = ["EE", "LV", "LT", "FI"]
 RENEWABLE_NAMES = {
     "Biomass","Geothermal","Hydro Run-of-river and poundage","Hydro Water Reservoir",
     "Marine","Other renewable","Solar","Wind Offshore","Wind Onshore",
@@ -109,7 +109,7 @@ def main():
 
     old_regions = previous.get("regions", {}) if isinstance(previous,dict) else {}
     regions = {}
-    for region in BALTICS:
+    for region in REGIONS:
         new = _region(region,token,start,end)
         # Preserve previous region if both current generation/load are empty.
         cur = new.get("current",{})
