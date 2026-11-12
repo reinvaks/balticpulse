@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-11T22:05:41.757772+00:00",
+  "updated_at": "2026-11-12T03:09:15.121299+00:00",
   "method": "A44 day-ahead; country arithmetic mean across available bidding zones",
   "days": {
     "2026-11-12": {
@@ -38,6 +38,13 @@
           "iso3": "CZE",
           "price_eur_mwh": 260.54,
           "zones": "CZ",
+          "zone_count": 1
+        },
+        {
+          "country": "Germany/Luxembourg",
+          "iso3": "DEU",
+          "price_eur_mwh": 201.97,
+          "zones": "DE-LU",
           "zone_count": 1
         },
         {
@@ -158,7 +165,5 @@
       "countries": []
     }
   },
-  "errors": [
-    "DE-LU: ReadTimeout: HTTPSConnectionPool(host='web-api.tp.entsoe.eu', port=443): Read timed out. (read timeout=25)"
-  ]
+  "errors": []
 }
