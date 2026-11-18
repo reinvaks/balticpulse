@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-18T14:10:43.195174+00:00",
+  "updated_at": "2026-11-18T22:05:14.650732+00:00",
   "method": "A44 day-ahead; country arithmetic mean across available bidding zones",
   "days": {
     "2026-11-18": {
@@ -87,13 +87,6 @@
           "iso3": "FRA",
           "price_eur_mwh": 77.98,
           "zones": "FR",
-          "zone_count": 1
-        },
-        {
-          "country": "Greece",
-          "iso3": "GRC",
-          "price_eur_mwh": 152.4,
-          "zones": "GR",
           "zone_count": 1
         },
         {
@@ -236,7 +229,7 @@
         {
           "country": "Spain",
           "iso3": "ESP",
-          "price_eur_mwh": 42.43,
+          "price_eur_mwh": 43.5,
           "zones": "ES",
           "zone_count": 1
         },
@@ -252,13 +245,6 @@
           "iso3": "FRA",
           "price_eur_mwh": 70.46,
           "zones": "FR",
-          "zone_count": 1
-        },
-        {
-          "country": "Greece",
-          "iso3": "GRC",
-          "price_eur_mwh": 175.76,
-          "zones": "GR",
           "zone_count": 1
         },
         {
@@ -334,5 +320,7 @@
       ]
     }
   },
-  "errors": []
+  "errors": [
+    "GR: ReadTimeout: HTTPSConnectionPool(host='web-api.tp.entsoe.eu', port=443): Read timed out. (read timeout=25)"
+  ]
 }
