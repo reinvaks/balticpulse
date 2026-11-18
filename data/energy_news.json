@@ -1,10 +1,21 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-18T01:13:39.884133+00:00",
-  "sources_ok": 5,
+  "updated_at": "2026-11-18T09:01:41.128368+00:00",
+  "sources_ok": 3,
   "sources_total": 5,
-  "errors": [],
+  "errors": [
+    "IEA: HTTPError: 429 Client Error: Too Many Requests for url: https://news.google.com/rss/search?q=site%3Aiea.org%2Fnews+%28energy+OR+electricity+OR+gas+OR+oil+OR+renewables+OR+nuclear+OR+grids%29+when%3A7d&hl=en-US&gl=US&ceid=US:en",
+    "Utility Dive: HTTPError: 429 Client Error: Too Many Requests for url: https://news.google.com/rss/search?q=site%3Autilitydive.com+%28electricity+OR+utilities+OR+grid+OR+power+OR+nuclear+OR+storage%29+when%3A5d&hl=en-US&gl=US&ceid=US:en"
+  ],
   "items": [
+    {
+      "source": "Energy Intelligence",
+      "published_at": "2026-11-18T02:18:53+00:00",
+      "title": "Gas and LNG Markets, Nov. 17, 2026",
+      "summary": "Gas and LNG Markets, Nov. 17, 2026 Energy Intelligence",
+      "topic": "Gaas & LNG",
+      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE1BdGNEalI1dnFEbTRiYU1nQ2h0QTlmV0ZwckZCQVFQbklyQWVMTVRHYjZ4dHE4U3pDb0xaV3V2RTAtcEpvU0hNYWQ4ZEpKVm9GRWE5NDFMWkNXS3JMVnAwTHhPeWliRWRGRHJvWW00WVJPUQ?oc=5"
+    },
     {
       "source": "Energy Intelligence",
       "published_at": "2026-11-17T18:20:01+00:00",
@@ -28,14 +39,6 @@
       "summary": "Uniper sees European gas needs steadying into 2030s S&P Global",
       "topic": "Gaas & LNG",
       "url": "https://news.google.com/rss/articles/CBMiywFBVV95cUxNZ1F0NVRPb05MQm9qVkpEaGp6dWhCbDVtZTFvX0h6SExGczhzSnFNQnRNVzVhTTNqdFBKMHdtTEVJYTd2Y0pRLVJ2MTFSdEdmV2Q3dkdfeTV5TFNzT1hiUEdCNV8yRWNaZmc5ZWxHOUtocmllX0VKSlVTaHc4UXRGRkpiR3NzTjJ1TWNqdXVEYTE1S1k0MWNfcDFaWmIxVl9xVkl6WVlLVEN6M2plQ1VhclRJR0xqb2czeDlzaHBGbFdXeE15YjlwaWhhTQ?oc=5"
-    },
-    {
-      "source": "Energy Intelligence",
-      "published_at": "2026-11-16T22:04:55+00:00",
-      "title": "Gas and LNG Markets, Nov. 16, 2026",
-      "summary": "Gas and LNG Markets, Nov. 16, 2026 Energy Intelligence",
-      "topic": "Gaas & LNG",
-      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE53VFQ0QkJDdHJCellMMnlZX19KT1B1c1BuQ2NROUREZk5PQm5BUDgyVXJTbkZCTmphNXhxWjZ0Ti01VjB0VU16NEFYc1BCa2VwdUthNUVCX2Mxdm5UeXdEQUc1d3dUVDJwM0NZYm5BMkt3QQ?oc=5"
     },
     {
       "source": "Energy Intelligence",
@@ -87,27 +90,19 @@
     },
     {
       "source": "Energy Intelligence",
-      "published_at": "2026-11-17T20:23:57+00:00",
-      "title": "Iran Winter Gas Squeeze Inevitable Despite South Pars Repairs",
-      "summary": "Iran Winter Gas Squeeze Inevitable Despite South Pars Repairs Energy Intelligence",
-      "topic": "Gaas & LNG",
-      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE14bkZ5eWhVcDJTSlBvSlNMLUpVT1Nna042aEo2RTVJcXhWX1VRSFNhdUJBTDhqYWtaMG9ubFBUU1A4U3h0UU5HeXV5WnEzNDNHc3ZiRFJaSWUwTkRpWWxnNHBNVzdwd05OaWxVc2RjOWZKQQ?oc=5"
-    },
-    {
-      "source": "Energy Intelligence",
-      "published_at": "2026-11-17T20:23:55+00:00",
+      "published_at": "2026-11-17T20:25:42+00:00",
       "title": "Asian Buyers Not Expected to Follow Orlen's Qatar LNG Contract Exit",
       "summary": "Asian Buyers Not Expected to Follow Orlen's Qatar LNG Contract Exit Energy Intelligence",
       "topic": "Gaas & LNG",
       "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE5mWXFLOUcyRHBTVU56ZnltMU1vOE9XZkpNNzNGdFhUU3NjUk5CZzdrVzc2OVcyeFBOb2VFcU04SG1ZNUtFT2U1c1d6UXNWS2hrdVZ1WDhHX0JOcWNpOHdiUFYzYjc4czBON1VNSG1tS0NFQQ?oc=5"
     },
     {
-      "source": "Utility Dive",
-      "published_at": "2026-11-17T17:49:13+00:00",
-      "title": "Elevated demand for gas turbines could persist through 2035: Siemens Energy",
-      "summary": "Elevated demand for gas turbines could persist through 2035: Siemens Energy Utility Dive",
-      "topic": "Elekter & võrk",
-      "url": "https://news.google.com/rss/articles/CBMitgFBVV95cUxOLVJrcC1UM2xMLW9DU3I1YmlqYTV0TGNmdjhybV94YTA5Mm5kNUJLemcyQTB0R1dlcFlRUFFxalU0b2oxMjN1U1FFa1JTXzNvSGJTdnZJTHlZSDhQcHJHVEJxZkEtMDF1NFMtZ0V5TFRyZzRyZ3h5QWFjbXY2S0lRa3Z0Z3V2cjlNYTY0ZFhMc0FTMWRQRFotTDZZWS1nUDZVNTZwWDNoSnVpSm1sZng0LVZZOEVxUQ?oc=5"
+      "source": "Energy Intelligence",
+      "published_at": "2026-11-17T20:25:42+00:00",
+      "title": "Iran Winter Gas Squeeze Inevitable Despite South Pars Repairs",
+      "summary": "Iran Winter Gas Squeeze Inevitable Despite South Pars Repairs Energy Intelligence",
+      "topic": "Gaas & LNG",
+      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE14bkZ5eWhVcDJTSlBvSlNMLUpVT1Nna042aEo2RTVJcXhWX1VRSFNhdUJBTDhqYWtaMG9ubFBUU1A4U3h0UU5HeXV5WnEzNDNHc3ZiRFJaSWUwTkRpWWxnNHBNVzdwd05OaWxVc2RjOWZKQQ?oc=5"
     },
     {
       "source": "S&P Global Energy",
@@ -124,14 +119,6 @@
       "summary": "Redwood builds 2 GWh EV battery reserve for grid storage push S&P Global",
       "topic": "Elekter & võrk",
       "url": "https://news.google.com/rss/articles/CBMi0gFBVV95cUxOMmtTbmRpU2hLZy1HQTBGeHJFaDhHYjluZXpETkRIQ3FrSlFZaHVSb19WVVBhTnNWazJfQ3VuNDhwaDZRMFRaMzJlYXVPTEZiTkozV0tjcWdMWXlsZTQ5TWh2dmh2Rm1jRVdJZzRhbXZJTlpOVGJmT0R6Q1MyV0QyN3ltUTgwb0VEODVvUy1aaVhRVlNfMnhUZnJLeHA2d19tZlBkRFNReTJVT3VTakl6aXFkeDdXWmgydmlBamV2N3ozOGFSSWhNTWs1d0c4Yy1VVVE?oc=5"
-    },
-    {
-      "source": "Energy Intelligence",
-      "published_at": "2026-11-17T02:16:20+00:00",
-      "title": "Natural Gas Spot Prices, November 16, 2026",
-      "summary": "Natural Gas Spot Prices, November 16, 2026 Energy Intelligence",
-      "topic": "Gaas & LNG",
-      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE5kY2NZT3RrY1VsUjlnODNwblhOWlhUY3ViR0MtS3licFU5eE9BT2ZPMUdpb012a1M2YVB5V3N3TnJ5TEdwZG12dXVMNHpLTHNGY1ZheHFIY3hTSzgyUS1ZYTBXalhUaDY0V3ZqSzNVblRBdw?oc=5"
     },
     {
       "source": "S&P Global Energy",
@@ -151,14 +138,6 @@
     },
     {
       "source": "Energy Intelligence",
-      "published_at": "2026-11-16T22:55:44+00:00",
-      "title": "Oil Prices, Nov. 16, 2026",
-      "summary": "Oil Prices, Nov. 16, 2026 Energy Intelligence",
-      "topic": "Nafta",
-      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE9JWXl3Zy14eWFjb3c3eVZrWG9RVjVsSDJ6R1pmTjR4RTVydmljQWlvMnQ0Z1N5eFVLY0xrbnZpTnhzUjE0V1ptSlh5MXd5MjVQSXI2RWpVRVFBeVVDbGt1b1FTMk5qd1pEdmd1aGhvT2tCQQ?oc=5"
-    },
-    {
-      "source": "Energy Intelligence",
       "published_at": "2026-11-16T17:44:48+00:00",
       "title": "Qatar Sends Second LNG Cargo to Orlen Despite Contract Exit",
       "summary": "Qatar Sends Second LNG Cargo to Orlen Despite Contract Exit Energy Intelligence",
@@ -172,14 +151,6 @@
       "summary": "Shell Joins Southeast Asian Oil Stockpiling Pilot Energy Intelligence",
       "topic": "Nafta",
       "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE1MRjVuR1E2cHBDREJXVWtadi1adnBNQTcwLVZoeU5pT0JmbDdoVzFGNWdsei1Zb29TU2g0UlhRM2g2Rm55WjBJcFJVcERsLVBKNF9Oc0ZCbmE1ZkdKY19PWHB4MVRENkQwYndYT1ZycThMUQ?oc=5"
-    },
-    {
-      "source": "Utility Dive",
-      "published_at": "2026-11-16T17:29:20+00:00",
-      "title": "NRG to sell 4.9 GW of gas plants to LS Power for $4B",
-      "summary": "NRG to sell 4.9 GW of gas plants to LS Power for $4B Utility Dive",
-      "topic": "Elekter & võrk",
-      "url": "https://news.google.com/rss/articles/CBMif0FVX3lxTFA2dXNTX3ozTm5DbFlSalNJM0dWMkR5MXpnRUpaTHl3V2UzNXpjejUxUDBvLU9FM19BLVJaTmZlWHNoZTdjYWk4OVlxN3BfWXNtZ2Y2X2NhZnQydzlVNkZRblk2TXlxRjZuRm94dldEczQxX1ltVC1hbWVwWExtMTg?oc=5"
     },
     {
       "source": "Energy Intelligence",
@@ -230,14 +201,6 @@
       "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE9kWVNFcHZma2I3aTdrMmFRRlQ2d3I3OG4ySzNDVmxpSzA4Z2dsekc0SlNGSkcxT3dYNzF6M3pLcElCa1IxbnRBakJqT1RTNVNYS1E5ZHpYWUU0Y0RpaER3V2NubTBCVjNub0lreElURlJDdw?oc=5"
     },
     {
-      "source": "Utility Dive",
-      "published_at": "2026-11-13T18:28:50+00:00",
-      "title": "Southern Co. eyes $100B spending plan on natural gas, nuclear and other investments",
-      "summary": "Southern Co. eyes $100B spending plan on natural gas, nuclear and other investments Utility Dive",
-      "topic": "Elekter & võrk",
-      "url": "https://news.google.com/rss/articles/CBMiXkFVX3lxTE1IYWljZzUyQ2RYclN5VUduREttdkp5UjRmbDAya2UwdWRyc0RGR1RKZi1rTDJzVWszOUpmZVV1MVgzcVE2M0hkWkx5YUZZbG9SRXJ6dVR5WjZxT3h5d0E?oc=5"
-    },
-    {
       "source": "Energy Intelligence",
       "published_at": "2026-11-13T18:08:07+00:00",
       "title": "Norway’s Top Court Voids Three Oil-Field Permits in Scope 3 Ruling",
@@ -254,12 +217,44 @@
       "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE1janNHR2J5NTd1dl82UnExSi1YMFVaX1IzaUNlQjdyaUZDY3pieEk1QnRZRHJxM3l2ZHZBNHFwX1pKd2tTMndDS21Gcmt2WjlFcy1EZUlwNmRlOHlmS00zQjdEbHctTkdnRWl0YnNYU2lMQQ?oc=5"
     },
     {
-      "source": "Energy Intelligence",
-      "published_at": "2026-11-13T02:34:05+00:00",
-      "title": "Legal Spats Cast Shadow Over Kazakhstan Oil Projects",
-      "summary": "Legal Spats Cast Shadow Over Kazakhstan Oil Projects Energy Intelligence",
+      "source": "S&P Global Energy",
+      "published_at": "2026-11-18T05:03:43+00:00",
+      "title": "US grants Slovakia sanctions waiver for Russian oil imports: minister - S&P Global",
+      "summary": "US grants Slovakia sanctions waiver for Russian oil imports: minister S&P Global",
       "topic": "Nafta",
-      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTFBxNmVTb0sxTXg1N21sX213OHNGNWcxWFJqQmkzNU9uTGlPSVpDZnJ3dDZ0aDBwbHpkSWVqa2h5LWY5d0d4eE5NdzJZQ2FWcDNWRmhtUWNBNzh4THBJMGl0cF95b3VxQkNTQWNsazJkcGZoZw?oc=5"
+      "url": "https://news.google.com/rss/articles/CBMi3wFBVV95cUxPcnRReDJ4bDl6TEw1OWtDZlVSYU00YllENWZjSk04UVVobkt4UklpUEVucEVOTnAtQzNzT3NOQ1VhRnROYkxGVVNidS1CQnp5MVBQWTNLcnZ3VDZRUnFURWJTNGJndWVkNERUNnZvWVViTjV5WFBzYk9PcjNlUTNNdzNmV195eDRwQTBCQUlOME9sS1UzNndEM002SjR3UUR5akJLYlFmc3RYM0xINjB4ZXVHcTRzaDYyWTRrN0lsQ3hEQ3F6UV8xZmk1RFJKVE51bVBJQWg0ZGZERWx2N29B?oc=5"
+    },
+    {
+      "source": "S&P Global Energy",
+      "published_at": "2026-11-18T04:31:30+00:00",
+      "title": "Japan domestic oil products Nov 23 publishing schedule - S&P Global",
+      "summary": "Japan domestic oil products Nov 23 publishing schedule S&P Global",
+      "topic": "Nafta",
+      "url": "https://news.google.com/rss/articles/CBMi4gFBVV95cUxOc1hocDhXUGc1d0NQR01pclhaZGNDUjRDZUw2UTJSX3ZGTTZlWVhvbndTa2JlRS1LcWh6OV9uVm1Mc1hUNGxjQzQ2UjkxZ0JKMmxNUENvVXpJTW8wUGxCWlZqNjZaV21pdkhLbEV3dU9qTVYwUTRxTThCRWxQZEdJYTV4cFJ4Si1GNm05NWFOMDQ3eFg0alkyRHRDX3FBd1hCYk9NMHhQQzVMWmdaaUZnX0JCSnV5QW9RcUtPLUppOHdXVTRkM0M5Q2RmQ0MwMmZYTFkyRXV2NU83dUVxWmpvRzBB?oc=5"
+    },
+    {
+      "source": "S&P Global Energy",
+      "published_at": "2026-11-18T02:23:43+00:00",
+      "title": "Platts clarifies assessments under proposal to discontinue Ohio, Massachusetts Renewable Energy Certificate assessments - S&P Global",
+      "summary": "Platts clarifies assessments under proposal to discontinue Ohio, Massachusetts Renewable Energy Certificate assessments S&P Global",
+      "topic": "Taastuvenergia",
+      "url": "https://news.google.com/rss/articles/CBMitwJBVV95cUxPZ3h5SU5QdEFPQ0o5ZlBnTGJFM2plck5tWm5tZTZfRGxfTW1CdDRDRTFGWXc5S1RUNDh0RmRvWkJST0NPa0xackJNYmhKNUU3VXBDN3pxbjlzRXduRXVXWVlJM0dBbHV0NXVsd0poRjVTWFluMjM3UnhjVmdmSEdLNFBSWVFBQi15SFFzM0dtMTZYZVlxZFhKMjNHNEVpVmlGeTFpQlhUb09sbU5CSnc3a2VjbzdsamNLa3ctZ1R4LUo2dEhtZ1VsY1dtV3VVU3V4UE05cnZzU05XejR6X1NORUNiZDZ5ZDRWWndoZ0FXSUFaa1FPcUNvWm0tZ1ota1dnMW0tbXlSd011UExfV1dhQ1dMS2hudTZrWE5SNDNJWVBtNVpWYTBWQ1dYY01QU2ZXQjg2U2ZUNA?oc=5"
+    },
+    {
+      "source": "Reuters",
+      "published_at": "2026-11-18T02:16:00+00:00",
+      "title": "Oil prices fall as higher US crude stocks temper supply risks",
+      "summary": "Oil prices fall as higher US crude stocks temper supply risks Reuters",
+      "topic": "Nafta",
+      "url": "https://news.google.com/rss/articles/CBMirwFBVV95cUxQbmp3REJQam1xdjkyMkpCN1JlSkotTnJNM0JEWDVFNmJqZ2FHbmNIN2E0V2twa2N3djBLTXlNNVJvcDJmZVNXMlBlQnk2VG1FTThnX0hQbVRqS2dKbVVBdXl6MWR5ZHo0S2VneWt2bUdwVjE4TnNxaHFLN0hHNU9IUVljVnNXLWJTeHdORFFJX3BfQXhPTThEbGFYQXhYaGNneHRHcVRGS2NyOFhxTzVN?oc=5"
+    },
+    {
+      "source": "S&P Global Energy",
+      "published_at": "2026-11-18T01:44:51+00:00",
+      "title": "Large foreign buyers pour billions into US shale gas in pursuit of integration - S&P Global",
+      "summary": "Large foreign buyers pour billions into US shale gas in pursuit of integration S&P Global",
+      "topic": "Gaas & LNG",
+      "url": "https://news.google.com/rss/articles/CBMi7wFBVV95cUxPMGVDQld2X3RPdEJVUzRLbnZxNm9aTTMwdi1HdFhaTk16bmhkMXZSTzVERG50MW90VlVGQ3Q0SDcybF9taHdUaXR4bF93MWd0dVpJV0ZjN25JalkxUWdkSC1BUVFrQmhNekNrMnVJOUVxUWNvZFNIVWdDOW1Za3JTXzFZUmc4dFdHcHZrNzZTNlE2d2gyOFJaQTROQS1fN2lPRTlnWlBLWXdudXMyeUpMenZwRmNBYnVNdVRVdE1zcFh4U19jcXo2ZlNLVFR6aGlPNExCOEhpZnREQTB3MHRkSmw5NkFydHhEMDZFdVBxZw?oc=5"
     },
     {
       "source": "Energy Intelligence",
@@ -271,7 +266,7 @@
     },
     {
       "source": "Energy Intelligence",
-      "published_at": "2026-11-17T22:06:16+00:00",
+      "published_at": "2026-11-17T22:05:49+00:00",
       "title": "Market Watch: Nymex Rises Amid Diverging Weather Forecasts",
       "summary": "Market Watch: Nymex Rises Amid Diverging Weather Forecasts Energy Intelligence",
       "topic": "Energiapoliitika",
@@ -302,12 +297,12 @@
       "url": "https://news.google.com/rss/articles/CBMiygFBVV95cUxNU0ZTTkw2LWNabWNsdzBOM1FzRF9nWk45NHcybXI1RHk2RF8wZDRDeDRiNE9uT202T2RWRHRqd1AzcFg5LWtlY3M2dlo4eTIzZHRVaUZKX21FUE5tcVNzR2VnT3RWRHdXbmU4QXlRUmZzWFZIZVZ0M2hXeFR6RE1QM1U0OWlDMi1SLUQ2V2tBVDFlU3lxM2lpeXRNa21CNjFMQTlOZV9MekM0WWUtREZHWmZ4TGJUa2dhNUxObDBIcTRRSGgwSUg0MXVB?oc=5"
     },
     {
-      "source": "Utility Dive",
-      "published_at": "2026-11-17T17:34:13+00:00",
-      "title": "Most states fail ‘community power’ test, advocacy group says",
-      "summary": "Most states fail ‘community power’ test, advocacy group says Utility Dive",
+      "source": "Reuters",
+      "published_at": "2026-11-17T17:17:01+00:00",
+      "title": "Fact Check: Mass blackout warning attributed online to Britain's National Grid is fake",
+      "summary": "Fact Check: Mass blackout warning attributed online to Britain's National Grid is fake Reuters",
       "topic": "Elekter & võrk",
-      "url": "https://news.google.com/rss/articles/CBMinwFBVV95cUxNaTVpNFpLMDFLYVRMck51eEFhQ3AydGh4TmtJSFFQaS1BU3c5alY5YUlSVW50SkR0WjBvV0djcHJKM3RURkxRSjVleS1wdHN3VnFpaHpsQktEdXZMQXY5cUtoR0JmVFhTemFpQmdDRDBVMGFNeVdkeU95b3dtRnV6UXlLWGlmT01xTmMzYzR0QktobUV0c3hBSDdCT3FMaUk?oc=5"
+      "url": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxNWlRlODhOb1h4YzVOcEZrb0VlWU1jUHI3VEE1VHFNMkU2WkxyRUV2OHlHdHJmUHNOQ3k0cmtrbnYta09FeEpfX0ZXaFR4QVY5SjRVaEtOdVhyLUlWenVTZzZtY2Vic3VRaWZEZzFIX1JXQVc0LWpSWGdGUFhQMzhrTXpfNFB6R2tfdGZYZTlhY2k2Rjl1VVNfVlNrbFJqTWxfeHF3eU1ZOFpJbTgzUmFiQ3pJQlZpa3Z2?oc=5"
     },
     {
       "source": "Energy Intelligence",
@@ -318,12 +313,20 @@
       "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE5nYnFvaXhDalB6dWpzamJvTUhfSDR6WE9TSU9OblExQnhFWUwxT1BGbFRoYktXdjZZaFdsUGFPODZ2clVaTVZkelFLY3J0UXluR2M4N3c4QVlHOGREY2FIOVcxRzQ5NEI1LUhxSTVoSFRhZw?oc=5"
     },
     {
-      "source": "Utility Dive",
-      "published_at": "2026-11-17T16:49:13+00:00",
-      "title": "Grid operators file closely watched large load interconnection reforms at FERC",
-      "summary": "Grid operators file closely watched large load interconnection reforms at FERC Utility Dive",
-      "topic": "Elekter & võrk",
-      "url": "https://news.google.com/rss/articles/CBMilgFBVV95cUxNclFpTEhzLUU5YjU4c0xrSjBzRzJ6c2x3SU5BaHc5a3c4WHpMWVpHYzhZUFJ1QktGZXB6bWNrb210aWxKZm5hVEV0OE84UzgyMzFYalN1Vm8xT0lrdzVFMnlwamVGWHlxd002VXpVaTVRY2FNWVY1U3owRUItME9zZVJzb0NTekFCZm9ud2xBSG03WlNQcHc?oc=5"
+      "source": "Energy Intelligence",
+      "published_at": "2026-11-17T16:37:53+00:00",
+      "title": "Refining: Margins Remain Stratospheric Even as Products Prices Ease",
+      "summary": "Refining: Margins Remain Stratospheric Even as Products Prices Ease Energy Intelligence",
+      "topic": "Energia",
+      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTFBDWklCNU94Q20tQXBveEE5M0RyR0ZWcktabEs2Q3BiQ1RteG5JLXFHS2JkNW9mQWk3RFNESE1GZndGWWowWGNpLURHbkR5WDI0UUxacjdpTTdWeUJMWFVhOU5JNFBhMW0yZHNXeVUyUE9SUQ?oc=5"
+    },
+    {
+      "source": "Energy Intelligence",
+      "published_at": "2026-11-17T16:37:53+00:00",
+      "title": "Demand: War Lowers Consumption But Doesn't Alter Trend",
+      "summary": "Demand: War Lowers Consumption But Doesn't Alter Trend Energy Intelligence",
+      "topic": "Energia",
+      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTFBkUF9VNF9kbldEY3ZEWFlKZmRheFJxTHZfYmx0REpFTzlNanFaandNUndYOXItaDhXZ1NQcGd2OFktRGVFMzFJOTVLOXV5ZHVNdUZFSzZSamQ4ZkZ5b1g3QW5seFJ1TnZIQTZTc2xCaFRvdw?oc=5"
     }
   ]
 }
