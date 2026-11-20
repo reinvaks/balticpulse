@@ -1,10 +1,21 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-20T06:58:52.358846+00:00",
-  "sources_ok": 5,
+  "updated_at": "2026-11-20T16:02:00.934073+00:00",
+  "sources_ok": 3,
   "sources_total": 5,
-  "errors": [],
+  "errors": [
+    "Reuters: HTTPError: 429 Client Error: Too Many Requests for url: https://news.google.com/rss/search?q=site%3Areuters.com+%28energy+OR+electricity+OR+power+OR+grid+OR+gas+OR+LNG+OR+oil+OR+nuclear+OR+carbon%29+when%3A3d&hl=en-US&gl=US&ceid=US:en",
+    "IEA: HTTPError: 429 Client Error: Too Many Requests for url: https://news.google.com/rss/search?q=site%3Aiea.org%2Fnews+%28energy+OR+electricity+OR+gas+OR+oil+OR+renewables+OR+nuclear+OR+grids%29+when%3A7d&hl=en-US&gl=US&ceid=US:en"
+  ],
   "items": [
+    {
+      "source": "Energy Intelligence",
+      "published_at": "2026-11-20T09:38:53+00:00",
+      "title": "Texas Blue Wave Puts Spotlight on Data Centers, Oil and Gas",
+      "summary": "Texas Blue Wave Puts Spotlight on Data Centers, Oil and Gas Energy Intelligence",
+      "topic": "Gaas & LNG",
+      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTFBxcFlXMGVwNUpkY2JhWldybURxa1pxMmtGUTMzeEJnSDlyb011Y29xTEo1N21BSm1WQ0x2dmg1ZE5EQWVQeEFhbWU1TTNwbG9RU3dUc0NzNE9HcnB5OWZWWF9xb18yaEdBNFlYaTZXc0VBZw?oc=5"
+    },
     {
       "source": "Energy Intelligence",
       "published_at": "2026-11-19T23:16:57+00:00",
@@ -20,14 +31,6 @@
       "summary": "Gas and LNG Markets, Nov. 19, 2026 Energy Intelligence",
       "topic": "Gaas & LNG",
       "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE1yNmVHYU8tYUJUSTJxbWhaTkRMaGhIYjhMUlUxd083bERtM0NxZWw4TTVqSDBWU3YtOURzamJfODJzZjEwVFM1Q3ZSMU5GWm5vTWhzbjU1S1kzYzVla0dWZTdVRlo0NWNaUlJmUnRvWFNnUQ?oc=5"
-    },
-    {
-      "source": "Reuters",
-      "published_at": "2026-11-19T18:42:45+00:00",
-      "title": "US gas exporters more comfortable signing European deals after EU delays methane regulation",
-      "summary": "US gas exporters more comfortable signing European deals after EU delays methane regulation Reuters",
-      "topic": "Gaas & LNG",
-      "url": "https://news.google.com/rss/articles/CBMizAFBVV95cUxQU0ZuUlpxWkdlajd2bGh6anB2TWphTmU2TVVLR21rWnViZnNEUmNMOVRVLXItNjNxTWZ2RUlDa04xdXU3OTNwXzlyVk90cEhGX3RvM1lSYW5LU0E3NnFvZ2dSTmQxUl9tUktzcGh0NEhZOE9RdDQ2WXVvbUdma1UtN3h6eEF1REdXSGtaTHVoNVJOOTd4WFdveE0tT2tBWjlYNkZEakJJbTZRbEw0dmF0cmFmQkQ5Yy1jTE1YZ2xwS0dQWDVqTXFlRDdpeGU?oc=5"
     },
     {
       "source": "Energy Intelligence",
@@ -46,28 +49,12 @@
       "url": "https://news.google.com/rss/articles/CBMickFVX3lxTFAzMHFpWUFSUXh0RHEwZkNBLVFKS082ZUswNEJOSF9NZjVKb0hxNVcxcFMzUS16WVBQVmVNZmtrUzNhU1RKdzRJUHE3RzJNNUpmVHFXc2FhdUNiWGs0LVV6ZlFKTWFHMkxWR2YyaS1sZnR0QQ?oc=5"
     },
     {
-      "source": "IEA",
-      "published_at": "2026-11-18T13:35:54+00:00",
-      "title": "Extreme weather poses growing risks to global oil and natural gas shipping, new IEA report finds - IEA - International Energy Agency",
-      "summary": "Extreme weather poses growing risks to global oil and natural gas shipping, new IEA report finds IEA - International Energy Agency",
-      "topic": "Gaas & LNG",
-      "url": "https://news.google.com/rss/articles/CBMivAFBVV95cUxPVzEyaDRXMTFMbnlVbjRuODlwSndsb01TWWRZV2F3b0ZzeWZrejlqYThKZjdBNUVNcURXdk1RV0xiNlRMbUxVbHhsN2RicmhEYzFnTWFkS3NyalY4UTlUU1QyS1k1OUNXNmlTX1FOdEFvX191X0pQOUxQVGlJclFmM295VVAwWWNGZG9sbWNIbnFWYjdTMFF6VFJncWJwWFh6MktUZW16X0ZMaU9hOEs1Ymp3S3Y1TXlIS2E2cA?oc=5"
-    },
-    {
       "source": "Energy Intelligence",
       "published_at": "2026-11-18T02:18:53+00:00",
       "title": "Gas and LNG Markets, Nov. 17, 2026",
       "summary": "Gas and LNG Markets, Nov. 17, 2026 Energy Intelligence",
       "topic": "Gaas & LNG",
       "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE1BdGNEalI1dnFEbTRiYU1nQ2h0QTlmV0ZwckZCQVFQbklyQWVMTVRHYjZ4dHE4U3pDb0xaV3V2RTAtcEpvU0hNYWQ4ZEpKVm9GRWE5NDFMWkNXS3JMVnAwTHhPeWliRWRGRHJvWW00WVJPUQ?oc=5"
-    },
-    {
-      "source": "Energy Intelligence",
-      "published_at": "2026-11-17T18:20:01+00:00",
-      "title": "European Border Price Estimates, Nov. 17, 2026",
-      "summary": "European Border Price Estimates, Nov. 17, 2026 Energy Intelligence",
-      "topic": "Energia",
-      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE1VOV9sZ3o4QzdaMi1feldGMlVkQ0g3aHRSRmFWRkUzWmJQUWlnZnJ3NFBXS2E4YW1kRVRlWHN2ZTJzNHJjTlU0UmZ6akVBZFpsTGNxQjhFRnB4Z2JLM0t4S2tjYk85bVhBbDIzSk1hTlFPdw?oc=5"
     },
     {
       "source": "Energy Intelligence",
@@ -110,36 +97,12 @@
       "url": "https://news.google.com/rss/articles/CBMi6wFBVV95cUxQWEJtbXBRdDJxMVJPREI5dDVCd1cza3JiZlFzLXdxa1JwNUJuYlpmeGlsV3VHSkJ1dlZRS3dIZl92THE2RGxFeEhaRTdWWHhneGFNRmlWekYzWEZRbXZ4eGRBX1JrS0J5NDR0MVZMZG5CZktya0JOckc1bnl0V0hHRlpQRzE0VHNxT0xTT3h0LXhSakFtb3d6YXNkWDEyTFhiS1Rha09vNHBmTHR3OVhCQnV0SFFIaHlNX2NkX05nc2J6SW1HUWo4LUZxNFZxZ0hzeFpvSXlhZGgxVnFReThwQWRkY3ZwRGhJbTJ3?oc=5"
     },
     {
-      "source": "Reuters",
-      "published_at": "2026-11-19T18:38:07+00:00",
-      "title": "US energy chief Wright sees no sign Europe wants return to Russia energy",
-      "summary": "US energy chief Wright sees no sign Europe wants return to Russia energy Reuters",
-      "topic": "Energia",
-      "url": "https://news.google.com/rss/articles/CBMivgFBVV95cUxNZE1wRjV3NXNuaVRoWmVQcE5aZ2xTS2daTWgtcE5mWnpaWFBudTdCT2RwelhTLVRaU2pJZVFWa3dxR0NtRjg3cHRuZGhnQ0V1c3FGZWhqWGJMTGVEWC10eFlqVmozMl91dDlNTmduOU9oMEpNOVM5NzFLZ1dtVllZRndqU01IQms1WHRlNXFFLTlMYWdSejRvYTdfU2pPSzlqRTVBOGZBamROdmFyVFIzbXozQlZhSmVlZTZiME9B?oc=5"
-    },
-    {
-      "source": "Reuters",
-      "published_at": "2026-11-19T18:19:25+00:00",
-      "title": "Romania's Neptun Deep gas to boost exports, could curb LNG flows north, S&P says",
-      "summary": "Romania's Neptun Deep gas to boost exports, could curb LNG flows north, S&P says Reuters",
-      "topic": "Gaas & LNG",
-      "url": "https://news.google.com/rss/articles/CBMiwwFBVV95cUxOVFM5OTAyUmN3V29IUG9fV21sUlZyMlJlaHF4ZWNPZHdLXzQ2S2V3T3lBbHp0SkhHNGp2WXhrVk1HcFdKRkVVMmctV25ITGNEY2plS2ZPU09EOVpSOFd6cGxYV1ZsZTlKSXotRkZlanNVRlVDVnc2X2FrV05kdzhFNTdOTTBCR1NScmoybmtRcGh3eGRrUlhCME9nMFl3UW5EX055eGpmREExRTJiRDYyVTVsRC02SVlyTVVkSTh5ckJtbjg?oc=5"
-    },
-    {
       "source": "Energy Intelligence",
       "published_at": "2026-11-19T17:50:52+00:00",
       "title": "COP31 Draft Drops Fossil Fuel Language, Keeps Power Target",
       "summary": "COP31 Draft Drops Fossil Fuel Language, Keeps Power Target Energy Intelligence",
       "topic": "Elekter & võrk",
       "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE1xU1NYTi1yNkVrS1E2S3c0d3RRcUNUMXEtcG9Hbzl5MHRJVlgxNXJJZ1pFc0YtQ2hBQlA5QzdTUnhxbFFyME1CeGtfNTdkUFdxaXhsZzN5X1hUZ0RIeXVaTjVIb2FTdWtidGlndW5PTnRFUQ?oc=5"
-    },
-    {
-      "source": "Reuters",
-      "published_at": "2026-11-19T14:09:40+00:00",
-      "title": "Schneider Electric warns high power costs could push AI investment out of Europe",
-      "summary": "Schneider Electric warns high power costs could push AI investment out of Europe Reuters",
-      "topic": "Elekter & võrk",
-      "url": "https://news.google.com/rss/articles/CBMiyAFBVV95cUxOMV8wcTVyeEdDUFZNSW9xSGJtdnlPNW9WUjRZdVVsc1haRkxWZ3lwcnY5Zmx3dk0xZXRySnV0ZlFqLVlyT1BYVjZZYTRlRHRQZF9oRTVscE5UVXBMeml6WW03TmdHNXhrOTh2QzNqR09YeWtZSGtYY3ltLWh1N2tkeENMMVRuRzhkSF9WSTBONnFyN1VGRzJyVE1vUWZDOE1ySnRKbzl2Y2JiSXg0Q015TGZLRTBEWlpCRmJLX2NZZGhMV2Z3UGlYRQ?oc=5"
     },
     {
       "source": "S&P Global Energy",
@@ -150,28 +113,12 @@
       "url": "https://news.google.com/rss/articles/CBMi1wFBVV95cUxOaTU2UGJyaUR4NjR6WW1USDRmQWdiSFQyUXVHY0k2b3hjN2t5aG5jRXpoQ0xVdlMzYXlqa3BJRThqZ0h6TElEb0JycjUxTkZ5OW5BTno5enBUWnVGQ3R0N0RWNV92U0JkaDM4NWUyaGMxZTNuUnA3VnZPcTVDNnJnVlJsd3RDWVN3QXJBZlRlYU1GRi16aE5qTXM1Snl2QWFrUEZ4bzh0YzdFMXpTcUU4QjFaSlNJOTNVMzVDTHhHeGlkcWNuZV92eHExS2lCNHpMOElkWDVOMA?oc=5"
     },
     {
-      "source": "Reuters",
-      "published_at": "2026-11-19T05:05:00+00:00",
-      "title": "Energy-security response to Iran war could cut oil demand by 4% by 2035, IEA says",
-      "summary": "Energy-security response to Iran war could cut oil demand by 4% by 2035, IEA says Reuters",
-      "topic": "Nafta",
-      "url": "https://news.google.com/rss/articles/CBMixwFBVV95cUxNRlVLekJsV1lXTGsxOWFDNkJLTDZhV3JSeFRQWS1zNXlobWJ6cDB0dXdhUE5IZ2VBY3N1THJOdVFtNmhEcnVTcUpWS2x4cVJRV1BscHJ2cVRmbGxtUEJLd0xvRUhkYlpUZU1PcnZpUzJ5cWx5R3ZnWFN5VXdiWmkwczJpci1yQkpVWWtMNV9yY3JHc3NfNzc0V2R2ZWlkSDVaa3V1MUhJVUNoSV9MQl91ckE5c2J4c1c2VFlPSHBIYzAxX2RZYXpZ?oc=5"
-    },
-    {
       "source": "Energy Intelligence",
       "published_at": "2026-11-19T01:09:48+00:00",
       "title": "China’s $750 Billion Grid Expansion for a Greener, Electrified Economy",
       "summary": "China’s $750 Billion Grid Expansion for a Greener, Electrified Economy Energy Intelligence",
       "topic": "Elekter & võrk",
       "url": "https://news.google.com/rss/articles/CBMickFVX3lxTFA0VDFhSTJCZk5xc1drRFlLQlplLXpIVklvWE1ydE80YmlzanZxN2pvUGR5bnh6ajE2eV9xWENCdkZYU185b1FwSVBmOFE5V2MyNjB6VzFzRmM1QmFsV3BJOXhFWmo0bmpNaGd0SU02ZVNRQQ?oc=5"
-    },
-    {
-      "source": "Reuters",
-      "published_at": "2026-11-19T01:00:00+00:00",
-      "title": "COMMENTARY: Trump-Xi-Putin summit exposes Europe’s power deficit",
-      "summary": "COMMENTARY: Trump-Xi-Putin summit exposes Europe’s power deficit Reuters",
-      "topic": "Elekter & võrk",
-      "url": "https://news.google.com/rss/articles/CBMivAFBVV95cUxOcXhYWk03Z1VnUVZYME1MaUxfVzRsU25WYjRHTTQwZkhFbmE1dmNiZHYzc3p5TEtJUHpQNTU0R1dtMUk5QlEzNzd5b2k0Tl81emFncl9PU2FkRnRIYVdBVXI0OC1ZeEVDd0ljaUp1OGhUeG53WjYxNlVKcVRhZEgzQkdueXZVekZsVGZvTi11YW9rSkxwNTF0ZWh5NTZFWm8zNHJQRW0zQ19mTUdKdXk3UmJCWXRzdmk4d1J1Wg?oc=5"
     },
     {
       "source": "Energy Intelligence",
@@ -190,14 +137,6 @@
       "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE1MaDNRQkN6Z3RKM0NNT3pMeEdTUU8tM1l0OE5ubDBnQmJOcy1YV3M4MFdjRnVSbHl2WDVpd1BpZWJteldoWVN2czRZbnZQZGd0R25vZXhMOTR0QUdnaW5tZlNySjhCYUhKajF0YWdjLVIzZw?oc=5"
     },
     {
-      "source": "Reuters",
-      "published_at": "2026-11-18T17:31:00+00:00",
-      "title": "EXCLUSIVE: Orlen, QatarEnergy in talks on new LNG deal days after contract termination, sources say",
-      "summary": "EXCLUSIVE: Orlen, QatarEnergy in talks on new LNG deal days after contract termination, sources say Reuters",
-      "topic": "Gaas & LNG",
-      "url": "https://news.google.com/rss/articles/CBMizAFBVV95cUxNN09ma2xvQVVUbWJDcFlLNWNXVUZJQmk4YnJNRkZIODF5VkNxX1BMemVKR3FxYTNMeEM1MEtGemYtQ0NrY2QwbWlDbV9YcGVrX3VuaUtXX040X2xET1JqckxHSWdUdUhXTE1YVE1lMUZabWotTnBlM2NFMDZrSFRZOGR4RTllNm5sUzM5ZkEwUm9jc0tYajk4U0RYYWxqaXJodW5rN1hMcWZ1WEtTZE5FQWRXQ2dMWVZYSWk0OTBCX2VUWkNONHQ0NWJYeWQ?oc=5"
-    },
-    {
       "source": "Utility Dive",
       "published_at": "2026-11-18T15:59:52+00:00",
       "title": "The grid will fall short of AI’s power needs. These 6 resources can close the gap.",
@@ -206,28 +145,12 @@
       "url": "https://news.google.com/rss/articles/CBMirwFBVV95cUxOWDVhUzdPNF9BQkhBYnB2ME95VnJaYlc0TFFtWk5TVlJEdDVBOGZuRHE3bHczU1FFaWMzd29hVnJNdnM3TXpBZTc2UXNnMml1dEc1aUhaSTBucVoyRUVQZW9mNWlEcFB1MGFrcHhlY1ZpR0hxcEYzbEZPb3hlZWVMWWZVRnA5bDVPY2N4QTBDc2VzWWtQenJtTVJCV0UwNkh3b2tKR3huQXlfZzItb2RZ?oc=5"
     },
     {
-      "source": "Reuters",
-      "published_at": "2026-11-18T14:45:43+00:00",
-      "title": "Europe EV sales jump in October as high oil prices, subsidies fuel demand",
-      "summary": "Europe EV sales jump in October as high oil prices, subsidies fuel demand Reuters",
-      "topic": "Nafta",
-      "url": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxOUHp2TzJ2Y05ya3ZTTlItZFoxczJaalNkTGJtUXU3d2VEZG8yQlJIUEl1RDdiN0hxRlE3WXAxVzdFRGRpeXRMTHJkVEE5Z09uMW1wR2VXUVZDdHBPbXdIMWk0SXdjeFZiZ3htVUF3RkxibzQ0VU9BYTdZTkYxSU8tUHFvRkNyWTVxUlFrQ0JBR0hINU9mYXA4ZEpIZ2swLWpOS2hwOGRVbzBjamE5dHFfZ3pzd1NFOHc4?oc=5"
-    },
-    {
       "source": "Energy Intelligence",
       "published_at": "2026-11-18T13:40:02+00:00",
       "title": "Physical Bottlenecks, Not Megawatts, Threaten AI Power Surge",
       "summary": "Physical Bottlenecks, Not Megawatts, Threaten AI Power Surge Energy Intelligence",
       "topic": "Elekter & võrk",
       "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE9vdFVnQUVNWWZCcHQ0VmtLV3IxU2tIZjAyZlREc3JmNFhybGZ0X0RxUG1pcUxKaWVkNlkzMm1GeGVYWE04UDRUd0htRDZmcjdCclRqQ01taGZ2Z1lITGwyaU9GTFR2LTZ6X3VoZzE1c0JDZw?oc=5"
-    },
-    {
-      "source": "Reuters",
-      "published_at": "2026-11-18T06:11:31+00:00",
-      "title": "QatarEnergy's LNG expansion may leave it bigger but not less exposed",
-      "summary": "QatarEnergy's LNG expansion may leave it bigger but not less exposed Reuters",
-      "topic": "Gaas & LNG",
-      "url": "https://news.google.com/rss/articles/CBMitgFBVV95cUxNaDhzZEk3LWh5X255cUFCZWFpNExoVzBXQk1idWhGakprTjQtQ0xMbkhPZjluaThIeFF5NjVVYWcxNzExaVNpdHNLX1oxRlM5ejhYaU8xS0FYbW00LVZxdDI2M2JXRktNRmRjcEx0TjhwQy1DV0lYWHhzZ29FR1RoejJxeEVSZXNGdDVNU0F6REFKcnk2M3BOOU4zdnhkWUFEZ3BFdUJEM2ZPMk00NjFjNURWSTRydw?oc=5"
     },
     {
       "source": "Energy Intelligence",
@@ -254,20 +177,12 @@
       "url": "https://news.google.com/rss/articles/CBMitgFBVV95cUxOLVJrcC1UM2xMLW9DU3I1YmlqYTV0TGNmdjhybV94YTA5Mm5kNUJLemcyQTB0R1dlcFlRUFFxalU0b2oxMjN1U1FFa1JTXzNvSGJTdnZJTHlZSDhQcHJHVEJxZkEtMDF1NFMtZ0V5TFRyZzRyZ3h5QWFjbXY2S0lRa3Z0Z3V2cjlNYTY0ZFhMc0FTMWRQRFotTDZZWS1nUDZVNTZwWDNoSnVpSm1sZng0LVZZOEVxUQ?oc=5"
     },
     {
-      "source": "S&P Global Energy",
-      "published_at": "2026-11-17T11:13:57+00:00",
-      "title": "INTERVIEW: ADNOC looks to deepen India footprint through crude, chemicals, oil storage - S&P Global",
-      "summary": "INTERVIEW: ADNOC looks to deepen India footprint through crude, chemicals, oil storage S&P Global",
+      "source": "Energy Intelligence",
+      "published_at": "2026-11-16T17:44:48+00:00",
+      "title": "Qatar Sends Second LNG Cargo to Orlen Despite Contract Exit",
+      "summary": "Qatar Sends Second LNG Cargo to Orlen Despite Contract Exit Energy Intelligence",
       "topic": "Gaas & LNG",
-      "url": "https://news.google.com/rss/articles/CBMi8wFBVV95cUxPdFM0Njgzbl9nWm9MWXQ3OGhuSnROQlVBcXB0SU9ER2dlMUE0QzlZM2hUbDZ6OGl4LXRHN0lWRVV4UEhkbmFkb2ZKVjJJdWh2YlVlMW9hOGh0YlNNbkROVk81M0J1OERBVFl2WGFrNEFwbk5vbFUzc21wR0xTWkZDNVBJUm5vdldYZnUxdm1XcWFLRTNuT3JkZ1ZRc1BBQkZKUmNEUjNucnVLSExIU0hSaXlQOUQzVUI0d1BsM3ZqZS1JTE1hTWRxY3pwVHQ4dEZZLThlQlhVNnROWktDTjExQUl5SzY5NVJpUC00TlJwVC1GWjA?oc=5"
-    },
-    {
-      "source": "IEA",
-      "published_at": "2026-11-17T08:00:00+00:00",
-      "title": "Joint Statement by the Government of Japan and the International Energy Agency on the establishment of the “IEA-Japan Oil Security Hub for Asia” - IEA - International Energy Agency",
-      "summary": "Joint Statement by the Government of Japan and the International Energy Agency on the establishment of the “IEA-Japan Oil Security Hub for Asia” IEA - International Energy Agency",
-      "topic": "Nafta",
-      "url": "https://news.google.com/rss/articles/CBMi-wFBVV95cUxORUx6VER0eXFSMF9PRFQ4bERjLXBsVVNKVnpvLWwwbkRILXcycGtQZjV4Vl82NjBKSEpzUWl3Uy1GRno5RXE3TkRxMHNWcEM4RENJZXJBc3VwNmdBcG84QXRfMnFhdllYWV81WFdkcHdOaGQ3T3ZKZFdiVUN6UmRjSE9CUXdaRUxTang1cjR2RXRSZ1FJMGUwZ1BJLTRqdmE1TVRLRnVnY1JVTEhoc2ViMzhLeEJNZ0hFNEhCNENFREdNb3d5TXJadzlheGxHOVVmOVgzbnh4el9fUXdiVGhXX0daM0VIem14UzRHLW5lNmlrRHl1WjBhQnJSWQ?oc=5"
+      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE5YeW1NTkxJZkVSWlVua05HaUtRSldyN0JSRlA5YjVWT1JOUU9BbVFlYzU2T1V1c2dkZ1p1QTJqaWlFdkR1eUp2MFpxT3lJYTl2dzBUN3RBUzB3bWlNUU52MG1pNTV1ZUlKRk9rS01ZSUlWUQ?oc=5"
     },
     {
       "source": "Energy Intelligence",
@@ -294,20 +209,44 @@
       "url": "https://news.google.com/rss/articles/CBMickFVX3lxTFBvX2JfVVpjR0VnNmo0WUZUM3lIdTBvZ1RiTjdiSWItQUw2VEx6V3M0V1haQm45cm9fekFMWmxudG9LVWE1UDZyUGd6NEZuMEJOUDVDX2liaG9XcHZhSXo3N192UVVkcHQtVG1HbGhiTHktUQ?oc=5"
     },
     {
+      "source": "Energy Intelligence",
+      "published_at": "2026-11-20T16:00:48+00:00",
+      "title": "Brazil Elections Put ‘Donroe Doctrine’ in Check",
+      "summary": "Brazil Elections Put ‘Donroe Doctrine’ in Check Energy Intelligence",
+      "topic": "Energia",
+      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE5PUGZ6cW5kQ29veGtNQjd0aEJncVA3ZWFyM19WLVpBRE5teFRFWUFYVGlPc2hMRElUUnZzQkROcDhUUk1TWHVsMlJPdkE4TkY3ZTB0UjVQT1NyWmIyNktmbW5SZHlQUXkxdGdIaTNFNjd5dw?oc=5"
+    },
+    {
+      "source": "Energy Intelligence",
+      "published_at": "2026-11-20T15:25:14+00:00",
+      "title": "COP31 Players Discuss Road Ahead for Electrification",
+      "summary": "COP31 Players Discuss Road Ahead for Electrification Energy Intelligence",
+      "topic": "Energia",
+      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTFBLN1c4QjhDTlRld1cyQjV5MVc1N1ljSmdOZ3hDTHRmNF9ETm5KMk00NVIxYmVZVU44VWgybl9MSTlXQzZ1dFlsU1lQTWRWdUtNNGthV2E2Mnl3UFlNd3dZS2RqRURmaEdSLW1DSnVaZS1wUQ?oc=5"
+    },
+    {
+      "source": "S&P Global Energy",
+      "published_at": "2026-11-20T12:07:46+00:00",
+      "title": "EnergyCents Podcast:Digging deep: The promise of superhot geothermal - S&P Global",
+      "summary": "EnergyCents Podcast:Digging deep: The promise of superhot geothermal S&P Global",
+      "topic": "Taastuvenergia",
+      "url": "https://news.google.com/rss/articles/CBMi3AFBVV95cUxNRmtuMjM3V2JIQnotd3p6WlVVRjBuWjhtTGFSMHU5Y2dTUjhDallEQ2JFTjktb0FHNFBnZmx1VGhWa2JXMEdoM090dXNJVTZyV1lURlJ6TmliYW5DSmhVMFhZNkVkLWphejhQZU9yV3pGbWp4WHhPM3h1cnZsT2FyWmJEUlZDaFhJUGhDbUFPYTMxRmhLNG9xdDlYOENLb2RUSHR4NTJoSXQtVm5UN05XbnVIMU5CMUZ5aXU1QjVVbzBOc1o5TGV3VmFhbklwQlhqeDlLREZJS2xzVFZs?oc=5"
+    },
+    {
+      "source": "Energy Intelligence",
+      "published_at": "2026-11-20T09:38:53+00:00",
+      "title": "Electrification Push Moving Faster Than Diplomacy",
+      "summary": "Electrification Push Moving Faster Than Diplomacy Energy Intelligence",
+      "topic": "Energia",
+      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE5VcFVCdUZlRnBha2ZCMVBWczNtWmI5SXY1RkVtQXlXUU9XcG5xbElVcmZ0OXFYSk9BNzcyRUc3VEQxUkRMYnNkempwekJ2dkVlYkg4NGpzcnVod2FGdVRIbTF4R19Wc2VGZWthc1ZkWThFZw?oc=5"
+    },
+    {
       "source": "S&P Global Energy",
       "published_at": "2026-11-20T04:44:10+00:00",
       "title": "Energy crisis drives Asian biofuel mandates, but SAF stuck near 5% by 2035: IEA - S&P Global",
       "summary": "Energy crisis drives Asian biofuel mandates, but SAF stuck near 5% by 2035: IEA S&P Global",
       "topic": "Energia",
       "url": "https://news.google.com/rss/articles/CBMi7AFBVV95cUxQMXU4R09EUnhQLV9uYUJmRXRqQjZ6UjA2MHIwbEJpVWF5UzB0Qy1HQ2IwVWtNYW1qaUM5YWptdngwczRNZXFGeGtQVlVkSzdNR0RvQXoycUhDVzJZWXR6WWE3a0I4aFVLckJEV3N5Nkxod1dYRExLMmdQOVlDR3ZxRHRGUlp6V1RGSUwwaS1xVU5XTDhCSFUwV08zOUNpN1dnckI0LU8yc3RqdEhaN3VkLW1fNHBJQk5jVFMyVEp3eVB4bUlXUFBKM0lyZmF3LTN3UWZJWXhpRWEwa1RCOEVZOU1PRjVNSElrekJEdg?oc=5"
-    },
-    {
-      "source": "Reuters",
-      "published_at": "2026-11-20T03:17:00+00:00",
-      "title": "US Senate passes bipartisan bill to speed energy, infrastructure projects",
-      "summary": "US Senate passes bipartisan bill to speed energy, infrastructure projects Reuters",
-      "topic": "Energia",
-      "url": "https://news.google.com/rss/articles/CBMivwFBVV95cUxPYWNIMlNjd1I2dzg4R0JUc2Jzb29wWElMQUJpZjhpR0NKeVVYWVJCX0xtNWEyRnVPelpSUC00Uk12aDZZQ3h2T0JKMkNMV3lyQTVoMjBIS040RDRremdwUjhRRGYyUS0ybG90ZS00bks1ckZYeDFDR3NlNGRHWkpaZVBjdTVjR2x0ZlFJbF9GR3ZnTWMtdi1fV19zZ3pDbmRqLW5NTENHVGljVHpZdFUwWWxTUnhCb0htWU9WNVA0dw?oc=5"
     },
     {
       "source": "S&P Global Energy",
@@ -318,12 +257,76 @@
       "url": "https://news.google.com/rss/articles/CBMi2AFBVV95cUxPVUxtTGZhbExJbmY5S3YyVFRtcmNkaGxuVm9xc1B0aTVDN3hKaDRDNFNXcmk4dUJDbWptalM5eU42TEFPREZYcU1UblhETUNrQVZJRWJOdGRJRVNXTzVUMHJMUDlzQmVselBzU2FLQms4QWpYanFlT3RTenUwMVI2T2R4cjhXTFBmMGx2ak96b1lJNjhaWkZZbjVoZEZvdklaTDNXRHdZbXBDRnVFcGhIcWpuUzNKc1pSVTJyTzkzUFJ5NzZuZElaMU40Z056cUNwNzlkeDAzWWk?oc=5"
     },
     {
-      "source": "Reuters",
-      "published_at": "2026-11-20T02:00:00+00:00",
-      "title": "Oil prices gain as Houthi attacks on Riyadh raise supply concerns",
-      "summary": "Oil prices gain as Houthi attacks on Riyadh raise supply concerns Reuters",
-      "topic": "Nafta",
-      "url": "https://news.google.com/rss/articles/CBMiugFBVV95cUxPb3pQREZDSHE2RmNHdDdGdExDUXhYeWljc2VualVoQ09oQV90WnFQQlZkYW1rWnl5ODJ6N2haaVBDVUY4VmFvRmtLSlZKbU5kR1lHNklrUUR3X3JGc181OHZCUHpXalZFUllBZXVEczJPUUdZZUt1MmpsTEN0MkJGSDNCVHhoa25pZFBSb1lldS1US0VJNVNBWWN1U2VwQmd0WmlQR1RKWmgyS2lyUDVfNHdWeWhzaFhmZ1E?oc=5"
+      "source": "S&P Global Energy",
+      "published_at": "2026-11-20T01:31:19+00:00",
+      "title": "Tight VLSFO, soaring spreads dominate Europe; HSFO caught between surplus and shortage - S&P Global",
+      "summary": "Tight VLSFO, soaring spreads dominate Europe; HSFO caught between surplus and shortage S&P Global",
+      "topic": "Energia",
+      "url": "https://news.google.com/rss/articles/CBMi8wFBVV95cUxPWXZ0ZDBXWE1VNGV2MDBvVy1DUi00X1l3cUlaUVBITnFMeDJoNm5DV1VfR1RKSDJTVEFibkJGSXIyMGNHc251TE9jWE5fckQybE90X3ZyZU1QdWtCQ0RNU3ZqTDhiNkhDdWEzekZUOWlZbG5XMlhKSHh2YUR3c01wNlZ1SEJ5SS1MZHoyMUVtNWp2UEUtY1R5Rk5sYm80NHUzdFJrY2RhYjludnhkcExpdkVVNEtoOHhfWDduZ25tSzVzMXBnLWtJZzVyLW5wMENFTDVraERqSEZQVEIxRGxTRm9CclMtaFhFZER0UVBZR2dzS28?oc=5"
+    },
+    {
+      "source": "Energy Intelligence",
+      "published_at": "2026-11-19T23:16:57+00:00",
+      "title": "IEA Maps Mideast Export Future After Hormuz Confidence 'Shattered'",
+      "summary": "IEA Maps Mideast Export Future After Hormuz Confidence 'Shattered' Energy Intelligence",
+      "topic": "Energia",
+      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE9kRklWY2d3cEZGVGtpT0dLYnRucjY4YkxNeXNRRmVIcW5wTTl4dVRxOVN3N0EzMlpoYUl0NG5uRk5IdG40OWJtTVJ1MUIxd0lSZ3kzQkFpMmNnQWxlMEZNNktRMG51b1JMcm11N1RxYnR3QQ?oc=5"
+    },
+    {
+      "source": "Energy Intelligence",
+      "published_at": "2026-11-19T22:46:56+00:00",
+      "title": "IEA Sees Electrification Gaining Ground After Hormuz Shock",
+      "summary": "IEA Sees Electrification Gaining Ground After Hormuz Shock Energy Intelligence",
+      "topic": "Energia",
+      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE9uUmx2Q3Bmcy04X19Fc0E1anFGS3BUbHdUcWdvSE9rdnZhZVUyRlJxLWkwaXotNmhGSFdPdFoxTnFYbWg5VlJ2dHlEaGtPUlkydUEzd01aS1RvSm0wN0dsejlkR2Jyb2RtSElhcU95cENoUQ?oc=5"
+    },
+    {
+      "source": "Energy Intelligence",
+      "published_at": "2026-11-19T22:46:56+00:00",
+      "title": "China, Russia, US Eye Products Supply Growth",
+      "summary": "China, Russia, US Eye Products Supply Growth Energy Intelligence",
+      "topic": "Energia",
+      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTFBLdWF3Q1pzYUhkQUNCVGtZN0VtWDlYMmJBOUlCWVM5YVdWRkNUUUNMNlYyRTRRLXBqZExLZlhyU3RYbjcxejdFS0VFUEc2WGpwMlI2bVpuVGRscDNSVkV5N2pVel9yN085MW8tMk04WnFUQQ?oc=5"
+    },
+    {
+      "source": "Energy Intelligence",
+      "published_at": "2026-11-19T21:06:36+00:00",
+      "title": "Closing Arguments: Syria Mulls Mecca Pact Membership, IAEA Laments Lost Iran Access",
+      "summary": "Closing Arguments: Syria Mulls Mecca Pact Membership, IAEA Laments Lost Iran Access Energy Intelligence",
+      "topic": "Energia",
+      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE40TTJjZHlRT0ZDdzFpMjlHbHFWMFJuRFlhOW8zMG1fRXpYYmdNSVNUT255cmxtQkxKcDN5bEx2eUFOblRmdWQ3cGxaRE5md1pfaExrSm9PVjd0dFpuQnRiLURzcWh3MEQxMXVoZ01hNUJNZw?oc=5"
+    },
+    {
+      "source": "Energy Intelligence",
+      "published_at": "2026-11-19T20:06:21+00:00",
+      "title": "Cyber Threat Looms Large in Wake of US Air Traffic Shutdown",
+      "summary": "Cyber Threat Looms Large in Wake of US Air Traffic Shutdown Energy Intelligence",
+      "topic": "Energia",
+      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE96SlllbnJmUnliZk5CMmd0aTBoSFlpZV80RHNsR2tHOEdfU0hqTklia1RLZnNISmhFMUp4QjJONVRWbXFtOFdoNjh6OWdsb0ZET1FKRlhqcFB1ZkRwUGtrSDdQcEFVYWoxdzlDdlVVdGNhdw?oc=5"
+    },
+    {
+      "source": "Utility Dive",
+      "published_at": "2026-11-19T18:19:23+00:00",
+      "title": "Google signs 50-MW superhot geothermal PPA with Quaise Energy",
+      "summary": "Google signs 50-MW superhot geothermal PPA with Quaise Energy Utility Dive",
+      "topic": "Elekter & võrk",
+      "url": "https://news.google.com/rss/articles/CBMipAFBVV95cUxPRTRKMGdqdFd1bGFDLWpqWTRZRFZrTW1GRVdKclo5OFM3dzI2QVdSTXh1RFVLMHFFaW1ldXhqcHhWLUtUVk1SUl9xYkgzMldPMzhpVXJWSHFQZjJuVXBHVTFrN3FWaDdKSV83enFhaENDZklkamVFTVVNYV9QRGVzbTIwNExrbFltMGl2ajlYSVhEMC0tN21rRjFuNHlRQURpRWplbQ?oc=5"
+    },
+    {
+      "source": "Utility Dive",
+      "published_at": "2026-11-19T18:04:20+00:00",
+      "title": "Grid operators need data center ride-through rules that protect reliability",
+      "summary": "Grid operators need data center ride-through rules that protect reliability Utility Dive",
+      "topic": "Elekter & võrk",
+      "url": "https://news.google.com/rss/articles/CBMingFBVV95cUxPMjdPczVLZTlHZ3FwS1I1N0UtSVAyRW5VMUZWaElMcHNfb3VkenY1MUxJNUJkTEl0TmhBLWRTbDZNWnI0b1ZfLXNTdGt3N0N3UF9BOVNwRmo1TE9peGRXWmJhSkVQZl9pQnc4Q2RCWUpMQnFXRmU4dWpqMFN5bDVoNXdoV2hGakJOX0xCU2RRN1JtaW5hVWlqVW9Xb3BoZw?oc=5"
+    },
+    {
+      "source": "Energy Intelligence",
+      "published_at": "2026-11-19T16:40:38+00:00",
+      "title": "EU Strikes Provisional Deal for 2-Year Delay on Methane Rules",
+      "summary": "EU Strikes Provisional Deal for 2-Year Delay on Methane Rules Energy Intelligence",
+      "topic": "Energia",
+      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE1MR0dHUzVPQUlnamVCbXhWaDVBTVB3a0hXYnhrSThxbWd0M1BmODBBbGJCcUVtaGx0RnBsYktmTXJ2d2xRTUVWUGR5NVN1aTMyTzI5UW1EcUVOSmZmZHI2M21xOEpQRHpQZ2hnS205Umhxdw?oc=5"
     }
   ]
 }
