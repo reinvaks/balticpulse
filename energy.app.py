@@ -1574,6 +1574,11 @@ def render_dashboard():
                 installed_mw = installed_capacities[region].get(label)
                 capacity_source = "[ENTSO-E A68](https://transparency.entsoe.eu/)"
                 capacity_date = f"01.01.{today.year}"
+                if region == "EE" and installed_mw is None:
+                    # Grid-connected capacity published by Elering for the start of 2025.
+                    installed_mw = {"Tuul": 695, "Päike": 1210}[label]
+                    capacity_source = "[Elering, varuallikas](https://www.elering.ee/elektri-tarbimine-ja-tootmine)"
+                    capacity_date = "01.01.2025"
             current_text = f"{actual_mw:.0f}" if actual_mw is not None else "—"
             installed_text = f"{installed_mw:.0f}" if installed_mw is not None else "—"
             column.metric(f"{flag} {label}", f"{current_text} MW ({installed_text} MW)",
