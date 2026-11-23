@@ -1156,10 +1156,13 @@ def render_dashboard():
     eua_df, eua_status = source("EEX EUA", load_eua, interval=3600)
     ngp_current_results = {a: source(f"EEX NGP {a}", load_ngp_current, a) for a in ["TTF", "LVA-EST", "FIN", "LTU"]}
 
+    litgrid_capacity = {"Tuul": 2687, "Päike": 3807}
+    litgrid_date = datetime(2026, 10, 7).date()
+    use_litgrid = litgrid_date.year == today.year and litgrid_date <= today
     installed_capacities = {
         r: refresh.read(f"Installeeritud võimsus {r}", load_installed_capacity, (r, today.year, entsoe_key),
                         lambda _: {}, pending, interval=86400, revision=(today.year,))
-        for r in DASHBOARD_REGIONS
+        for r in DASHBOARD_REGIONS if r != "LT" or not use_litgrid
     }
     transfer_references = {
         (origin, target): refresh.read(
@@ -1563,15 +1566,21 @@ def render_dashboard():
         ):
             actual_mw, observed_at = latest_weather_generation(
                 generation_frame, technologies, pd.Timestamp.now(tz="UTC"))
-            installed_mw = installed_capacities[region].get(label)
+            if region == "LT" and use_litgrid:
+                installed_mw = litgrid_capacity[label]
+                capacity_source = "[Litgrid](https://www.litgrid.eu/sistema/elektros-energetikos-sistema/irengtoji-galia)"
+                capacity_date = litgrid_date.strftime("%d.%m.%Y")
+            else:
+                installed_mw = installed_capacities[region].get(label)
+                capacity_source = "[ENTSO-E A68](https://transparency.entsoe.eu/)"
+                capacity_date = f"01.01.{today.year}"
             current_text = f"{actual_mw:.0f}" if actual_mw is not None else "—"
             installed_text = f"{installed_mw:.0f}" if installed_mw is not None else "—"
             column.metric(f"{flag} {label}", f"{current_text} MW ({installed_text} MW)",
-                          help=f"Tegelik tootmine; sulgudes installeeritud netovõimsus. "
-                               f"Allikas ENTSO-E: tegelik A75, installeeritud A68, {today.year}. aasta alguse seis.")
+                          help="Tegelik tootmine (ENTSO-E A75). Sulgudes installeeritud võimsus.")
             observed_text = observed_at.tz_convert(TALLINN).strftime("%d.%m %H:%M") if observed_at is not None else "andmed puuduvad"
-            column.caption(f"Toodang {observed_text} · installeeritud 01.01.{today.year}")
-        st.caption("Sulgudes installeeritud netovõimsus (ENTSO-E aastaseis). — tähendab, et vastav andmeallikas ei andnud väärtust.")
+            column.caption(f"Toodang {observed_text} · installeeritud {capacity_date} · {capacity_source}")
+        st.caption("Sulgudes installeeritud võimsus. — tähendab, et vastav andmeallikas ei andnud väärtust.")
 
         _mode = snap.get("connection_mode", "LIVE" if "Elering" in str(snap.get("source")) else "UNAVAILABLE")
         if _mode == "SNAPSHOT":
