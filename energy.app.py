@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+from importlib import reload
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
@@ -10,9 +11,16 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+import energy_sources as _energy_sources
+
+APP_BUILD_VERSION = "16.1.10"
+
+# Streamlit can rerun the entry point while retaining previously imported modules.
+if getattr(_energy_sources, "BUILD_VERSION", None) != APP_BUILD_VERSION:
+    _energy_sources = reload(_energy_sources)
+
 from dashboard_refresh import DashboardRefresh
 from policy_view import render_policy
-import energy_sources as _energy_sources
 from data_quality import SourceHealth, assess as assess_source, mask as mask_source, human_age as dq_human_age
 from energy_sources import (
     SourceStatus,
@@ -28,8 +36,6 @@ from energy_sources import (
     fetch_eia_brent,
     fetch_eex_eua_auction,
 )
-
-APP_BUILD_VERSION = "16.1.10"
 
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
