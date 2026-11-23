@@ -10,11 +10,12 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-from inspect import signature
+from dashboard_refresh import DashboardRefresh
 from policy_view import render_policy
 import energy_sources as _energy_sources
 from data_quality import SourceHealth, assess as assess_source, mask as mask_source, human_age as dq_human_age
 from energy_sources import (
+    SourceStatus,
     fetch_elering_prices,
     fetch_elering_system,
     fetch_gas_storage,
@@ -24,12 +25,11 @@ from energy_sources import (
     fetch_entsoe_actual_load,
     fetch_eex_ngp_current,
     fetch_eex_ngp_history,
-    fetch_eex_ttf_ngp,
     fetch_eia_brent,
     fetch_eex_eua_auction,
 )
 
-APP_BUILD_VERSION = "16.1.9"
+APP_BUILD_VERSION = "16.1.10"
 
 TALLINN = ZoneInfo("Europe/Tallinn")
 REGIONS = ["EE", "LV", "LT", "FI"]
@@ -159,7 +159,6 @@ def render_health_badge(health: SourceHealth) -> None:
 
 
 
-@st.cache_data(ttl=900)
 def load_short_prices():
     now = datetime.now(timezone.utc)
     return fetch_elering_prices(now - timedelta(days=1), now + timedelta(days=2))
@@ -513,7 +512,6 @@ def _aggregate_system_history(chart: pd.DataFrame, period_label: str) -> pd.Data
     return x
 
 
-@st.cache_data(ttl=900)
 def load_system():
     now = datetime.now(timezone.utc)
     return fetch_elering_system(now - timedelta(hours=48), now + timedelta(hours=2))
@@ -553,50 +551,37 @@ def snapshot_history_df(data, region):
     return df.dropna(subset=["time_utc"]).sort_values("time_utc")
 
 
-@st.cache_data(ttl=900)
 def load_storage(key: str):
     return fetch_gas_storage(key)
 
 
-@st.cache_data(ttl=900)
 def load_entsoe_generation(key: str, region: str = "EE"):
     now = datetime.now(timezone.utc)
     return fetch_entsoe_generation_by_type(key, now - timedelta(hours=36), now + timedelta(hours=1), region)
 
 
-@st.cache_data(ttl=900)
 def load_entsoe_flows(key: str):
     now = datetime.now(timezone.utc)
     return fetch_entsoe_estonia_flows(key, now - timedelta(hours=36), now + timedelta(hours=1))
 
-@st.cache_data(ttl=900)
 def load_entsoe_baltic_flows(key: str):
     now = datetime.now(timezone.utc)
     return fetch_entsoe_baltic_flows(key, now - timedelta(hours=36), now + timedelta(hours=1))
 
 
-@st.cache_data(ttl=900)
 def load_entsoe_load(key: str, region: str = "EE"):
     now = datetime.now(timezone.utc)
     return fetch_entsoe_actual_load(key, now - timedelta(hours=36), now + timedelta(hours=1), region)
 
 
-@st.cache_data(ttl=900)
 def load_ngp_current(area: str):
     return fetch_eex_ngp_current(area)
 
 
-@st.cache_data(ttl=900)
-def load_ttf():
-    return fetch_eex_ttf_ngp()
-
-
-@st.cache_data(ttl=3600)
 def load_brent():
     return fetch_eia_brent()
 
 
-@st.cache_data(ttl=3600)
 def load_eua():
     return fetch_eex_eua_auction()
 
@@ -938,7 +923,6 @@ def _render_futures_market_state(state: dict):
         st.caption(f"Börsiandmed viimati kogutud: {observed_txt} (viitega turuandmed).")
 
 
-@st.cache_data(ttl=86400, show_spinner=False)
 def load_comparison_capacity(region, year, _token, from_region):
     """Load year-ahead directional transfer capacity; never a demand record."""
     start = pd.Timestamp(year=year, month=1, day=1, tz="Europe/Brussels").tz_convert("UTC")
@@ -1051,7 +1035,6 @@ def parse_installed_capacity(xml_text, reference):
     }
 
 
-@st.cache_data(ttl=900, show_spinner=False)
 def load_installed_capacity(region, year, _token):
     import xml.etree.ElementTree as ET
 
@@ -1089,7 +1072,26 @@ def latest_weather_generation(frame, technologies, now):
     return float(series.iloc[-1].sum()), series.index[-1]
 
 
-@st.fragment(run_every=900)
+@st.cache_resource
+def dashboard_refresh():
+    return DashboardRefresh()
+
+
+def load_price_snapshot(payload, first_day):
+    try:
+        fetched_at = pd.to_datetime(payload["fetched_at"], utc=True)
+        if pd.isna(fetched_at):
+            return pd.DataFrame(), None
+        frame = pd.DataFrame(payload["prices"])
+        frame["time_utc"] = pd.to_datetime(frame["timestamp"], unit="s", utc=True)
+        frame["time_local"] = frame["time_utc"].dt.tz_convert(TALLINN)
+        frame = frame[frame["time_local"].dt.date >= first_day]
+        return frame, SourceStatus("Elering hinnad (andmekoopia)", True, fetched_at.isoformat(),
+                                   "https://dashboard.elering.ee/api/nps/price")
+    except (KeyError, ValueError, TypeError):
+        return pd.DataFrame(), None
+
+
 def render_dashboard():
     futures_snapshot, futures_snapshot_status = load_futures_snapshot()
     eu_da_snapshot, eu_da_status = load_eu_day_ahead_snapshot()
@@ -1110,38 +1112,71 @@ def render_dashboard():
     tomorrow = today + timedelta(days=1)
     st.caption(f"Vaate aeg: **{now_local:%d.%m.%Y %H:%M:%S}** Europe/Tallinn · automaatne värskendus iga 15 minuti järel; korduspäringud mitte tihedamalt kui 15 minuti järel")
 
-    with st.spinner("Laadin operatiivandmeid..."):
-        entsoe_key = secret("ENTSOE_API_KEY")
-        agsi_key = secret("GIE_AGSI_API_KEY")
-        # Independent sources are fetched concurrently so a slow daily/fundamental source does not
-        # hold the operational view hostage. Individual loaders still retain their own cache TTLs.
-        with ThreadPoolExecutor(max_workers=12) as pool:
-            fut_prices = pool.submit(load_short_prices)
-            fut_system = pool.submit(load_system)
-            fut_baltic_snapshot = pool.submit(load_baltic_system_snapshot)
-            fut_storage = pool.submit(load_storage, agsi_key)
-            gen_futs = {r: pool.submit(load_entsoe_generation, entsoe_key, r) for r in DASHBOARD_REGIONS}
-            load_futs = {r: pool.submit(load_entsoe_load, entsoe_key, r) for r in DASHBOARD_REGIONS}
-            fut_flows = pool.submit(load_entsoe_flows, entsoe_key)
-            fut_baltic_flows = pool.submit(load_entsoe_baltic_flows, entsoe_key)
-            fut_ttf_hist = pool.submit(load_ttf)
-            fut_brent = pool.submit(load_brent)
-            fut_eua = pool.submit(load_eua)
-            ngp_futs = {a: pool.submit(load_ngp_current, a) for a in ["TTF", "LVA-EST", "FIN", "LTU"]}
+    selected_tab = st.session_state.get("dashboard_view", "📌 Põhivaade")
+    entsoe_key = secret("ENTSOE_API_KEY")
+    agsi_key = secret("GIE_AGSI_API_KEY")
+    pending = []
+    refresh = dashboard_refresh()
 
-            prices, price_status = fut_prices.result()
-            prices = published_day_ahead_prices(prices, now_local)
-            system_df, system_status = fut_system.result()
-            baltic_system_snapshot, baltic_snapshot_status = fut_baltic_snapshot.result()
-            storage_df, storage_status = fut_storage.result()
-            entsoe_generation_results = {r: f.result() for r, f in gen_futs.items()}
-            entsoe_load_results = {r: f.result() for r, f in load_futs.items()}
-            entsoe_flows, entsoe_flow_statuses = fut_flows.result()
-            entsoe_baltic_flows, entsoe_baltic_flow_statuses = fut_baltic_flows.result()
-            ttf_df, ttf_status = fut_ttf_hist.result()
-            brent_df, brent_status = fut_brent.result()
-            eua_df, eua_status = fut_eua.result()
-            ngp_current_results = {a: f.result() for a, f in ngp_futs.items()}
+    def source(name, loader, *args, interval=900):
+        def missing(loading):
+            message = "Andmeid uuendatakse" if loading else "Andmete laadimine ebaõnnestus"
+            return pd.DataFrame(), SourceStatus(name, False, now_local.isoformat(), "", error=message)
+        return refresh.read(name, loader, args, missing, pending, interval=interval)
+
+    baltic_system_snapshot, _ = load_baltic_system_snapshot()
+    prices, price_status = source("Elering hinnad", load_short_prices)
+    price_from_snapshot = prices.empty
+    if price_from_snapshot:
+        saved_prices, saved_status = load_price_snapshot(baltic_system_snapshot.get("elering_day_ahead", {}), today)
+        if not saved_prices.empty:
+            prices, price_status = saved_prices, saved_status
+        else:
+            price_from_snapshot = False
+    prices = published_day_ahead_prices(prices, now_local)
+    system_df, system_status = source("Elering süsteem", load_system)
+    storage_df, storage_status = source("GIE AGSI+", load_storage, agsi_key)
+    entsoe_generation_results = {r: source(f"ENTSO-E A75 {r}", load_entsoe_generation, entsoe_key, r) for r in DASHBOARD_REGIONS}
+    entsoe_load_results = {r: source(f"ENTSO-E A65 {r}", load_entsoe_load, entsoe_key, r) for r in DASHBOARD_REGIONS}
+    entsoe_flows, entsoe_flow_statuses = refresh.read(
+        "ENTSO-E Eesti piirivood", load_entsoe_flows, (entsoe_key,), lambda _: (pd.DataFrame(), []), pending,
+    )
+    entsoe_baltic_flows, entsoe_baltic_flow_statuses = pd.DataFrame(), []
+    if selected_tab == "🏭 Baltikumi süsteem":
+        entsoe_baltic_flows, entsoe_baltic_flow_statuses = refresh.read(
+            "ENTSO-E Balti piirivood", load_entsoe_baltic_flows, (entsoe_key,), lambda _: (pd.DataFrame(), []), pending,
+        )
+    brent_df, brent_status = source("EIA Brent", load_brent, interval=3600)
+    eua_df, eua_status = source("EEX EUA", load_eua, interval=3600)
+    ngp_current_results = {a: source(f"EEX NGP {a}", load_ngp_current, a) for a in ["TTF", "LVA-EST", "FIN", "LTU"]}
+
+    installed_capacities = {
+        r: refresh.read(f"Installeeritud võimsus {r}", load_installed_capacity, (r, today.year, entsoe_key),
+                        lambda _: {}, pending, interval=86400, revision=(today.year,))
+        for r in DASHBOARD_REGIONS
+    }
+    transfer_references = {
+        (origin, target): refresh.read(
+            f"Võrdlusvõimsus {origin}–{target}", load_comparison_capacity,
+            (target, today.year, entsoe_key, origin), lambda _: None, pending, interval=86400, revision=(today.year,),
+        )
+        for origin, target in [("EE", "LV"), ("LV", "EE")]
+    }
+    if pending:
+        st.caption("Andmeid uuendatakse taustal. Näidud lisanduvad päringute lõppedes.")
+    if price_from_snapshot:
+        st.caption(f"Elektrihinnad: viimane Eleringi andmekoopia, kogutud {pd.Timestamp(price_status.fetched_at).tz_convert(TALLINN):%d.%m.%Y %H:%M}.")
+
+    watching = False
+
+    @st.fragment(run_every=2 if pending else 900)
+    def watch_refresh():
+        # The fragment also runs once during the main render.
+        if watching and (not pending or any(job.done() for job in pending)):
+            st.rerun()
+
+    watch_refresh()
+    watching = True
 
     # ---------- NORMALISEERITUD FUNDAMENTAALID ----------
     # Build all headline values immediately after source fetches, before any UI uses them.
@@ -1196,7 +1231,7 @@ def render_dashboard():
         direct_ok=bool(getattr(price_status, "ok", False)),
         observed_at=_price_obs,
         max_age_minutes=120,
-        mode="direct",
+        mode="snapshot" if price_from_snapshot else "direct",
         checked_at=getattr(price_status, "fetched_at", None),
         detail=getattr(price_status, "error", None) or "",
     )
@@ -1488,15 +1523,6 @@ def render_dashboard():
             baltic_snapshots["EE"]["previous_24h"]["consumption_mw"] = nearest(sx,"time_utc","consumption_mw",pd.Timestamp(cons_time).tz_convert("UTC")-pd.Timedelta(hours=24))
 
 
-    with ThreadPoolExecutor(max_workers=3) as pool:
-        capacity_jobs = {r: pool.submit(load_installed_capacity, r, today.year, entsoe_key) for r in DASHBOARD_REGIONS}
-        installed_capacities = {r: job.result() for r, job in capacity_jobs.items()}
-
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        border_jobs = {direction: pool.submit(load_comparison_capacity, direction[1], today.year, entsoe_key, direction[0])
-                       for direction in [("EE", "LV"), ("LV", "EE")]}
-        transfer_references = {direction: job.result() for direction, job in border_jobs.items()}
-
     country_meta = {"EE": ("🇪🇪", "Eesti"), "LV": ("🇱🇻", "Läti"), "LT": ("🇱🇹", "Leedu"), "FI": ("🇫🇮", "Soome")}
     for region in DASHBOARD_REGIONS:
         flag, name = country_meta[region]
@@ -1741,6 +1767,8 @@ def render_dashboard():
         attention_df["_order"] = attention_df["Tase"].map(order).fillna(9)
         st.dataframe(attention_df.sort_values("_order").drop(columns="_order"), hide_index=True, use_container_width=True)
         source_links(("elering_prices", "price heuristics"), ("gie_agsi", "storage"))
+    elif spread is None or storage_df.empty:
+        st.caption("Tähelepanureeglite hindamiseks on osa andmeid puudu.")
     else:
         st.success("Ükski seadistatud operatiivne tähelepanureegel ei ole praegu käivitunud.")
     st.caption("Tähelepanureeglid on läbipaistvad heuristikad olukorrapildi kiirendamiseks, mitte ametlikud häirepiirid ega prognoosid. Lävendid: |🇪🇪–🇫🇮 hinnavahe| 50/100 €/MWh; gaasihoidlad <30% või ~7 päeva langus ≥5 pp.")
@@ -1869,12 +1897,6 @@ def render_dashboard():
                 )
 
             source_badge(
-                ttf_status.source or "EEX TTF",
-                detail=status_detail(ttf_status, extra=(f"{len(ttf_df)} rida" if not ttf_df.empty else "andmed puuduvad")),
-                level=status_level(ttf_status, has_data=not ttf_df.empty),
-            )
-
-            source_badge(
                 brent_status.source or "EIA Brent",
                 detail=status_detail(
                     brent_status,
@@ -1910,20 +1932,20 @@ def render_dashboard():
                 level=flow_level,
             )
 
-            baltic_flow_ok = sum(1 for stx in entsoe_baltic_flow_statuses if stx.ok)
-            baltic_flow_level = "error" if baltic_flow_ok == 0 else ("warning" if baltic_flow_ok < len(entsoe_baltic_flow_statuses) or entsoe_baltic_flows.empty else "ok")
-            source_badge(
-                "ENTSO-E Baltikumi füüsilised vood",
-                detail=f"{baltic_flow_ok}/{len(entsoe_baltic_flow_statuses)} päringut OK",
-                level=baltic_flow_level,
-            )
+            if selected_tab == "🏭 Baltikumi süsteem":
+                baltic_flow_ok = sum(status.ok for status in entsoe_baltic_flow_statuses)
+                source_badge(
+                    "ENTSO-E Baltikumi füüsilised vood",
+                    detail=f"{baltic_flow_ok}/{len(entsoe_baltic_flow_statuses)} päringut OK" if entsoe_baltic_flow_statuses else "Andmeid oodatakse",
+                    level="ok" if baltic_flow_ok and baltic_flow_ok == len(entsoe_baltic_flow_statuses) and not entsoe_baltic_flows.empty else "warning",
+                )
 
-    # ---------- 2. DETAIL TABS ----------
-    tab_overview, tab_prices, tab_policy, tab_fundamentals, tab_system, tab_entsoe, tab_gas, tab_quality = st.tabs([
-        "📌 Põhivaade", "⚡ Elektrihinnad", "Mõjutatud võimsused", "📈 Fundamentaalid", "🏭 Baltikumi süsteem", "🌐 ENTSO-E", "🔥 Gaas ja toorained", "✅ Andmekvaliteet"
-    ], **({"on_change": "rerun"} if "on_change" in signature(st.tabs).parameters else {}))
+    st.radio("Vaade", [
+        "📌 Põhivaade", "⚡ Elektrihinnad", "Mõjutatud võimsused", "📈 Fundamentaalid",
+        "🏭 Baltikumi süsteem", "🌐 ENTSO-E", "🔥 Gaas ja toorained", "✅ Andmekvaliteet",
+    ], key="dashboard_view", horizontal=True, label_visibility="collapsed")
 
-    with tab_overview:
+    if selected_tab == "📌 Põhivaade":
         st.markdown("## 📌 Üldine armatuurlaud")
         st.caption("Kiirvaade olulisematele elektri-, süsteemi- ja gaasinäitajatele.")
         left, right = st.columns(2)
@@ -1949,7 +1971,7 @@ def render_dashboard():
             source_links(("elering_system", "EE primary"), ("entsoe_tp", "LV/LT and EE renewables/fallback"), ("baltic_snapshot", "fallback only"))
             st.caption("🇪🇪 kogunäidud: Elering actual; Eleringi puudumisel valideeritud ENTSO-E/snapshot fallback. 🇱🇻/🇱🇹: ENTSO-E actual.")
 
-    with tab_prices:
+    if selected_tab == "⚡ Elektrihinnad":
         st.markdown("## ⚡ Elektriturg")
         st.caption("Päeva-ette hinnad, ajalugu, kuustatistika ja elektri forward-vaade.")
         st.markdown("### Regionaalsed päeva-ette hinnad")
@@ -2130,7 +2152,7 @@ def render_dashboard():
             st.caption("Allikas: Euronext Amsterdam — Nordic System Price Futures, Helsinki EPAD ja Vilnius EPAD.")
 
 
-    with tab_system:
+    if selected_tab == "🏭 Baltikumi süsteem":
         st.markdown("## 🏭 Baltikumi elektrisüsteem")
         st.caption(
             "Tegelik tootmine, tarbimine ja taastuvtootmine. "
@@ -2411,7 +2433,7 @@ def render_dashboard():
                         )
 
 
-    with tab_entsoe:
+    if selected_tab == "🌐 ENTSO-E":
         st.markdown("### ENTSO-E Transparency Platform — Baltikumi tegelik tootmine ja Eesti piiriülesed füüsilised vood")
         st.caption("Baltikumi tootmisjaotus: A75 / A16 realised; koormus: A65. Eesti füüsilised vood: A11. Need on ENTSO-E Transparency Platformi allikaandmed, mitte dashboardis tuletatud väärtused.")
 
@@ -2459,7 +2481,7 @@ def render_dashboard():
             source_link("entsoe_tp", note="A11 flows aggregated to Estonia net view")
             st.caption("Netovoo märk on defineeritud Eesti vaates: + = eksport Eestist, − = import Eestisse. Alusread jäävad eraldi suunaga nähtavaks.")
 
-    with tab_gas:
+    if selected_tab == "🔥 Gaas ja toorained":
         st.markdown("## 🔥 Gaas ja toorained")
         st.caption("EL ja Inčukalnsi täituvus ning gaasivarude operatiivne seis.")
         st.markdown("### EL ja Läti gaasihoidlad — GIE AGSI+")
@@ -2500,7 +2522,7 @@ def render_dashboard():
                          f"Kontrollitud {pd.to_datetime(storage_status.fetched_at, utc=True).tz_convert(TALLINN):%d.%m.%Y %H:%M} · "
                          f"{storage_status.error or storage_status.note or 'andmed saadaval'}")
 
-    with tab_fundamentals:
+    if selected_tab == "📈 Fundamentaalid":
         st.markdown("## 📈 Turu fundamentaalid")
         st.caption("Gaas, futuurid, Brent ja EUA — spot- ja forward-vaade ühes plokis.")
         st.markdown("### Turu põhifundamentaalid")
@@ -2767,11 +2789,10 @@ def render_dashboard():
         )
 
 
-    with tab_policy:
-        if getattr(tab_policy, "open", None) is not False:
-            render_policy(entsoe_key, today)
+    if selected_tab == "Mõjutatud võimsused":
+        render_policy(entsoe_key, today)
 
-    with tab_quality:
+    if selected_tab == "✅ Andmekvaliteet":
         st.markdown("### Andmekvaliteedi ja ulatuse reeglid")
         st.markdown(
             """

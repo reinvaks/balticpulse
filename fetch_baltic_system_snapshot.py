@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import pandas as pd
 
-from energy_sources import fetch_entsoe_generation_by_type, fetch_entsoe_actual_load
+from energy_sources import fetch_elering_prices, fetch_entsoe_generation_by_type, fetch_entsoe_actual_load
 
 OUT = Path("data/baltic_system_snapshot.json")
 REGIONS = ["EE", "LV", "LT", "FI"]
@@ -91,6 +91,21 @@ def _region(region, token, start, end):
         } for _,r in hist.tail(400).iterrows()]
     return result
 
+def _day_ahead_prices(previous):
+    now = datetime.now(timezone.utc)
+    prices, status = fetch_elering_prices(now - timedelta(days=1), now + timedelta(days=2))
+    if not status.ok or prices.empty or set(prices["region"]) != set(REGIONS):
+        print("Elering price snapshot unchanged: no complete regional response.")
+        return previous
+    prices = prices[prices["price"].between(float("-inf"), float("inf"), inclusive="neither")]
+    if set(prices["region"]) != set(REGIONS):
+        return previous
+    return {
+        "fetched_at": status.fetched_at,
+        "prices": prices[["timestamp", "price", "region"]].to_dict("records"),
+    }
+
+
 def main():
     token = os.environ.get("ENTSOE_API_KEY","").strip()
     if not token:
@@ -124,6 +139,7 @@ def main():
         "updated_at":datetime.now(timezone.utc).isoformat(),
         "source":"ENTSO-E Transparency Platform via GitHub Actions",
         "regions":regions,
+        "elering_day_ahead": _day_ahead_prices(previous.get("elering_day_ahead", {})),
     }
     OUT.parent.mkdir(parents=True,exist_ok=True)
     OUT.write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding="utf-8")
