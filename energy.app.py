@@ -743,6 +743,20 @@ def _render_eu_price_map(df: pd.DataFrame, title: str):
         "piirkondade aritmeetiline keskmine."
     )
 
+    ranking = (
+        x.sort_values(["price_eur_mwh", "country"])[["country", "price_eur_mwh"]]
+        .rename(columns={"country": "Riik", "price_eur_mwh": "Hind (€/MWh)"})
+        .reset_index(drop=True)
+    )
+    st.markdown(f"#### Riikide hinnavõrdlus · {title}")
+    st.dataframe(
+        ranking,
+        hide_index=True,
+        use_container_width=True,
+        height=min(35 * (len(ranking) + 1) + 3, 720),
+        column_config={"Hind (€/MWh)": st.column_config.NumberColumn(format="%.2f")},
+    )
+
 
 def _shade_month_groups(df: pd.DataFrame):
     """Same subtle background for all EE/LV/LT/FI rows belonging to one month."""
